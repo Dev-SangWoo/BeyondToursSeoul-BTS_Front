@@ -7,6 +7,8 @@ import SavedView    from '@/views/SavedView.vue'
 import ProfileView  from '@/views/ProfileView.vue'
 import AuthCallbackView from '@/views/AuthCallbackView.vue'
 import AttractionDetailView from '@/views/AttractionDetailView.vue'
+import LockerDetailView from '@/views/LockerDetailView.vue'
+import EventDetailView from '@/views/EventDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,6 +22,8 @@ const router = createRouter({
     { path: '/profile',  name: 'profile',  component: ProfileView },
     { path: '/auth/callback', name: 'auth-callback', component: AuthCallbackView },
     { path: '/attractions/:id', name: 'attraction-detail', component: AttractionDetailView },
+    { path: '/lockers/:id', name: 'locker-detail', component: LockerDetailView },
+    { path: '/events/:id', name: 'event-detail', component: EventDetailView },
   ],
 })
 

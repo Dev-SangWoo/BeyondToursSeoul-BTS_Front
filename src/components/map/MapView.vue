@@ -101,6 +101,11 @@ function markerColor(type, crowdLevel) {
   return '#FE9C00'
 }
 
+/** onclick 내부 단일따옴표 JS 문자열용 이스케이프 (locker- 접두 등 문자열 id 대응) */
+function escapeForOnclickSingleQuoted(id) {
+  return String(id).replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+}
+
 function buildMarkerIcon(type, crowdLevel, selected = false, id = null) {
   const color = markerColor(type, crowdLevel)
   const size = selected ? 22 : 14
@@ -109,7 +114,7 @@ function buildMarkerIcon(type, crowdLevel, selected = false, id = null) {
     ? '0 3px 10px rgba(0,0,0,.35), 0 0 0 4px rgba(254,156,0,0.3)'
     : '0 2px 6px rgba(0,0,0,.25)'
   const onclickAttr = id != null
-    ? `onclick="window.__naverPinClick && window.__naverPinClick(${JSON.stringify(id)})" `
+    ? `onclick="window.__naverPinClick && window.__naverPinClick('${escapeForOnclickSingleQuoted(id)}')" `
     : ''
   return {
     content: `

@@ -12,6 +12,7 @@ import { IsIcon } from '@ratoufa/iconsax-vue'
 import AIInputSheet from '@/components/ai/AIInputSheet.vue'
 import { useSavedStore } from '@/stores/useSavedStore'
 import { fetchAttractions } from '@/services/attractionService'
+import { fetchEvents } from '@/services/eventService'
 import earthImage from '../../asset/earth.png'
 import airplaneImage from '../../asset/airplane.png'
 
@@ -39,16 +40,13 @@ const realtimeHotPlaces = [
 ]
 
 const categories = [
-  { id: '추천코스',      icon: 'routing',        color: '#fe9c00', label: '추천코스' },
   { id: '음식',         icon: 'cup',             color: '#f97316', label: '음식' },
-  { id: '체험관광',      icon: 'people',          color: '#8b5cf6', label: '체험관광' },
-  { id: '숙박',         icon: 'home',            color: '#0891b2', label: '숙박' },
-  { id: '자연관광',      icon: 'tree',            color: '#16a34a', label: '자연관광' },
   { id: '쇼핑',         icon: 'shop',            color: '#ec4899', label: '쇼핑' },
+  { id: '체험관광',      icon: 'people',          color: '#8b5cf6', label: '체험관광' },
+  { id: '자연관광',      icon: 'tree',            color: '#16a34a', label: '자연관광' },
   { id: '문화관광',      icon: 'courthouse',      color: '#a16207', label: '문화관광' },
-  { id: '축제/공연/행사', icon: 'music',           color: '#e11d48', label: '축제/행사' },
-  { id: '레저스포츠',    icon: 'activity',        color: '#2563eb', label: '레저스포츠' },
   { id: '역사관광',      icon: 'building',        color: '#78716c', label: '역사관광' },
+  { id: '레저스포츠',    icon: 'activity',        color: '#2563eb', label: '레저스포츠' },
 ]
 
 const densityModes = [
@@ -227,8 +225,84 @@ watch(courseDensityIndex, () => {
   attractionPage.value = 1
 })
 
+const homeListTab = ref('attractions')
+const events = ref([])
+const eventsLoading = ref(false)
+const eventsError = ref(null)
+const eventsFetchAttempted = ref(false)
+const eventPage = ref(1)
+
+watch(homeListTab, (tab) => {
+  if (tab === 'attractions') attractionPage.value = 1
+  if (tab === 'events') {
+    eventPage.value = 1
+    ensureEventsLoaded()
+  }
+})
+
+async function ensureEventsLoaded() {
+  if (eventsFetchAttempted.value) return
+  eventsFetchAttempted.value = true
+  eventsLoading.value = true
+  eventsError.value = null
+  try {
+    const data = await fetchEvents()
+    events.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    eventsError.value = e.message
+    events.value = []
+    eventsFetchAttempted.value = false
+  } finally {
+    eventsLoading.value = false
+  }
+}
+
+function formatTourYmd(ymd) {
+  const s = ymd != null ? String(ymd).trim() : ''
+  if (s.length !== 8 || !/^\d{8}$/.test(s)) return s || '—'
+  return `${s.slice(0, 4)}.${s.slice(4, 6)}.${s.slice(6, 8)}`
+}
+
+function eventDateLabel(ev) {
+  const a = formatTourYmd(ev.eventStartDate)
+  const b = formatTourYmd(ev.eventEndDate)
+  if (a === b) return a
+  return `${a} ~ ${b}`
+}
+
+const totalEventPages = computed(() => Math.max(1, Math.ceil(events.value.length / PAGE_SIZE)))
+
+const pagedEvents = computed(() => {
+  const start = (eventPage.value - 1) * PAGE_SIZE
+  return events.value.slice(start, start + PAGE_SIZE)
+})
+
+const eventPageItems = computed(() => {
+  const total = totalEventPages.value
+  const cur = eventPage.value
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+
+  const items = []
+  const addDot = () => {
+    if (items[items.length - 1] !== '...') items.push('...')
+  }
+
+  items.push(1)
+  if (cur > 3) addDot()
+  for (let p = Math.max(2, cur - 1); p <= Math.min(total - 1, cur + 1); p++) items.push(p)
+  if (cur < total - 2) addDot()
+  items.push(total)
+  return items
+})
+
 function goToAttraction(id) {
   router.push({ name: 'attraction-detail', params: { id } })
+}
+
+function goToEvent(contentId) {
+  const sid = contentId != null ? String(contentId).trim() : ''
+  if (!sid) return
+  router.push({ name: 'event-detail', params: { id: sid } })
 }
 
 function onCourseGenerated() {
@@ -413,10 +487,37 @@ watch(
       </div>
     </section>
 
-    <!-- ── Theme Categories ───────────────────────────────────────────── -->
+    <!-- ── Theme Categories & listings ──────────────────────────────── -->
     <section class="discover__section discover__section--last">
-      <h3 class="discover__section-title">테마별 추천</h3>
-      <div class="discover__category-row">
+      <div class="discover__list-heading">
+        <h3 class="discover__section-title">
+          {{ homeListTab === 'attractions' ? '테마별 추천' : '축제 · 행사' }}
+        </h3>
+        <div class="discover__home-tabs" role="tablist" aria-label="목록 유형">
+          <button
+            type="button"
+            role="tab"
+            class="discover__home-tab"
+            :class="{ 'discover__home-tab--active': homeListTab === 'attractions' }"
+            :aria-selected="homeListTab === 'attractions'"
+            @click="homeListTab = 'attractions'"
+          >
+            관광지
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="discover__home-tab"
+            :class="{ 'discover__home-tab--active': homeListTab === 'events' }"
+            :aria-selected="homeListTab === 'events'"
+            @click="homeListTab = 'events'"
+          >
+            행사
+          </button>
+        </div>
+      </div>
+
+      <div v-show="homeListTab === 'attractions'" class="discover__category-row">
         <button
           v-for="cat in categories"
           :key="cat.id"
@@ -435,88 +536,171 @@ watch(
         </button>
       </div>
 
-      <!-- Attractions list -->
       <div class="discover__attractions">
-        <!-- Loading -->
-        <div v-if="attractionsLoading" class="discover__attractions-loading">
-          <div class="discover__attractions-spinner"></div>
-          <span>관광지 목록 불러오는 중...</span>
-        </div>
+        <template v-if="homeListTab === 'attractions'">
+          <div v-if="attractionsLoading" class="discover__attractions-loading">
+            <div class="discover__attractions-spinner"></div>
+            <span>관광지 목록 불러오는 중...</span>
+          </div>
 
-        <!-- Error -->
-        <p v-else-if="attractionsError" class="discover__attractions-error">
-          {{ attractionsError }}
-        </p>
+          <p v-else-if="attractionsError" class="discover__attractions-error">
+            {{ attractionsError }}
+          </p>
 
-        <!-- Empty -->
-        <p v-else-if="filteredAttractions.length === 0" class="discover__attractions-empty">
-          해당 카테고리의 관광지가 없습니다.
-        </p>
+          <p v-else-if="filteredAttractions.length === 0" class="discover__attractions-empty">
+            해당 카테고리의 관광지가 없습니다.
+          </p>
+
+          <template v-else>
+            <button
+              v-for="attraction in pagedAttractions"
+              :key="attraction.id"
+              type="button"
+              class="attraction-card"
+              @click="goToAttraction(attraction.id)"
+            >
+              <div class="attraction-card__thumb-wrap">
+                <img
+                  v-if="attraction.imageUrl || attraction.image_url || attraction.thumbnail"
+                  class="attraction-card__thumb"
+                  :src="attraction.imageUrl || attraction.image_url || attraction.thumbnail"
+                  :alt="attraction.name"
+                />
+                <div v-else class="attraction-card__thumb-placeholder"></div>
+              </div>
+              <div class="attraction-card__info">
+                <p class="attraction-card__name">{{ attraction.name }}</p>
+                <p v-if="attraction.address" class="attraction-card__address">
+                  <MapPin :size="11" :stroke-width="2" class="attraction-card__pin" />
+                  {{ attraction.address }}
+                </p>
+                <div class="attraction-card__meta">
+                  <span v-if="attraction.cat1Name" class="attraction-card__cat">
+                    {{ attraction.cat1Name }}
+                  </span>
+                </div>
+              </div>
+              <ChevronRight :size="16" :stroke-width="2.2" class="attraction-card__arrow" />
+            </button>
+
+            <div v-if="totalPages > 1" class="discover__pagination">
+              <button
+                type="button"
+                class="discover__pg-arrow"
+                :disabled="attractionPage === 1"
+                aria-label="이전"
+                @click="attractionPage--"
+              >
+                <ChevronLeft :size="14" :stroke-width="2.5" />
+              </button>
+
+              <template v-for="(item, pi) in pageItems" :key="'a-' + pi + '-' + item">
+                <span v-if="item === '...'" class="discover__pg-ellipsis">…</span>
+                <button
+                  v-else
+                  type="button"
+                  class="discover__pg-num"
+                  :class="{ 'discover__pg-num--active': attractionPage === item }"
+                  @click="attractionPage = item"
+                >
+                  {{ item }}
+                </button>
+              </template>
+
+              <button
+                type="button"
+                class="discover__pg-arrow"
+                :disabled="attractionPage === totalPages"
+                aria-label="다음"
+                @click="attractionPage++"
+              >
+                <ChevronRight :size="14" :stroke-width="2.5" />
+              </button>
+            </div>
+          </template>
+        </template>
 
         <template v-else>
-          <!-- Cards -->
-          <button
-            v-for="attraction in pagedAttractions"
-            :key="attraction.id"
-            class="attraction-card"
-            @click="goToAttraction(attraction.id)"
-          >
-            <div class="attraction-card__thumb-wrap">
-              <img
-                v-if="attraction.imageUrl || attraction.image_url || attraction.thumbnail"
-                class="attraction-card__thumb"
-                :src="attraction.imageUrl || attraction.image_url || attraction.thumbnail"
-                :alt="attraction.name"
-              />
-              <div v-else class="attraction-card__thumb-placeholder"></div>
-            </div>
-            <div class="attraction-card__info">
-              <p class="attraction-card__name">{{ attraction.name }}</p>
-              <p v-if="attraction.address" class="attraction-card__address">
-                <MapPin :size="11" :stroke-width="2" class="attraction-card__pin" />
-                {{ attraction.address }}
-              </p>
-              <div class="attraction-card__meta">
-                <span v-if="attraction.cat1Name" class="attraction-card__cat">
-                  {{ attraction.cat1Name }}
-                </span>
-              </div>
-            </div>
-            <ChevronRight :size="16" :stroke-width="2.2" class="attraction-card__arrow" />
-          </button>
-
-          <!-- Pagination -->
-          <div v-if="totalPages > 1" class="discover__pagination">
-            <button
-              class="discover__pg-arrow"
-              :disabled="attractionPage === 1"
-              aria-label="이전"
-              @click="attractionPage--"
-            >
-              <ChevronLeft :size="14" :stroke-width="2.5" />
-            </button>
-
-            <template v-for="item in pageItems" :key="item">
-              <span v-if="item === '...'" class="discover__pg-ellipsis">…</span>
-              <button
-                v-else
-                class="discover__pg-num"
-                :class="{ 'discover__pg-num--active': attractionPage === item }"
-                @click="attractionPage = item"
-              >
-                {{ item }}
-              </button>
-            </template>
-
-            <button
-              class="discover__pg-arrow"
-              :disabled="attractionPage === totalPages"
-              aria-label="다음"
-              @click="attractionPage++"
-            >
-              <ChevronRight :size="14" :stroke-width="2.5" />
-            </button>
+          <div v-if="eventsLoading" class="discover__attractions-loading">
+            <div class="discover__attractions-spinner"></div>
+            <span>행사 목록 불러오는 중...</span>
           </div>
+
+          <p v-else-if="eventsError" class="discover__attractions-error">
+            {{ eventsError }}
+          </p>
+
+          <p v-else-if="events.length === 0" class="discover__attractions-empty">
+            표시할 행사가 없습니다.
+          </p>
+
+          <template v-else>
+            <button
+              v-for="ev in pagedEvents"
+              :key="ev.contentId"
+              type="button"
+              class="attraction-card attraction-card--event"
+              @click="goToEvent(ev.contentId)"
+            >
+              <div class="attraction-card__thumb-wrap">
+                <img
+                  v-if="ev.firstImage && String(ev.firstImage).trim()"
+                  class="attraction-card__thumb"
+                  :src="ev.firstImage"
+                  :alt="ev.title"
+                />
+                <div v-else class="attraction-card__thumb-placeholder"></div>
+              </div>
+              <div class="attraction-card__info">
+                <p class="attraction-card__name">{{ ev.title }}</p>
+                <p v-if="ev.address" class="attraction-card__address">
+                  <MapPin :size="11" :stroke-width="2" class="attraction-card__pin" />
+                  {{ ev.address }}
+                </p>
+                <div class="attraction-card__meta">
+                  <span class="attraction-card__cat attraction-card__cat--muted">
+                    {{ eventDateLabel(ev) }}
+                  </span>
+                </div>
+              </div>
+              <ChevronRight :size="16" :stroke-width="2.2" class="attraction-card__arrow" />
+            </button>
+
+            <div v-if="totalEventPages > 1" class="discover__pagination">
+              <button
+                type="button"
+                class="discover__pg-arrow"
+                :disabled="eventPage === 1"
+                aria-label="이전"
+                @click="eventPage--"
+              >
+                <ChevronLeft :size="14" :stroke-width="2.5" />
+              </button>
+
+              <template v-for="(item, ei) in eventPageItems" :key="'e-' + ei + '-' + item">
+                <span v-if="item === '...'" class="discover__pg-ellipsis">…</span>
+                <button
+                  v-else
+                  type="button"
+                  class="discover__pg-num"
+                  :class="{ 'discover__pg-num--active': eventPage === item }"
+                  @click="eventPage = item"
+                >
+                  {{ item }}
+                </button>
+              </template>
+
+              <button
+                type="button"
+                class="discover__pg-arrow"
+                :disabled="eventPage === totalEventPages"
+                aria-label="다음"
+                @click="eventPage++"
+              >
+                <ChevronRight :size="14" :stroke-width="2.5" />
+              </button>
+            </div>
+          </template>
         </template>
       </div>
     </section>
@@ -847,6 +1031,49 @@ watch(
   font-weight: 800;
   color: #1a1a1a;
   margin: 0 0 14px;
+}
+
+.discover__list-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.discover__list-heading .discover__section-title {
+  margin-bottom: 0;
+}
+
+.discover__home-tabs {
+  display: flex;
+  padding: 3px;
+  background: #efefed;
+  border-radius: 12px;
+  gap: 2px;
+}
+
+.discover__home-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #666;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.discover__home-tab--active {
+  background: #fff;
+  color: #1a1a1a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.discover__home-tab:focus-visible {
+  outline: 2px solid #fe9c00;
+  outline-offset: 2px;
 }
 
 /* ─── Density bar (standalone) ───────────────────────────────────────────── */
@@ -1260,6 +1487,12 @@ watch(
   border-color: #ffe3ba;
 }
 
+.attraction-card--event {
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .attraction-card__thumb-wrap {
   flex-shrink: 0;
   width: 68px;
@@ -1330,6 +1563,12 @@ watch(
   border: 1px solid #ffe3ba;
   border-radius: 999px;
   padding: 2px 8px;
+}
+
+.attraction-card__cat--muted {
+  color: #4b5563;
+  background: #f3f4f6;
+  border-color: #e5e7eb;
 }
 
 .attraction-card__arrow {

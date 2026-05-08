@@ -27,3 +27,13 @@ export async function fetchLockers() {
   if (!res.ok) throw new Error(`물품보관소 목록 조회 실패: ${res.status}`)
   return res.json()
 }
+
+/**
+ * @param {string|number} id
+ * @returns {Promise<Object>}
+ */
+export async function fetchLockerById(id) {
+  const res = await fetch(`${BASE_URL}/api/v1/lockers/${id}`)
+  if (!res.ok) throw new Error(`물품보관소 상세 조회 실패: ${res.status}`)
+  return res.json()
+}
