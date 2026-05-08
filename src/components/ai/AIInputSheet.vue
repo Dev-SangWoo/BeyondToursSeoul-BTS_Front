@@ -30,6 +30,8 @@ const flowStage = ref('primary')
 const detailPage = ref(1)
 const specialRequest = ref('')
 const showTopGuide = ref(false)
+const chatStructured = ref(null)
+const preserveChatMapOnExit = ref(false)
 
 const startDate = ref(formatLocalIsoDate(_today))
 const endDate = ref(formatLocalIsoDate(_defaultEnd))
@@ -156,6 +158,7 @@ async function proceedToDetail() {
 
 function proceedToChat() {
   if (!canProceedChat.value) return
+  preserveChatMapOnExit.value = false
   flowStage.value = 'chat'
 }
 
@@ -167,6 +170,7 @@ function backToDetail() {
 async function generate() {
   if (!canSubmitGenerate.value) return
 
+  preserveChatMapOnExit.value = !!chatStructured.value
   step.value = 'loading'
 
   tripStore.setInput({
@@ -191,7 +195,11 @@ async function generate() {
     specialRequest: specialRequest.value.trim(),
   })
 
-  await tripStore.generateCourse()
+  if (chatStructured.value) {
+    tripStore.setAiStructured(chatStructured.value)
+  } else {
+    await tripStore.generateCourse()
+  }
   loadingRef.value?.complete()
 
   setTimeout(() => {
@@ -321,8 +329,11 @@ function blurStartDate() {
               v-if="flowStage === 'chat'"
               :summary-text="chatSummaryMessage"
               :can-submit-generate="canSubmitGenerate"
+              :preserve-map-on-exit="preserveChatMapOnExit"
+              :local-ratio="density"
               @back="backToDetail"
               @generate="generate"
+              @structured-change="chatStructured = $event"
             />
           </div>
 

@@ -17,9 +17,11 @@ import AiChatPlanStrip from './AiChatPlanStrip.vue'
 const props = defineProps({
   summaryText: { type: String, default: '' },
   canSubmitGenerate: { type: Boolean, default: false },
+  preserveMapOnExit: { type: Boolean, default: false },
+  localRatio: { type: Number, default: 50 },
 })
 
-const emit = defineEmits(['back', 'generate'])
+const emit = defineEmits(['back', 'generate', 'structured-change'])
 
 const mapStore = useMapStore()
 
@@ -38,11 +40,22 @@ const introAssistant =
 /** 채팅 단계 진입 시 자동 전송 — 수동으로 같은 문구를 입력하지 않아도 첫 일정 응답을 받습니다. */
 const INITIAL_COURSE_MESSAGE = '코스 생성'
 
+function hasUsableStructured(structured) {
+  if (!structured || typeof structured !== 'object') return false
+  const days = Array.isArray(structured.days) ? structured.days : []
+  if (days.some((d) => Array.isArray(d?.slots) && d.slots.length > 0)) return true
+  const route = structured.summary?.route
+  if (Array.isArray(route) && route.some((x) => String(x || '').trim())) return true
+  const title = structured.summary?.title
+  return typeof title === 'string' && title.trim().length > 0
+}
+
 const lastStructured = computed(() => {
   for (let i = thread.value.length - 1; i >= 0; i -= 1) {
     const m = thread.value[i]
     if (m.role === 'assistant' && m.structured != null && typeof m.structured === 'object') {
-      return normalizeStructured(m.structured)
+      const normalized = normalizeStructured(m.structured)
+      if (hasUsableStructured(normalized)) return normalized
     }
   }
   return null
@@ -71,7 +84,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (mapSnapshot) {
+  if (!props.preserveMapOnExit && mapSnapshot) {
     mapStore.setMarkers(mapSnapshot.markers)
     mapStore.setPolyline(mapSnapshot.polyline)
     mapStore.setCenter(mapSnapshot.center.lat, mapSnapshot.center.lng)
@@ -105,6 +118,7 @@ async function applyStructuredToMap(structured) {
 watch(
   lastStructured,
   (s) => {
+    emit('structured-change', s)
     applyStructuredToMap(s)
   },
   { immediate: true },
@@ -119,6 +133,18 @@ watch([selectedDayIndex, () => mapStore.markers], () => {
   }
 })
 
+function resolveAssistantText(structured) {
+  const days = Array.isArray(structured?.days) ? structured.days : []
+  if (!days.length) return '응답을 받지 못했습니다.'
+  const dayCount = days.length
+  const places = days
+    .flatMap((d) => (Array.isArray(d?.slots) ? d.slots : []))
+    .map((s) => s?.placeName)
+    .filter(Boolean)
+  const preview = [...new Set(places)].slice(0, 3).join(', ')
+  return `${dayCount}일 여행 일정을 준비했어요.${preview ? ` (${preview} 등)` : ''}`
+}
+
 async function sendChatWithText(t) {
   const trimmed = (t || '').trim()
   if (!trimmed || isChatLoading.value) return
@@ -127,11 +153,11 @@ async function sendChatWithText(t) {
   thread.value.push({ id: `u-${Date.now()}`, role: 'user', text: trimmed })
   isChatLoading.value = true
   try {
-    const data = await requestAiChat(trimmed, 'ko', history)
+    const data = await requestAiChat(trimmed, 'ko', history, props.localRatio)
     thread.value.push({
       id: `a-${Date.now()}`,
       role: 'assistant',
-      text: data.answer || '응답을 받지 못했습니다.',
+      text: data.answer || resolveAssistantText(data.structured),
       markdown: true,
       structured: data.structured,
       model: data.model,
@@ -295,17 +321,15 @@ async function sendChat() {
 
 .chat-step__plan-wrap {
   flex-shrink: 0;
-  height: clamp(100px, 15dvh, 220px);
   min-height: 100px;
-  overflow: hidden;
+  overflow: visible;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid #f0ede6;
 }
 
 .chat-step__plan-wrap :deep(.plan-strip) {
-  max-height: 100%;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .chat-step__thread {

@@ -17,8 +17,10 @@ export function structuredToItineraryDays(structured) {
         name: String(slot?.placeName || slot?.address || '장소').trim() || '장소',
         crowdTag: '',
         crowdLevel: 'low',
-        desc: String(slot?.reason || slot?.label || '').trim(),
-        reason: '',
+        address: String(slot?.address || '').trim(),
+        desc: String(slot?.reason || slot?.label || slot?.description || '').trim(),
+        reason: String(slot?.tip || slot?.memo || '').trim(),
+        type: String(slot?.type || slot?.phase || '').trim(),
       }))
       if (!items.length) {
         const dayLabel = String(day.label ?? '').trim()

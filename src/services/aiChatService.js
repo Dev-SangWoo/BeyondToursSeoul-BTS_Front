@@ -24,10 +24,28 @@ export function normalizeAiChatResponse(raw) {
   }
   const o = /** @type {Record<string, unknown>} */ (raw)
   const answer = typeof o.answer === 'string' ? o.answer : ''
-  const rawStructured =
-    o.structured !== undefined && o.structured !== null && typeof o.structured === 'object'
-      ? o.structured
-      : null
+  let rawStructured = null
+
+  // 1순위: o.structured 키가 있고 days 배열을 포함하는 경우
+  if (o.structured !== undefined && o.structured !== null) {
+    if (typeof o.structured === 'string') {
+      try {
+        const parsed = JSON.parse(o.structured)
+        if (parsed && typeof parsed === 'object') rawStructured = parsed
+      } catch {
+        rawStructured = null
+      }
+    } else if (typeof o.structured === 'object') {
+      rawStructured = o.structured
+    }
+  }
+
+  // 2순위: structured가 없거나 빈 객체이고, 루트에 days/budget이 있는 경우 (JSON-only 모드 fallback)
+  const hasDays = Array.isArray(rawStructured?.days) && rawStructured.days.length > 0
+  if (!hasDays && (Array.isArray(o.days) || o.budget)) {
+    rawStructured = o
+  }
+
   const structured = normalizeStructured(rawStructured)
   const model = typeof o.model === 'string' ? o.model : undefined
   return { answer, structured, model }
@@ -52,9 +70,10 @@ export function toChatHistoryPayload(items) {
 /**
  * @param {string} message - 이번 턴 사용자 메시지
  * @param {string} [language]
- * @param {Array<{ role: 'user' | 'assistant', content: string }>} [history] - message 이전 대화 (백엔드가 Groq messages에 합침)
+ * @param {Array<{ role: 'user' | 'assistant', content: string }>} [history] - message 이전 대화
+ * @param {number} [localRatio] - 로컬 선호도 0(관광지)~100(로컬), 기본값 50
  */
-export async function requestAiChat(message, language = 'ko', history = []) {
+export async function requestAiChat(message, language = 'ko', history = [], localRatio = 50) {
   const res = await fetch(`${AI_CHAT_BASE_URL}/api/v1/ai/chat`, {
     method: 'POST',
     headers: {
@@ -64,6 +83,7 @@ export async function requestAiChat(message, language = 'ko', history = []) {
       message,
       language,
       history: Array.isArray(history) ? history : [],
+      localRatio: Math.max(0, Math.min(100, Number(localRatio) || 50)),
     }),
   })
 
@@ -79,6 +99,25 @@ export async function requestAiChat(message, language = 'ko', history = []) {
     throw new Error(data?.message || 'AI 챗 응답을 가져오지 못했습니다.')
   }
 
-  return normalizeAiChatResponse(data)
+  const normalized = normalizeAiChatResponse(data)
+
+  if (import.meta.env.DEV) {
+    const s = normalized.structured
+    const days = Array.isArray(s?.days) ? s.days : []
+    const daySlots = days.map((d) => (Array.isArray(d?.slots) ? d.slots.length : 0))
+    const route = Array.isArray(s?.summary?.route) ? s.summary.route.length : 0
+    const title = typeof s?.summary?.title === 'string' ? s.summary.title.trim() : ''
+    console.info('[AI_CHAT_DEBUG] structured shape', {
+      rawStructuredType: typeof data?.structured,
+      hasStructured: !!s,
+      dayCount: days.length,
+      daySlots,
+      routeCount: route,
+      hasTitle: !!title,
+      structured: s,
+    })
+  }
+
+  return normalized
 }
 

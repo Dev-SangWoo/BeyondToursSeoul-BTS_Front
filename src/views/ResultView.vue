@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTripStore } from '@/stores/useTripStore'
 import MapView from '@/components/map/MapView.vue'
@@ -7,6 +8,9 @@ import AiChatPanel from '@/components/ai/AiChatPanel.vue'
 
 const router = useRouter()
 const tripStore = useTripStore()
+
+const sourceDays = computed(() => (tripStore.hasItinerary ? tripStore.itinerary : undefined))
+const durationTitle = computed(() => tripStore.tripInput.duration || '추천 일정')
 
 function goBack() {
   router.back()
@@ -25,7 +29,7 @@ function generateAnother() {
   <div class="result">
     <header class="result__header">
       <button class="result__back-btn" @click="goBack" aria-label="뒤로가기">‹</button>
-      <h2 class="result__title">AI 추천 코스 (2박 3일)</h2>
+      <h2 class="result__title">AI 추천 코스 ({{ durationTitle }})</h2>
       <div class="result__weather-badge">☁️ 우천 대비</div>
     </header>
 
@@ -34,7 +38,7 @@ function generateAnother() {
     </div>
 
     <div class="result__itinerary-section">
-      <ItineraryTimeline />
+      <ItineraryTimeline :source-days="sourceDays" />
       <AiChatPanel />
     </div>
 
