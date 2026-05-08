@@ -13,21 +13,34 @@ let currentLocationMarker = null
 // ── Naver Maps 스크립트 동적 로드 ─────────────────────────────
 function loadNaverMapScript() {
   return new Promise((resolve, reject) => {
-    if (window.naver?.maps) {
+    // 이미 완전히 로드된 경우
+    if (window.naver?.maps?.Map) {
       resolve()
       return
     }
     const existing = document.getElementById('naver-map-script')
     if (existing) {
-      existing.addEventListener('load', resolve)
-      existing.addEventListener('error', reject)
+      // 스크립트 태그는 있지만 아직 로드 중인 경우에만 이벤트 대기
+      // 이미 완료됐으나 naver.maps가 없으면 auth 실패 → reject
+      if (existing.dataset.loaded === 'true') {
+        window.naver?.maps?.Map ? resolve() : reject(new Error('Naver Maps 인증 실패'))
+        return
+      }
+      existing.addEventListener('load', () => {
+        existing.dataset.loaded = 'true'
+        resolve()
+      }, { once: true })
+      existing.addEventListener('error', reject, { once: true })
       return
     }
     const script = document.createElement('script')
     script.id = 'naver-map-script'
     script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${import.meta.env.VITE_NAVER_MAP_CLIENT_ID}`
     script.async = true
-    script.onload = resolve
+    script.onload = () => {
+      script.dataset.loaded = 'true'
+      resolve()
+    }
     script.onerror = reject
     document.head.appendChild(script)
   })
@@ -174,30 +187,35 @@ function syncPolyline(points) {
 
 // ── 지도 초기화 ────────────────────────────────────────────────
 onMounted(async () => {
-  // 글로벌 핀 클릭 핸들러 등록 (마커 content HTML의 onclick에서 호출)
-  window.__naverPinClick = (id) => {
-    mapStore.selectMarker(id)
-  }
-
+  window.__naverPinClick = (id) => { mapStore.selectMarker(id) }
   window.navermap_authFailure = () => {
-    console.error('[NaverMap] 인증 실패: ncpKeyId를 확인하세요.')
+    console.error('[NaverMap] 인증 실패: NCP 콘솔에서 localhost:5173 도메인을 등록하세요.')
   }
 
-  await loadNaverMapScript()
+  try {
+    await loadNaverMapScript()
 
-  const { lat, lng } = mapStore.mapCenter
-  mapInstance = new window.naver.maps.Map(mapRef.value, {
-    center: new window.naver.maps.LatLng(lat, lng),
-    zoom: 14,
-    mapTypeControl: false,
-    scaleControl: false,
-    logoControl: true,
-    mapDataControl: false,
-  })
+    if (!window.naver?.maps?.Map) {
+      console.warn('[NaverMap] 지도 API를 불러오지 못했습니다.')
+      return
+    }
 
-  syncMarkers(mapStore.markers)
-  syncPolyline(mapStore.polyline)
-  syncCurrentLocation(mapStore.currentLocation)
+    const { lat, lng } = mapStore.mapCenter
+    mapInstance = new window.naver.maps.Map(mapRef.value, {
+      center: new window.naver.maps.LatLng(lat, lng),
+      zoom: 14,
+      mapTypeControl: false,
+      scaleControl: false,
+      logoControl: true,
+      mapDataControl: false,
+    })
+
+    syncMarkers(mapStore.markers)
+    syncPolyline(mapStore.polyline)
+    syncCurrentLocation(mapStore.currentLocation)
+  } catch (e) {
+    console.warn('[NaverMap] 초기화 실패:', e?.message ?? e)
+  }
 })
 
 onUnmounted(() => {

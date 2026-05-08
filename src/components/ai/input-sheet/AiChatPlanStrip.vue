@@ -55,6 +55,7 @@ function onTimelineDay(dayNum) {
           v-if="itineraryDays.length"
           :source-days="itineraryDays"
           :model-value="selectedDayIndex + 1"
+          :horizontal="true"
           @update:model-value="onTimelineDay"
         />
         <div v-else class="plan-strip__empty-state">
@@ -156,13 +157,13 @@ function onTimelineDay(dayNum) {
 
 .plan-strip__timeline-wrap {
   min-height: 72px;
-  overflow-y: auto;
+  overflow: visible;
   margin: 0 -4px;
   padding: 4px 4px 0;
 }
 
 .plan-strip__timeline-wrap :deep(.itinerary-timeline__tabs) {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .plan-strip__empty-state {
