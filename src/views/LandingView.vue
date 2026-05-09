@@ -1,137 +1,246 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import { getGoogleLoginUrl } from '@/services/authService'
-import { useAuthStore } from '@/stores/useAuthStore'
-import { SUPPORTED_LOCALES, setLocale, getCurrentLocale } from '@/i18n'
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { getGoogleLoginUrl } from '@/services/authService';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { SUPPORTED_LOCALES, setLocale, getCurrentLocale } from '@/i18n';
 
-const { t } = useI18n()
-const router = useRouter()
-const authStore = useAuthStore()
-const authMode = ref('login')
-const showLangDrop = ref(false)
-const email = ref('')
-const password = ref('')
-const confirmPassword = ref('')
-const loginError = ref('')
+const { t } = useI18n();
+const router = useRouter();
+const authStore = useAuthStore();
+const authMode = ref('login');
+const showLangDrop = ref(false);
+const email = ref('');
+const password = ref('');
+const confirmPassword = ref('');
+const loginError = ref('');
 
 const currentLangLabel = computed(
-  () => SUPPORTED_LOCALES.find((l) => l.code === getCurrentLocale())?.label ?? 'Language / 언어',
-)
+  () =>
+    SUPPORTED_LOCALES.find((l) => l.code === getCurrentLocale())?.label ??
+    'Language / 언어',
+);
 
 function selectLang(lang) {
-  setLocale(lang.code)
-  showLangDrop.value = false
-  loginError.value = ''
+  setLocale(lang.code);
+  showLangDrop.value = false;
+  loginError.value = '';
 }
 
 function go() {
-  window.location.href = getGoogleLoginUrl()
+  window.location.href = getGoogleLoginUrl();
 }
 
 async function loginWithEmail() {
-  loginError.value = ''
+  loginError.value = '';
   try {
     if (authMode.value === 'signup') {
       if (!email.value.trim() || !password.value) {
-        throw new Error(t('landing.validation.emailPasswordRequired'))
+        throw new Error(t('landing.validation.emailPasswordRequired'));
       }
       if (password.value.length < 8) {
-        throw new Error(t('landing.validation.passwordMinLength'))
+        throw new Error(t('landing.validation.passwordMinLength'));
       }
       if (password.value !== confirmPassword.value) {
-        throw new Error(t('landing.validation.passwordMismatch'))
+        throw new Error(t('landing.validation.passwordMismatch'));
       }
-      const result = await authStore.signup(email.value.trim(), password.value)
+      const result = await authStore.signup(email.value.trim(), password.value);
       if (!result?.accessToken) {
-        authMode.value = 'login'
-        loginError.value = t('landing.validation.signupComplete')
-        return
+        authMode.value = 'login';
+        loginError.value = t('landing.validation.signupComplete');
+        return;
       }
     } else {
-      await authStore.login(email.value.trim(), password.value)
+      await authStore.login(email.value.trim(), password.value);
     }
-    await authStore.loadMe().catch(() => null)
-    router.push('/discover')
+    await authStore.loadMe().catch(() => null);
+    router.push('/discover');
   } catch (e) {
-    loginError.value = e.message || t('landing.validation.authFailed')
+    loginError.value = e.message || t('landing.validation.authFailed');
   }
 }
 </script>
 
 <template>
   <div class="landing" @click="showLangDrop = false">
-
     <!-- ── Background layers ─────────────────────────────────────────── -->
     <div class="landing__bg">
       <div class="landing__glow"></div>
 
       <!-- Seoul Skyline SVG -->
-      <svg class="landing__skyline" viewBox="0 0 430 220" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">
+      <svg
+        class="landing__skyline"
+        viewBox="0 0 430 220"
+        xmlns="http://www.w3.org/2000/svg"
+        preserveAspectRatio="xMidYMax meet"
+      >
         <!-- Hills -->
-        <ellipse cx="60" cy="230" rx="120" ry="60" fill="#0d1520"/>
-        <ellipse cx="370" cy="240" rx="100" ry="55" fill="#0d1520"/>
+        <ellipse cx="60" cy="230" rx="120" ry="60" fill="#0d1520" />
+        <ellipse cx="370" cy="240" rx="100" ry="55" fill="#0d1520" />
         <!-- Background buildings -->
-        <rect x="0"   y="155" width="28" height="75"  fill="#0f1c2e"/>
-        <rect x="22"  y="140" width="20" height="90"  fill="#111e30"/>
-        <rect x="38"  y="148" width="32" height="82"  fill="#0f1c2e"/>
-        <rect x="66"  y="130" width="18" height="100" fill="#121f32"/>
-        <rect x="80"  y="143" width="24" height="87"  fill="#0f1c2e"/>
-        <rect x="100" y="150" width="30" height="80"  fill="#111e30"/>
-        <rect x="126" y="138" width="22" height="92"  fill="#0f1c2e"/>
+        <rect x="0" y="155" width="28" height="75" fill="#0f1c2e" />
+        <rect x="22" y="140" width="20" height="90" fill="#111e30" />
+        <rect x="38" y="148" width="32" height="82" fill="#0f1c2e" />
+        <rect x="66" y="130" width="18" height="100" fill="#121f32" />
+        <rect x="80" y="143" width="24" height="87" fill="#0f1c2e" />
+        <rect x="100" y="150" width="30" height="80" fill="#111e30" />
+        <rect x="126" y="138" width="22" height="92" fill="#0f1c2e" />
         <!-- Mid buildings -->
-        <rect x="148" y="125" width="30" height="105" fill="#132030"/>
-        <rect x="174" y="118" width="26" height="112" fill="#142234"/>
-        <rect x="196" y="130" width="20" height="100" fill="#111e30"/>
-        <rect x="212" y="110" width="22" height="120" fill="#142234"/>
-        <rect x="230" y="122" width="28" height="108" fill="#132030"/>
-        <rect x="254" y="132" width="24" height="98"  fill="#111e30"/>
-        <rect x="274" y="120" width="30" height="110" fill="#142234"/>
-        <rect x="300" y="140" width="22" height="90"  fill="#111e30"/>
-        <rect x="318" y="128" width="26" height="102" fill="#132030"/>
-        <rect x="340" y="145" width="20" height="85"  fill="#0f1c2e"/>
-        <rect x="356" y="138" width="30" height="92"  fill="#111e30"/>
-        <rect x="382" y="150" width="28" height="80"  fill="#0f1c2e"/>
-        <rect x="406" y="142" width="24" height="88"  fill="#132030"/>
+        <rect x="148" y="125" width="30" height="105" fill="#132030" />
+        <rect x="174" y="118" width="26" height="112" fill="#142234" />
+        <rect x="196" y="130" width="20" height="100" fill="#111e30" />
+        <rect x="212" y="110" width="22" height="120" fill="#142234" />
+        <rect x="230" y="122" width="28" height="108" fill="#132030" />
+        <rect x="254" y="132" width="24" height="98" fill="#111e30" />
+        <rect x="274" y="120" width="30" height="110" fill="#142234" />
+        <rect x="300" y="140" width="22" height="90" fill="#111e30" />
+        <rect x="318" y="128" width="26" height="102" fill="#132030" />
+        <rect x="340" y="145" width="20" height="85" fill="#0f1c2e" />
+        <rect x="356" y="138" width="30" height="92" fill="#111e30" />
+        <rect x="382" y="150" width="28" height="80" fill="#0f1c2e" />
+        <rect x="406" y="142" width="24" height="88" fill="#132030" />
         <!-- N Seoul Tower - mast -->
-        <rect x="203" y="52"  width="6" height="58"  fill="#1a2e48"/>
+        <rect x="203" y="52" width="6" height="58" fill="#1a2e48" />
         <!-- Tower observation deck -->
-        <rect x="197" y="82"  width="18" height="22" rx="4" fill="#1a2e48"/>
+        <rect x="197" y="82" width="18" height="22" rx="4" fill="#1a2e48" />
         <!-- Tower base -->
-        <rect x="200" y="104" width="12" height="18" fill="#162640"/>
+        <rect x="200" y="104" width="12" height="18" fill="#162640" />
         <!-- Tower light glow -->
-        <ellipse cx="206" cy="55" rx="5" ry="5" fill="#FE9C00" opacity="0.9"/>
-        <ellipse cx="206" cy="55" rx="10" ry="10" fill="#FE9C00" opacity="0.2"/>
+        <ellipse cx="206" cy="55" rx="5" ry="5" fill="#FE9C00" opacity="0.9" />
+        <ellipse
+          cx="206"
+          cy="55"
+          rx="10"
+          ry="10"
+          fill="#FE9C00"
+          opacity="0.2"
+        />
         <!-- Window lights scattered on buildings -->
-        <rect x="153" y="130" width="3" height="3" fill="#FFC94A" opacity="0.6"/>
-        <rect x="160" y="138" width="3" height="3" fill="#FFC94A" opacity="0.5"/>
-        <rect x="177" y="122" width="3" height="3" fill="#FFC94A" opacity="0.7"/>
-        <rect x="184" y="130" width="3" height="3" fill="#FFC94A" opacity="0.4"/>
-        <rect x="215" y="116" width="3" height="3" fill="#FFC94A" opacity="0.8"/>
-        <rect x="222" y="126" width="3" height="3" fill="#FFC94A" opacity="0.5"/>
-        <rect x="235" y="128" width="3" height="3" fill="#FFC94A" opacity="0.6"/>
-        <rect x="242" y="136" width="3" height="3" fill="#FFC94A" opacity="0.4"/>
-        <rect x="277" y="125" width="3" height="3" fill="#FFC94A" opacity="0.7"/>
-        <rect x="284" y="133" width="3" height="3" fill="#FFC94A" opacity="0.5"/>
-        <rect x="321" y="132" width="3" height="3" fill="#FFC94A" opacity="0.6"/>
-        <rect x="328" y="140" width="3" height="3" fill="#FFC94A" opacity="0.4"/>
-        <rect x="361" y="142" width="3" height="3" fill="#FFC94A" opacity="0.5"/>
-        <rect x="368" y="150" width="3" height="3" fill="#FFC94A" opacity="0.6"/>
+        <rect
+          x="153"
+          y="130"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.6"
+        />
+        <rect
+          x="160"
+          y="138"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.5"
+        />
+        <rect
+          x="177"
+          y="122"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.7"
+        />
+        <rect
+          x="184"
+          y="130"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.4"
+        />
+        <rect
+          x="215"
+          y="116"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.8"
+        />
+        <rect
+          x="222"
+          y="126"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.5"
+        />
+        <rect
+          x="235"
+          y="128"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.6"
+        />
+        <rect
+          x="242"
+          y="136"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.4"
+        />
+        <rect
+          x="277"
+          y="125"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.7"
+        />
+        <rect
+          x="284"
+          y="133"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.5"
+        />
+        <rect
+          x="321"
+          y="132"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.6"
+        />
+        <rect
+          x="328"
+          y="140"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.4"
+        />
+        <rect
+          x="361"
+          y="142"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.5"
+        />
+        <rect
+          x="368"
+          y="150"
+          width="3"
+          height="3"
+          fill="#FFC94A"
+          opacity="0.6"
+        />
         <!-- Ground -->
-        <rect x="0" y="220" width="430" height="10" fill="#0a1525"/>
+        <rect x="0" y="220" width="430" height="10" fill="#0a1525" />
       </svg>
     </div>
 
     <!-- ── Content ────────────────────────────────────────────────────── -->
     <div class="landing__content">
-
       <!-- Spacer — 타워가 보이는 빈 공간 -->
       <div class="landing__spacer"></div>
 
       <!-- Bottom panel -->
       <div class="landing__bottom">
-
         <!-- Hero text -->
         <div class="landing__hero">
           <h1 class="landing__logo">BTS</h1>
@@ -141,99 +250,114 @@ async function loginWithEmail() {
 
         <!-- Actions -->
         <div class="landing__actions">
-        <!-- Language selector -->
-        <div class="landing__lang-wrap" @click.stop>
-          <button class="landing__lang-btn" @click="showLangDrop = !showLangDrop">
-            <span class="landing__lang-globe">🌐</span>
-            <span>{{ currentLangLabel }}</span>
-            <span class="landing__lang-arrow" :class="{ 'landing__lang-arrow--open': showLangDrop }">›</span>
+          <!-- Language selector -->
+          <div class="landing__lang-wrap" @click.stop>
+            <button
+              class="landing__lang-btn"
+              @click="showLangDrop = !showLangDrop"
+            >
+              <span class="landing__lang-globe">🌐</span>
+              <span>{{ currentLangLabel }}</span>
+              <span
+                class="landing__lang-arrow"
+                :class="{ 'landing__lang-arrow--open': showLangDrop }"
+                >›</span
+              >
+            </button>
+            <Transition name="drop">
+              <div v-if="showLangDrop" class="landing__lang-drop">
+                <button
+                  v-for="lang in SUPPORTED_LOCALES"
+                  :key="lang.code"
+                  class="landing__lang-option"
+                  @click="selectLang(lang)"
+                >
+                  {{ lang.label }}
+                </button>
+              </div>
+            </Transition>
+          </div>
+
+          <!-- Google button -->
+          <button class="landing__btn landing__btn--google" @click="go">
+            <img
+              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+              alt="G"
+            />
+            {{ $t('landing.continueGoogle') }}
           </button>
-          <Transition name="drop">
-            <div v-if="showLangDrop" class="landing__lang-drop">
-              <button
-                v-for="lang in SUPPORTED_LOCALES"
-                :key="lang.code"
-                class="landing__lang-option"
-                @click="selectLang(lang)"
-              >{{ lang.label }}</button>
-            </div>
-          </Transition>
-        </div>
 
-        <!-- Google button -->
-        <button class="landing__btn landing__btn--google" @click="go">
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G" />
-          {{ $t('landing.continueGoogle') }}
-        </button>
+          <!-- Email divider -->
+          <div class="landing__or">
+            <span class="landing__or-line"></span>
+            <span class="landing__or-text">{{ $t('landing.orEmail') }}</span>
+            <span class="landing__or-line"></span>
+          </div>
 
-        <!-- Email divider -->
-        <div class="landing__or">
-          <span class="landing__or-line"></span>
-          <span class="landing__or-text">{{ $t('landing.orEmail') }}</span>
-          <span class="landing__or-line"></span>
-        </div>
+          <div class="landing__auth-mode">
+            <button
+              class="landing__auth-tab"
+              :class="{ 'landing__auth-tab--active': authMode === 'login' }"
+              type="button"
+              @click="authMode = 'login'"
+            >
+              {{ $t('landing.loginBtn') }}
+            </button>
+            <button
+              class="landing__auth-tab"
+              :class="{ 'landing__auth-tab--active': authMode === 'signup' }"
+              type="button"
+              @click="authMode = 'signup'"
+            >
+              {{ $t('landing.signupBtn') }}
+            </button>
+          </div>
 
-        <div class="landing__auth-mode">
-          <button
-            class="landing__auth-tab"
-            :class="{ 'landing__auth-tab--active': authMode === 'login' }"
-            type="button"
-            @click="authMode = 'login'"
-          >
-            {{ $t('landing.loginBtn') }}
-          </button>
-          <button
-            class="landing__auth-tab"
-            :class="{ 'landing__auth-tab--active': authMode === 'signup' }"
-            type="button"
-            @click="authMode = 'signup'"
-          >
-            {{ $t('landing.signupBtn') }}
-          </button>
-        </div>
-
-        <div class="landing__email-box">
-          <input
-            v-model="email"
-            class="landing__input"
-            type="email"
-            placeholder="Email"
-            autocomplete="email"
-          />
-          <input
-            v-model="password"
-            class="landing__input"
-            type="password"
-            placeholder="Password"
-            autocomplete="current-password"
-          />
-          <input
-            v-if="authMode === 'signup'"
-            v-model="confirmPassword"
-            class="landing__input"
-            type="password"
-            :placeholder="$t('landing.passwordConfirmPlaceholder')"
-            autocomplete="new-password"
-          />
-          <button class="landing__btn landing__btn--email" @click="loginWithEmail" :disabled="authStore.isLoading">
-            {{
-              authStore.isLoading
-                ? (authMode === 'signup' ? $t('landing.signupLoading') : $t('landing.loginLoading'))
-                : (authMode === 'signup' ? $t('landing.signupBtn') : $t('landing.loginBtn'))
-            }}
-          </button>
-          <p v-if="loginError" class="landing__error">{{ loginError }}</p>
-        </div>
-
-        <!-- Dots -->
-        <div class="landing__dots">
-          <span class="landing__dot landing__dot--active"></span>
-          <span class="landing__dot"></span>
-          <span class="landing__dot"></span>
+          <div class="landing__email-box">
+            <input
+              v-model="email"
+              class="landing__input"
+              type="email"
+              placeholder="Email"
+              autocomplete="email"
+            />
+            <input
+              v-model="password"
+              class="landing__input"
+              type="password"
+              placeholder="Password"
+              autocomplete="current-password"
+            />
+            <input
+              v-model="confirmPassword"
+              class="landing__input"
+              :class="{ 'landing__input--hidden': authMode !== 'signup' }"
+              type="password"
+              :placeholder="$t('landing.passwordConfirmPlaceholder')"
+              :disabled="authMode !== 'signup'"
+              :tabindex="authMode === 'signup' ? 0 : -1"
+              autocomplete="new-password"
+            />
+            <button
+              class="landing__btn landing__btn--email"
+              @click="loginWithEmail"
+              :disabled="authStore.isLoading"
+            >
+              {{
+                authStore.isLoading
+                  ? authMode === 'signup'
+                    ? $t('landing.signupLoading')
+                    : $t('landing.loginLoading')
+                  : authMode === 'signup'
+                    ? $t('landing.signupBtn')
+                    : $t('landing.loginBtn')
+              }}
+            </button>
+            <p v-if="loginError" class="landing__error">{{ loginError }}</p>
+          </div>
         </div>
       </div>
-
-      </div><!-- /landing__bottom -->
+      <!-- /landing__bottom -->
     </div>
   </div>
 </template>
@@ -275,9 +399,9 @@ async function loginWithEmail() {
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(8, 6, 18, 0.20) 0%,
+    rgba(8, 6, 18, 0.2) 0%,
     rgba(8, 6, 18, 0.25) 35%,
-    rgba(8, 6, 18, 0.60) 62%,
+    rgba(8, 6, 18, 0.6) 62%,
     rgba(8, 6, 18, 0.93) 100%
   );
 }
@@ -291,7 +415,12 @@ async function loginWithEmail() {
   width: 360px;
   height: 300px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(254,156,0,0.18) 0%, rgba(254,120,0,0.08) 50%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(254, 156, 0, 0.18) 0%,
+    rgba(254, 120, 0, 0.08) 50%,
+    transparent 70%
+  );
   z-index: 1;
 }
 
@@ -310,7 +439,10 @@ async function loginWithEmail() {
 }
 
 /* 타워가 보이는 빈 상단 공간 */
-.landing__spacer { flex: 1; min-height: 30vh; }
+.landing__spacer {
+  flex: 1;
+  min-height: 22vh;
+}
 
 /* 하단 패널 — 배지 + 로고 + 버튼 */
 .landing__bottom {
@@ -320,7 +452,11 @@ async function loginWithEmail() {
   gap: 0;
   padding: 24px 28px 44px;
   /* 하단 영역에 약한 블러 유리 효과 */
-  background: linear-gradient(to top, rgba(6,5,15,0.82) 0%, rgba(6,5,15,0.0) 100%);
+  background: linear-gradient(
+    to top,
+    rgba(6, 5, 15, 0.82) 0%,
+    rgba(6, 5, 15, 0) 100%
+  );
 }
 
 /* ─── Hero ───────────────────────────────────────────────────────────────── */
@@ -337,7 +473,7 @@ async function loginWithEmail() {
 .landing__logo {
   font-size: 80px;
   font-weight: 900;
-  color: #FE9C00;
+  color: #fe9c00;
   letter-spacing: -3px;
   line-height: 0.95;
   margin: 0;
@@ -349,14 +485,14 @@ async function loginWithEmail() {
 .landing__subtitle {
   font-size: 16px;
   font-weight: 500;
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255, 0.9);
   letter-spacing: 0.04em;
   margin: 4px 0 0;
 }
 
 .landing__tagline {
   font-size: 13px;
-  color: rgba(255,255,255,0.5);
+  color: rgba(255, 255, 255, 0.5);
   letter-spacing: 0.02em;
   margin-top: 2px;
 }
@@ -383,9 +519,9 @@ async function loginWithEmail() {
   gap: 10px;
   padding: 14px 16px;
   border-radius: 14px;
-  border: 1.5px solid rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.07);
-  color: rgba(255,255,255,0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -393,19 +529,25 @@ async function loginWithEmail() {
   transition: border-color 0.2s;
 }
 
-.landing__lang-btn:hover { border-color: rgba(254,156,0,0.5); }
+.landing__lang-btn:hover {
+  border-color: rgba(254, 156, 0, 0.5);
+}
 
-.landing__lang-globe { font-size: 18px; }
+.landing__lang-globe {
+  font-size: 18px;
+}
 
 .landing__lang-arrow {
   margin-left: auto;
   font-size: 20px;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255, 255, 255, 0.4);
   transition: transform 0.25s;
   display: inline-block;
 }
 
-.landing__lang-arrow--open { transform: rotate(90deg); }
+.landing__lang-arrow--open {
+  transform: rotate(90deg);
+}
 
 .landing__lang-drop {
   position: absolute;
@@ -413,7 +555,7 @@ async function loginWithEmail() {
   left: 0;
   right: 0;
   background: #1a2840;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   overflow: hidden;
   z-index: 50;
@@ -425,13 +567,16 @@ async function loginWithEmail() {
   text-align: left;
   background: none;
   border: none;
-  color: rgba(255,255,255,0.8);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 14px;
   cursor: pointer;
   transition: background 0.15s;
 }
 
-.landing__lang-option:hover { background: rgba(254,156,0,0.15); color: #FE9C00; }
+.landing__lang-option:hover {
+  background: rgba(254, 156, 0, 0.15);
+  color: #fe9c00;
+}
 
 /* Google button */
 .landing__btn {
@@ -446,18 +591,26 @@ async function loginWithEmail() {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  transition: opacity 0.2s, transform 0.1s;
+  transition:
+    opacity 0.2s,
+    transform 0.1s;
 }
 
-.landing__btn:active { opacity: 0.88; transform: scale(0.98); }
+.landing__btn:active {
+  opacity: 0.88;
+  transform: scale(0.98);
+}
 
 .landing__btn--google {
   background: #fff;
   color: #222;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
-.landing__btn--google img { width: 20px; height: 20px; }
+.landing__btn--google img {
+  width: 20px;
+  height: 20px;
+}
 
 .landing__email-box {
   display: flex;
@@ -498,6 +651,11 @@ async function loginWithEmail() {
   font-size: 14px;
 }
 
+.landing__input--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .landing__input::placeholder {
   color: rgba(255, 255, 255, 0.45);
 }
@@ -530,37 +688,25 @@ async function loginWithEmail() {
 .landing__or-line {
   flex: 1;
   height: 1px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .landing__or-text {
   font-size: 12px;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255, 255, 255, 0.35);
   white-space: nowrap;
 }
 
-/* Dots */
-.landing__dots {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.landing__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.25);
-}
-
-.landing__dot--active {
-  width: 22px;
-  border-radius: 3px;
-  background: #FE9C00;
-}
-
 /* ─── Dropdown transition ─────────────────────────────────────────────────── */
-.drop-enter-active, .drop-leave-active { transition: opacity 0.2s, transform 0.2s; }
-.drop-enter-from, .drop-leave-to { opacity: 0; transform: translateY(6px); }
+.drop-enter-active,
+.drop-leave-active {
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+.drop-enter-from,
+.drop-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
+}
 </style>
