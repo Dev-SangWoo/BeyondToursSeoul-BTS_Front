@@ -60,6 +60,7 @@ export default {
       'local71-100': '完全ローカル重視',
     },
     category: {
+      all: 'すべて',
       food: 'グルメ',
       shopping: 'ショッピング',
       experience: '体験観光',

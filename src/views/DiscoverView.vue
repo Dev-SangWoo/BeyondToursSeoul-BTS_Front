@@ -11,6 +11,8 @@ import {
 } from 'lucide-vue-next';
 import { IsIcon } from '@ratoufa/iconsax-vue';
 import AIInputSheet from '@/components/ai/AIInputSheet.vue';
+import AttractionDetailView from '@/views/AttractionDetailView.vue';
+import EventDetailView from '@/views/EventDetailView.vue';
 import { useSavedStore } from '@/stores/useSavedStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { clearAiSheetSession } from '@/utils/aiSheetSession';
@@ -26,6 +28,8 @@ const route = useRoute();
 const savedStore = useSavedStore();
 const authStore = useAuthStore();
 const showAISheet = ref(false);
+const selectedAttractionId = ref(null);
+const selectedEventId = ref(null);
 const activeCategory = ref(null);
 const courseDensityIndex = ref(2);
 const courseTrackRef = ref(null);
@@ -65,6 +69,7 @@ const realtimeHotPlaces = [
 ];
 
 const categories = computed(() => [
+  { id: null,          icon: 'element-4',        color: '#fe9c00', label: t('discover.category.all') },
   { id: '음식',         icon: 'cup',             color: '#f97316', label: t('discover.category.food') },
   { id: '쇼핑',         icon: 'shop',            color: '#ec4899', label: t('discover.category.shopping') },
   { id: '체험관광',      icon: 'people',          color: '#8b5cf6', label: t('discover.category.experience') },
@@ -381,7 +386,7 @@ const pageItems = computed(() => {
 });
 
 function selectCategory(id) {
-  activeCategory.value = activeCategory.value === id ? null : id;
+  activeCategory.value = id;
   attractionPage.value = 1;
 }
 
@@ -464,13 +469,18 @@ const eventPageItems = computed(() => {
 });
 
 function goToAttraction(id) {
-  router.push({ name: 'attraction-detail', params: { id } });
+  selectedAttractionId.value = String(id);
 }
 
 function goToEvent(contentId) {
   const sid = contentId != null ? String(contentId).trim() : '';
   if (!sid) return;
-  router.push({ name: 'event-detail', params: { id: sid } });
+  selectedEventId.value = sid;
+}
+
+function closeDetailSheet() {
+  selectedAttractionId.value = null;
+  selectedEventId.value = null;
 }
 
 function onCourseGenerated() {
@@ -730,7 +740,7 @@ watch(
       >
         <button
           v-for="cat in categories"
-          :key="cat.id"
+          :key="cat.id ?? '__all__'"
           class="cat-btn"
           :class="{ 'cat-btn--active': activeCategory === cat.id }"
           @click="selectCategory(cat.id)"
@@ -1017,6 +1027,25 @@ watch(
       @close="closeAISheet"
       @generated="onCourseGenerated"
     />
+
+    <!-- ── Detail Overlay (관광지 / 행사) ────────────────────────────── -->
+    <Transition name="discover-page">
+      <div
+        v-if="selectedAttractionId || selectedEventId"
+        class="discover-detail-overlay"
+      >
+        <AttractionDetailView
+          v-if="selectedAttractionId"
+          :attraction-id="selectedAttractionId"
+          @close="closeDetailSheet"
+        />
+        <EventDetailView
+          v-else-if="selectedEventId"
+          :event-id="selectedEventId"
+          @close="closeDetailSheet"
+        />
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -2043,5 +2072,41 @@ watch(
   background: #fe9c00;
   color: #fff;
   box-shadow: 0 4px 10px rgba(254, 156, 0, 0.35);
+}
+
+/* ── Detail Overlay ─────────────────────────────────────────────────────── */
+/*
+ * MainLayout가 max-width: 430px / margin: 0 auto 로 앱 폭을 제한하므로
+ * fixed 오버레이도 동일한 폭·위치로 맞춤.
+ * left/right = max(0px, 50vw - 215px) → 뷰포트 중앙 430px 영역에 정확히 고정.
+ */
+.discover-detail-overlay {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: max(0px, calc(50% - 215px));
+  right: max(0px, calc(50% - 215px));
+  z-index: 200;
+  background: #fafaf8;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Transition: 오른쪽에서 슬라이드인 (일반 페이지 전환처럼) */
+.discover-page-enter-active {
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.discover-page-leave-active {
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.discover-page-enter-from {
+  transform: translateX(100%);
+}
+
+.discover-page-leave-to {
+  transform: translateX(100%);
 }
 </style>

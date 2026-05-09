@@ -60,6 +60,7 @@ export default {
       'local71-100': 'Local Spots Only',
     },
     category: {
+      all: 'All',
       food: 'Food',
       shopping: 'Shopping',
       experience: 'Experiences',
