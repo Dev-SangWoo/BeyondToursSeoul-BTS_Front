@@ -15,6 +15,26 @@ function jsonHeaders(accessToken) {
   }
 }
 
+/** Pinia/Vue 반응형 Proxy 제거 — JSON 직렬화·서버 파싱 안정화 */
+function toPlainStructured(structured) {
+  try {
+    return JSON.parse(JSON.stringify(structured))
+  } catch {
+    throw new Error('일정 데이터 형식을 직렬화할 수 없습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.')
+  }
+}
+
+function parseErrorMessage(text) {
+  if (!text || !text.trim()) return null
+  try {
+    const j = JSON.parse(text)
+    if (j && typeof j.message === 'string' && j.message.trim()) return j.message.trim()
+  } catch {
+    /* not JSON */
+  }
+  return text.trim()
+}
+
 /**
  * @param {string} accessToken
  * @returns {Promise<Array<{ id: number, title: string, savedAt: string }>>}
@@ -54,12 +74,13 @@ export async function saveStructuredPlan(accessToken, body) {
   if (!body?.structured || typeof body.structured !== 'object') {
     throw new Error('저장할 일정 데이터가 없습니다.')
   }
+  const plain = toPlainStructured(body.structured)
   const res = await fetch(`${BASE_URL}/api/v1/me/saved/plans`, {
     method: 'POST',
     headers: jsonHeaders(accessToken),
     body: JSON.stringify({
       title: body.title ?? undefined,
-      structured: body.structured,
+      structured: plain,
     }),
   })
   if (res.status === 401) throw new Error('로그인이 만료되었습니다.')
@@ -67,7 +88,8 @@ export async function saveStructuredPlan(accessToken, body) {
     let msg = `일정 저장 실패: ${res.status}`
     try {
       const t = await res.text()
-      if (t) msg = t
+      const parsed = parseErrorMessage(t)
+      if (parsed) msg = parsed
     } catch {
       /* ignore */
     }

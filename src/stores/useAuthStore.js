@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { fetchMe, loginWithEmail, signupWithEmail } from '@/services/authService'
+import { fetchMe, loginWithEmail, signupWithEmail, updateMyNickname, updateMyProfile } from '@/services/authService'
 
 const STORAGE_KEY = 'bts:auth:v1'
 
@@ -111,6 +111,22 @@ export const useAuthStore = defineStore('auth', () => {
     return me
   }
 
+  async function saveNickname(nickname) {
+    if (!accessToken.value) throw new Error('로그인이 필요합니다.')
+    const me = await updateMyNickname(accessToken.value, nickname)
+    user.value = me
+    persist()
+    return me
+  }
+
+  async function saveProfile({ nickname, localPreference, preferredLanguage }) {
+    if (!accessToken.value) throw new Error('로그인이 필요합니다.')
+    const me = await updateMyProfile(accessToken.value, { nickname, localPreference, preferredLanguage })
+    user.value = me
+    persist()
+    return me
+  }
+
   return {
     accessToken,
     refreshToken,
@@ -126,6 +142,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     signup,
     loadMe,
+    saveNickname,
+    saveProfile,
   }
 })
 
