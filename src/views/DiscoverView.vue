@@ -1,389 +1,533 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import {
-  Bell,
   ChevronLeft,
   ChevronRight,
   Heart,
   MapPin,
   Sparkles,
-} from 'lucide-vue-next'
-import { IsIcon } from '@ratoufa/iconsax-vue'
-import AIInputSheet from '@/components/ai/AIInputSheet.vue'
-import { useSavedStore } from '@/stores/useSavedStore'
-import { useAuthStore } from '@/stores/useAuthStore'
-import { clearAiSheetSession } from '@/utils/aiSheetSession'
-import { fetchAttractions } from '@/services/attractionService'
-import { fetchEvents } from '@/services/eventService'
-import { fetchSavedPlans } from '@/services/savedPlansService'
-import earthImage from '../../asset/earth.png'
-import airplaneImage from '../../asset/airplane.png'
+} from 'lucide-vue-next';
+import { IsIcon } from '@ratoufa/iconsax-vue';
+import AIInputSheet from '@/components/ai/AIInputSheet.vue';
+import { useSavedStore } from '@/stores/useSavedStore';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { clearAiSheetSession } from '@/utils/aiSheetSession';
+import { fetchAttractions } from '@/services/attractionService';
+import { fetchEvents } from '@/services/eventService';
+import { fetchSavedPlans } from '@/services/savedPlansService';
+import earthImage from '../../asset/earth.png';
+import airplaneImage from '../../asset/airplane.png';
 
-const router = useRouter()
-const route = useRoute()
-const savedStore = useSavedStore()
-const authStore = useAuthStore()
-const showAISheet = ref(false)
-const activeCategory = ref(null)
-const courseDensityIndex = ref(2)
-const courseTrackRef = ref(null)
-const activeCourseIndex = ref(0)
+const router = useRouter();
+const route = useRoute();
+const savedStore = useSavedStore();
+const authStore = useAuthStore();
+const showAISheet = ref(false);
+const activeCategory = ref(null);
+const courseDensityIndex = ref(2);
+const courseTrackRef = ref(null);
+const activeCourseIndex = ref(0);
 
 const headerLiveInfo = [
   { id: 'weather', icon: 'sun-1', label: '날씨', value: '22℃ / 맑음 봄' },
   { id: 'crowd', icon: 'location', label: '혼잡도', value: '성수동 보통' },
   { id: 'fx', icon: 'dollar-circle', label: '환율', value: '1USD = 1,350₩' },
-]
+];
 
 const realtimeHotPlaces = [
-  { id: 1, name: '성수동', image: 'https://images.unsplash.com/photo-1549693578-d683be217e58?auto=format&fit=crop&w=500&q=80' },
-  { id: 2, name: '망원동', image: 'https://images.unsplash.com/photo-1538485399081-7c8970b2f31f?auto=format&fit=crop&w=500&q=80' },
-  { id: 3, name: '익선동', image: 'https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=500&q=80' },
-  { id: 4, name: '을지로', image: 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=500&q=80' },
-  { id: 5, name: '연남동', image: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=500&q=80' },
-]
+  {
+    id: 1,
+    name: '성수동',
+    image:
+      'https://images.unsplash.com/photo-1549693578-d683be217e58?auto=format&fit=crop&w=500&q=80',
+  },
+  {
+    id: 2,
+    name: '망원동',
+    image:
+      'https://images.unsplash.com/photo-1538485399081-7c8970b2f31f?auto=format&fit=crop&w=500&q=80',
+  },
+  {
+    id: 3,
+    name: '익선동',
+    image:
+      'https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=500&q=80',
+  },
+  {
+    id: 4,
+    name: '을지로',
+    image:
+      'https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=500&q=80',
+  },
+  {
+    id: 5,
+    name: '연남동',
+    image:
+      'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=500&q=80',
+  },
+];
 
 const categories = [
-  { id: '음식',         icon: 'cup',             color: '#f97316', label: '음식' },
-  { id: '쇼핑',         icon: 'shop',            color: '#ec4899', label: '쇼핑' },
-  { id: '체험관광',      icon: 'people',          color: '#8b5cf6', label: '체험관광' },
-  { id: '자연관광',      icon: 'tree',            color: '#16a34a', label: '자연관광' },
-  { id: '문화관광',      icon: 'courthouse',      color: '#a16207', label: '문화관광' },
-  { id: '역사관광',      icon: 'building',        color: '#78716c', label: '역사관광' },
-  { id: '레저스포츠',    icon: 'activity',        color: '#2563eb', label: '레저스포츠' },
-]
+  { id: '음식', icon: 'cup', color: '#f97316', label: '음식' },
+  { id: '쇼핑', icon: 'shop', color: '#ec4899', label: '쇼핑' },
+  { id: '체험관광', icon: 'people', color: '#8b5cf6', label: '체험관광' },
+  { id: '자연관광', icon: 'tree', color: '#16a34a', label: '자연관광' },
+  { id: '문화관광', icon: 'courthouse', color: '#a16207', label: '문화관광' },
+  { id: '역사관광', icon: 'building', color: '#78716c', label: '역사관광' },
+  { id: '레저스포츠', icon: 'activity', color: '#2563eb', label: '레저스포츠' },
+];
 
 const densityModes = [
-  { id: 'local0',      text: '유명 관광지 완전 위주', scoreMin: 0,    scoreMax: 0 },
-  { id: 'local1-30',   text: '관광지 중심, 로컬 가미', scoreMin: 0.01, scoreMax: 0.30 },
-  { id: 'local31-50',  text: '관광지 & 로컬 균형',    scoreMin: 0.31, scoreMax: 0.50 },
-  { id: 'local51-70',  text: '로컬 핀 중심, 관광지 가미', scoreMin: 0.51, scoreMax: 0.70 },
-  { id: 'local71-100', text: '완전 로컬 핀 위주',      scoreMin: 0.71, scoreMax: 1.0 },
-]
+  { id: 'local0', text: '유명 관광지 완전 위주', scoreMin: 0, scoreMax: 0 },
+  {
+    id: 'local1-30',
+    text: '관광지 중심, 로컬 가미',
+    scoreMin: 0.01,
+    scoreMax: 0.3,
+  },
+  {
+    id: 'local31-50',
+    text: '관광지 & 로컬 균형',
+    scoreMin: 0.31,
+    scoreMax: 0.5,
+  },
+  {
+    id: 'local51-70',
+    text: '로컬 핀 중심, 관광지 가미',
+    scoreMin: 0.51,
+    scoreMax: 0.7,
+  },
+  {
+    id: 'local71-100',
+    text: '완전 로컬 핀 위주',
+    scoreMin: 0.71,
+    scoreMax: 1.0,
+  },
+];
 
 const densityCourseMap = {
-  'local0': [
-    { id: 'm1', title: '서울 핵심 랜드마크 1일', route: '경복궁 → 북촌 → 명동 → 남산타워', tags: ['랜드마크', '사진', '첫 서울'] },
-    { id: 'm2', title: '궁궐·한강 클래식 코스', route: '창덕궁 → 인사동 → 광화문 → 여의도 한강', tags: ['전통', '도심', '야경'] },
-    { id: 'm3', title: '서울 하이라이트 2일', route: 'DDP → 청계천 → 홍대 → 잠실 롯데월드타워', tags: ['핫플', '쇼핑', '전망'] },
+  local0: [
+    {
+      id: 'm1',
+      title: '서울 핵심 랜드마크 1일',
+      route: '경복궁 → 북촌 → 명동 → 남산타워',
+      tags: ['랜드마크', '사진', '첫 서울'],
+    },
+    {
+      id: 'm2',
+      title: '궁궐·한강 클래식 코스',
+      route: '창덕궁 → 인사동 → 광화문 → 여의도 한강',
+      tags: ['전통', '도심', '야경'],
+    },
+    {
+      id: 'm3',
+      title: '서울 하이라이트 2일',
+      route: 'DDP → 청계천 → 홍대 → 잠실 롯데월드타워',
+      tags: ['핫플', '쇼핑', '전망'],
+    },
   ],
   'local1-30': [
-    { id: 'g1', title: '관광지+로컬 골목 혼합 1일', route: '경복궁 → 통인시장 → 서촌 카페거리', tags: ['관광', '로컬', '미식'] },
-    { id: 'g2', title: '한강 감성 데이', route: '남산 → 망원한강공원 → 망원시장', tags: ['산책', '시장', '감성'] },
-    { id: 'g3', title: '도심+동네 탐방', route: '명동 → 을지로 골목 → 충무로', tags: ['도심', '카페', '로컬바'] },
+    {
+      id: 'g1',
+      title: '관광지+로컬 골목 혼합 1일',
+      route: '경복궁 → 통인시장 → 서촌 카페거리',
+      tags: ['관광', '로컬', '미식'],
+    },
+    {
+      id: 'g2',
+      title: '한강 감성 데이',
+      route: '남산 → 망원한강공원 → 망원시장',
+      tags: ['산책', '시장', '감성'],
+    },
+    {
+      id: 'g3',
+      title: '도심+동네 탐방',
+      route: '명동 → 을지로 골목 → 충무로',
+      tags: ['도심', '카페', '로컬바'],
+    },
   ],
   'local31-50': [
-    { id: 'b1', title: '서울 밸런스 베스트', route: '북촌 → 익선동 → 성수 팝업', tags: ['균형', '핫플', '로컬'] },
-    { id: 'b2', title: '문화·로컬 믹스 코스', route: '국립중앙박물관 → 용산 → 한남', tags: ['문화', '트렌디', '미식'] },
-    { id: 'b3', title: '낮밤 완성 코스', route: '인사동 → 을지로 → 한강 야경', tags: ['전통', '힙지로', '야경'] },
+    {
+      id: 'b1',
+      title: '서울 밸런스 베스트',
+      route: '북촌 → 익선동 → 성수 팝업',
+      tags: ['균형', '핫플', '로컬'],
+    },
+    {
+      id: 'b2',
+      title: '문화·로컬 믹스 코스',
+      route: '국립중앙박물관 → 용산 → 한남',
+      tags: ['문화', '트렌디', '미식'],
+    },
+    {
+      id: 'b3',
+      title: '낮밤 완성 코스',
+      route: '인사동 → 을지로 → 한강 야경',
+      tags: ['전통', '힙지로', '야경'],
+    },
   ],
   'local51-70': [
-    { id: 'l1', title: '동네 바이브 투어', route: '망원 → 연남 → 연희동', tags: ['동네', '카페', '산책'] },
-    { id: 'l2', title: '로컬 마켓 데이', route: '경동시장 → 청량리 → 회기', tags: ['시장', '현지식', '가성비'] },
-    { id: 'l3', title: '서울 골목 깊게보기', route: '서촌 골목 → 부암동 → 평창동', tags: ['골목', '조용함', '뷰'] },
+    {
+      id: 'l1',
+      title: '동네 바이브 투어',
+      route: '망원 → 연남 → 연희동',
+      tags: ['동네', '카페', '산책'],
+    },
+    {
+      id: 'l2',
+      title: '로컬 마켓 데이',
+      route: '경동시장 → 청량리 → 회기',
+      tags: ['시장', '현지식', '가성비'],
+    },
+    {
+      id: 'l3',
+      title: '서울 골목 깊게보기',
+      route: '서촌 골목 → 부암동 → 평창동',
+      tags: ['골목', '조용함', '뷰'],
+    },
   ],
   'local71-100': [
-    { id: 'p1', title: '찐로컬 하루 코스', route: '응암 → 불광천 → 연신내', tags: ['찐로컬', '산책', '먹거리'] },
-    { id: 'p2', title: '서울 외곽 감성 루트', route: '우이동 → 수유 → 미아', tags: ['로컬', '힐링', '저밀도'] },
-    { id: 'p3', title: '로컬 라이프 체험', route: '장위동 → 석계 → 월계', tags: ['생활권', '숨은맛집', '느긋함'] },
+    {
+      id: 'p1',
+      title: '찐로컬 하루 코스',
+      route: '응암 → 불광천 → 연신내',
+      tags: ['찐로컬', '산책', '먹거리'],
+    },
+    {
+      id: 'p2',
+      title: '서울 외곽 감성 루트',
+      route: '우이동 → 수유 → 미아',
+      tags: ['로컬', '힐링', '저밀도'],
+    },
+    {
+      id: 'p3',
+      title: '로컬 라이프 체험',
+      route: '장위동 → 석계 → 월계',
+      tags: ['생활권', '숨은맛집', '느긋함'],
+    },
   ],
-}
+};
 
 const coursePhotoGradients = [
   'linear-gradient(160deg, #2c1810 0%, #4a2c1a 40%, #1a0f08 100%)',
   'linear-gradient(160deg, #0d1f3a 0%, #1a3a5c 40%, #0a1525 100%)',
   'linear-gradient(160deg, #1a1208 0%, #3d2e12 40%, #0f0c05 100%)',
   'linear-gradient(160deg, #1c1c2e 0%, #2d2d44 40%, #0f0f1a 100%)',
-]
+];
 
 const coursePhotos = [
   'https://images.unsplash.com/photo-1538485399081-7c8970b2f31f?auto=format&fit=crop&w=1200&q=80',
   'https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=1200&q=80',
   'https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1200&q=80',
   'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=80',
-]
+];
 const currentCourses = computed(
   () => densityCourseMap[densityModes[courseDensityIndex.value].id] ?? [],
-)
+);
 
 function getHomeCourseRefId(course) {
-  return `course:${densityModes[courseDensityIndex.value].id}:${course.id}`
+  return `course:${densityModes[courseDensityIndex.value].id}:${course.id}`;
 }
 
 function isCourseSaved(course) {
-  return savedStore.isSaved('course', getHomeCourseRefId(course))
+  return savedStore.isSaved('course', getHomeCourseRefId(course));
 }
 
 function toggleSaveCourse(course) {
   savedStore.toggleCourseFromHome({
     course,
     densityModeId: densityModes[courseDensityIndex.value].id,
-  })
+  });
 }
 
-const savedPlansRemote = ref([])
-const savedPlansLoading = ref(false)
-const savedPlansError = ref(null)
+const savedPlansRemote = ref([]);
+const savedPlansLoading = ref(false);
+const savedPlansError = ref(null);
 
 function formatSavedPlanDate(iso) {
-  if (iso == null || String(iso).trim() === '') return ''
+  if (iso == null || String(iso).trim() === '') return '';
   try {
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return ''
-    return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', year: 'numeric' })
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('ko-KR', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
   } catch {
-    return ''
+    return '';
   }
 }
 
 async function loadSavedPlansRemote() {
-  savedPlansError.value = null
+  savedPlansError.value = null;
   if (!authStore.isAuthenticated || !authStore.accessToken) {
-    savedPlansRemote.value = []
-    return
+    savedPlansRemote.value = [];
+    return;
   }
-  savedPlansLoading.value = true
+  savedPlansLoading.value = true;
   try {
-    savedPlansRemote.value = await fetchSavedPlans(authStore.accessToken)
+    savedPlansRemote.value = await fetchSavedPlans(authStore.accessToken);
   } catch (e) {
-    savedPlansRemote.value = []
-    savedPlansError.value = e?.message || String(e)
+    savedPlansRemote.value = [];
+    savedPlansError.value = e?.message || String(e);
   } finally {
-    savedPlansLoading.value = false
+    savedPlansLoading.value = false;
   }
 }
 
 watch(
   () => authStore.accessToken,
   () => loadSavedPlansRemote(),
-)
+);
 
 function openSavedPlan(planId) {
-  const sid = planId != null ? String(planId).trim() : ''
-  if (!sid) return
-  router.push({ name: 'result', query: { planId: sid } })
+  const sid = planId != null ? String(planId).trim() : '';
+  if (!sid) return;
+  router.push({ name: 'result', query: { planId: sid } });
 }
 
 function changeCourseDensity(delta) {
-  const last = densityModes.length - 1
-  const next = Math.max(0, Math.min(last, courseDensityIndex.value + delta))
-  courseDensityIndex.value = next
+  const last = densityModes.length - 1;
+  const next = Math.max(0, Math.min(last, courseDensityIndex.value + delta));
+  courseDensityIndex.value = next;
 }
 
 function onCourseTrackScroll(e) {
-  const el = e.target
-  const card = el.querySelector('.discover-course-card')
-  if (!card) return
-  const style = window.getComputedStyle(el)
-  const gap = parseFloat(style.columnGap || style.gap || '0') || 0
-  const unit = card.clientWidth + gap
-  if (!unit) return
-  activeCourseIndex.value = Math.round(el.scrollLeft / unit)
+  const el = e.target;
+  const cards = Array.from(el.querySelectorAll('.discover-course-card'));
+  if (!cards.length) return;
+
+  const viewportCenter = el.scrollLeft + el.clientWidth / 2;
+
+  let nearestIndex = 0;
+  let nearestDistance = Infinity;
+
+  cards.forEach((card, index) => {
+    const cardCenter = card.offsetLeft + card.clientWidth / 2;
+    const distance = Math.abs(cardCenter - viewportCenter);
+
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestIndex = index;
+    }
+  });
+
+  activeCourseIndex.value = nearestIndex;
 }
 
 function scrollToCourse(index) {
-  const el = courseTrackRef.value
-  if (!el) return
-  const card = el.querySelector('.discover-course-card')
-  if (!card) return
-  const style = window.getComputedStyle(el)
-  const gap = parseFloat(style.columnGap || style.gap || '0') || 0
-  const unit = card.clientWidth + gap
-  el.scrollTo({ left: unit * index, behavior: 'smooth' })
-  activeCourseIndex.value = index
+  const el = courseTrackRef.value;
+  if (!el) return;
+  const card = el.querySelector('.discover-course-card');
+  if (!card) return;
+  const style = window.getComputedStyle(el);
+  const gap = parseFloat(style.columnGap || style.gap || '0') || 0;
+  const unit = card.clientWidth + gap;
+  el.scrollTo({ left: unit * index, behavior: 'smooth' });
+  activeCourseIndex.value = index;
 }
 
 watch(courseDensityIndex, () => {
-  activeCourseIndex.value = 0
-  courseTrackRef.value?.scrollTo({ left: 0, behavior: 'auto' })
-})
+  activeCourseIndex.value = 0;
+  courseTrackRef.value?.scrollTo({ left: 0, behavior: 'auto' });
+});
 
-const attractions = ref([])
-const attractionsLoading = ref(false)
-const attractionsError = ref(null)
+const attractions = ref([]);
+const attractionsLoading = ref(false);
+const attractionsError = ref(null);
 
 onMounted(async () => {
-  attractionsLoading.value = true
+  attractionsLoading.value = true;
   try {
-    attractions.value = await fetchAttractions()
+    attractions.value = await fetchAttractions();
   } catch (e) {
-    attractionsError.value = e.message
+    attractionsError.value = e.message;
   } finally {
-    attractionsLoading.value = false
+    attractionsLoading.value = false;
   }
-  void loadSavedPlansRemote()
-})
+  void loadSavedPlansRemote();
+});
 
 const filteredAttractions = computed(() => {
-  const mode = densityModes[courseDensityIndex.value]
-  let list = attractions.value
+  const mode = densityModes[courseDensityIndex.value];
+  let list = attractions.value;
 
   if (mode.id === 'local0') {
-    list = list.filter((a) => Number(a.score) === 0)
+    list = list.filter((a) => Number(a.score) === 0);
   } else {
     list = list.filter((a) => {
-      const s = Number(a.score)
-      return s >= mode.scoreMin && s <= mode.scoreMax
-    })
+      const s = Number(a.score);
+      return s >= mode.scoreMin && s <= mode.scoreMax;
+    });
   }
 
   if (activeCategory.value) {
-    list = list.filter((a) => a.cat1Name === activeCategory.value)
+    list = list.filter((a) => a.cat1Name === activeCategory.value);
   }
 
-  return list
-})
+  return list;
+});
 
-const PAGE_SIZE = 10
-const attractionPage = ref(1)
+const PAGE_SIZE = 10;
+const attractionPage = ref(1);
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredAttractions.value.length / PAGE_SIZE)))
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredAttractions.value.length / PAGE_SIZE)),
+);
 
 const pagedAttractions = computed(() => {
-  const start = (attractionPage.value - 1) * PAGE_SIZE
-  return filteredAttractions.value.slice(start, start + PAGE_SIZE)
-})
+  const start = (attractionPage.value - 1) * PAGE_SIZE;
+  return filteredAttractions.value.slice(start, start + PAGE_SIZE);
+});
 
 // 1 ... 4 5 6 ... 12 형태로 표시할 페이지 번호 배열 (숫자 or '...')
 const pageItems = computed(() => {
-  const total = totalPages.value
-  const cur = attractionPage.value
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const total = totalPages.value;
+  const cur = attractionPage.value;
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
-  const items = []
-  const addPage = (p) => items.push(p)
-  const addDot = () => { if (items[items.length - 1] !== '...') items.push('...') }
+  const items = [];
+  const addPage = (p) => items.push(p);
+  const addDot = () => {
+    if (items[items.length - 1] !== '...') items.push('...');
+  };
 
-  addPage(1)
-  if (cur > 3) addDot()
-  for (let p = Math.max(2, cur - 1); p <= Math.min(total - 1, cur + 1); p++) addPage(p)
-  if (cur < total - 2) addDot()
-  addPage(total)
+  addPage(1);
+  if (cur > 3) addDot();
+  for (let p = Math.max(2, cur - 1); p <= Math.min(total - 1, cur + 1); p++)
+    addPage(p);
+  if (cur < total - 2) addDot();
+  addPage(total);
 
-  return items
-})
+  return items;
+});
 
 function selectCategory(id) {
-  activeCategory.value = activeCategory.value === id ? null : id
-  attractionPage.value = 1
+  activeCategory.value = activeCategory.value === id ? null : id;
+  attractionPage.value = 1;
 }
 
 // density 바꿀 때도 1페이지로 리셋
 watch(courseDensityIndex, () => {
-  attractionPage.value = 1
-})
+  attractionPage.value = 1;
+});
 
-const homeListTab = ref('attractions')
-const events = ref([])
-const eventsLoading = ref(false)
-const eventsError = ref(null)
-const eventsFetchAttempted = ref(false)
-const eventPage = ref(1)
+const homeListTab = ref('attractions');
+const events = ref([]);
+const eventsLoading = ref(false);
+const eventsError = ref(null);
+const eventsFetchAttempted = ref(false);
+const eventPage = ref(1);
 
 watch(homeListTab, (tab) => {
-  if (tab === 'attractions') attractionPage.value = 1
+  if (tab === 'attractions') attractionPage.value = 1;
   if (tab === 'events') {
-    eventPage.value = 1
-    ensureEventsLoaded()
+    eventPage.value = 1;
+    ensureEventsLoaded();
   }
-})
+});
 
 async function ensureEventsLoaded() {
-  if (eventsFetchAttempted.value) return
-  eventsFetchAttempted.value = true
-  eventsLoading.value = true
-  eventsError.value = null
+  if (eventsFetchAttempted.value) return;
+  eventsFetchAttempted.value = true;
+  eventsLoading.value = true;
+  eventsError.value = null;
   try {
-    const data = await fetchEvents()
-    events.value = Array.isArray(data) ? data : []
+    const data = await fetchEvents();
+    events.value = Array.isArray(data) ? data : [];
   } catch (e) {
-    eventsError.value = e.message
-    events.value = []
-    eventsFetchAttempted.value = false
+    eventsError.value = e.message;
+    events.value = [];
+    eventsFetchAttempted.value = false;
   } finally {
-    eventsLoading.value = false
+    eventsLoading.value = false;
   }
 }
 
 function formatTourYmd(ymd) {
-  const s = ymd != null ? String(ymd).trim() : ''
-  if (s.length !== 8 || !/^\d{8}$/.test(s)) return s || '—'
-  return `${s.slice(0, 4)}.${s.slice(4, 6)}.${s.slice(6, 8)}`
+  const s = ymd != null ? String(ymd).trim() : '';
+  if (s.length !== 8 || !/^\d{8}$/.test(s)) return s || '—';
+  return `${s.slice(0, 4)}.${s.slice(4, 6)}.${s.slice(6, 8)}`;
 }
 
 function eventDateLabel(ev) {
-  const a = formatTourYmd(ev.eventStartDate)
-  const b = formatTourYmd(ev.eventEndDate)
-  if (a === b) return a
-  return `${a} ~ ${b}`
+  const a = formatTourYmd(ev.eventStartDate);
+  const b = formatTourYmd(ev.eventEndDate);
+  if (a === b) return a;
+  return `${a} ~ ${b}`;
 }
 
-const totalEventPages = computed(() => Math.max(1, Math.ceil(events.value.length / PAGE_SIZE)))
+const totalEventPages = computed(() =>
+  Math.max(1, Math.ceil(events.value.length / PAGE_SIZE)),
+);
 
 const pagedEvents = computed(() => {
-  const start = (eventPage.value - 1) * PAGE_SIZE
-  return events.value.slice(start, start + PAGE_SIZE)
-})
+  const start = (eventPage.value - 1) * PAGE_SIZE;
+  return events.value.slice(start, start + PAGE_SIZE);
+});
 
 const eventPageItems = computed(() => {
-  const total = totalEventPages.value
-  const cur = eventPage.value
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const total = totalEventPages.value;
+  const cur = eventPage.value;
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
-  const items = []
+  const items = [];
   const addDot = () => {
-    if (items[items.length - 1] !== '...') items.push('...')
-  }
+    if (items[items.length - 1] !== '...') items.push('...');
+  };
 
-  items.push(1)
-  if (cur > 3) addDot()
-  for (let p = Math.max(2, cur - 1); p <= Math.min(total - 1, cur + 1); p++) items.push(p)
-  if (cur < total - 2) addDot()
-  items.push(total)
-  return items
-})
+  items.push(1);
+  if (cur > 3) addDot();
+  for (let p = Math.max(2, cur - 1); p <= Math.min(total - 1, cur + 1); p++)
+    items.push(p);
+  if (cur < total - 2) addDot();
+  items.push(total);
+  return items;
+});
 
 function goToAttraction(id) {
-  router.push({ name: 'attraction-detail', params: { id } })
+  router.push({ name: 'attraction-detail', params: { id } });
 }
 
 function goToEvent(contentId) {
-  const sid = contentId != null ? String(contentId).trim() : ''
-  if (!sid) return
-  router.push({ name: 'event-detail', params: { id: sid } })
+  const sid = contentId != null ? String(contentId).trim() : '';
+  if (!sid) return;
+  router.push({ name: 'event-detail', params: { id: sid } });
 }
 
 function onCourseGenerated() {
-  showAISheet.value = false
-  router.push('/result')
+  showAISheet.value = false;
+  router.push('/result');
 }
 
 function closeAISheet() {
-  showAISheet.value = false
-  clearAiSheetSession()
-  if (route.path === '/ai') router.replace('/discover')
+  showAISheet.value = false;
+  clearAiSheetSession();
+  if (route.path === '/ai') router.replace('/discover');
 }
 
 watch(
   () => route.path,
   (path) => {
-    if (path === '/ai') showAISheet.value = true
+    if (path === '/ai') showAISheet.value = true;
   },
   { immediate: true },
-)
+);
 </script>
 
 <template>
   <div class="discover">
-
     <!-- ── Header ─────────────────────────────────────────────────────── -->
     <header class="discover__header">
       <div class="discover__header-bg" aria-hidden="true">
         <div class="discover-flight discover-flight--header">
           <div class="discover-flight__track">
             <img class="discover-flight__earth" :src="earthImage" alt="" />
-            <img class="discover-flight__plane" :src="airplaneImage" alt="" />
+            <div class="discover-flight__plane-wrap">
+              <img class="discover-flight__plane" :src="airplaneImage" alt="" />
+            </div>
           </div>
         </div>
       </div>
@@ -391,15 +535,6 @@ watch(
         <div class="discover__brand">
           <span class="discover__brand-bts">BTS</span>
           <span class="discover__brand-sub">Beyond Tours Seoul</span>
-        </div>
-        <div class="discover__header-right">
-          <button class="discover__icon-btn" aria-label="알림">
-            <Bell :size="20" :stroke-width="2" />
-            <span class="discover__notif-dot"></span>
-          </button>
-          <div class="discover__avatar">
-            <IsIcon name="profile-circle" variant="twotone" :size="18" />
-          </div>
         </div>
       </div>
     </header>
@@ -425,7 +560,12 @@ watch(
               :key="item.id"
               class="discover__live-line"
             >
-              <IsIcon :name="item.icon" variant="bulk" class="discover__live-item-icon" :size="10" />
+              <IsIcon
+                :name="item.icon"
+                variant="bulk"
+                class="discover__live-item-icon"
+                :size="10"
+              />
               <span class="discover__live-label">{{ item.label }}</span>
               <span class="discover__live-value">{{ item.value }}</span>
             </p>
@@ -451,7 +591,9 @@ watch(
             v-for="(mode, i) in densityModes"
             :key="mode.id"
             class="discover__density-pip"
-            :class="{ 'discover__density-pip--active': courseDensityIndex === i }"
+            :class="{
+              'discover__density-pip--active': courseDensityIndex === i,
+            }"
             :aria-label="mode.text"
             @click="courseDensityIndex = i"
           />
@@ -465,26 +607,42 @@ watch(
           <ChevronRight :size="16" :stroke-width="2.5" />
         </button>
       </div>
-      <p class="discover__density-bar-text">{{ densityModes[courseDensityIndex].text }}</p>
+      <p class="discover__density-bar-text">
+        {{ densityModes[courseDensityIndex].text }}
+      </p>
     </div>
 
     <!-- ── My saved itineraries (서버 user_saved_plans) ─────────────────── -->
-    <section v-if="authStore.isAuthenticated" class="discover__section discover__saved-plans">
+    <section
+      v-if="authStore.isAuthenticated"
+      class="discover__section discover__saved-plans"
+    >
       <div class="discover__saved-plans-heading">
-        <Sparkles :size="16" :stroke-width="2.4" class="discover__saved-plans-heading-icon" />
-        <h3 class="discover__section-title discover__saved-plans-title">내가 저장한 일정</h3>
+        <Sparkles
+          :size="16"
+          :stroke-width="2.4"
+          class="discover__saved-plans-heading-icon"
+        />
+        <h3 class="discover__section-title discover__saved-plans-title">
+          내가 저장한 일정
+        </h3>
       </div>
-      <div v-if="savedPlansLoading" class="discover__saved-plans-msg">불러오는 중…</div>
-      <p v-else-if="savedPlansError" class="discover__saved-plans-msg discover__saved-plans-msg--error">
+      <div v-if="savedPlansLoading" class="discover__saved-plans-msg">
+        불러오는 중…
+      </div>
+      <p
+        v-else-if="savedPlansError"
+        class="discover__saved-plans-msg discover__saved-plans-msg--error"
+      >
         {{ savedPlansError }}
       </p>
-      <p
-        v-else-if="!savedPlansRemote.length"
-        class="discover__saved-plans-msg"
-      >
+      <p v-else-if="!savedPlansRemote.length" class="discover__saved-plans-msg">
         AI로 만든 코스 결과 화면에서 「코스 저장」으로 저장해 보세요.
       </p>
-      <div v-else class="discover__course-carousel discover__saved-plans-scroll">
+      <div
+        v-else
+        class="discover__course-carousel discover__saved-plans-scroll"
+      >
         <button
           v-for="p in savedPlansRemote"
           :key="p.id"
@@ -492,9 +650,19 @@ watch(
           class="discover-saved-plan-card"
           @click="openSavedPlan(p.id)"
         >
-          <Sparkles :size="18" :stroke-width="2.2" class="discover-saved-plan-card__icon" aria-hidden="true" />
-          <p class="discover-saved-plan-card__title">{{ p.title || '저장 일정' }}</p>
-          <p v-if="formatSavedPlanDate(p.savedAt)" class="discover-saved-plan-card__date">
+          <Sparkles
+            :size="18"
+            :stroke-width="2.2"
+            class="discover-saved-plan-card__icon"
+            aria-hidden="true"
+          />
+          <p class="discover-saved-plan-card__title">
+            {{ p.title || '저장 일정' }}
+          </p>
+          <p
+            v-if="formatSavedPlanDate(p.savedAt)"
+            class="discover-saved-plan-card__date"
+          >
             저장 {{ formatSavedPlanDate(p.savedAt) }}
           </p>
           <span class="discover-saved-plan-card__cta">일정 보기</span>
@@ -521,7 +689,9 @@ watch(
           <div class="discover-course-card__photo-overlay"></div>
           <button
             class="discover-course-card__save-btn"
-            :class="{ 'discover-course-card__save-btn--active': isCourseSaved(course) }"
+            :class="{
+              'discover-course-card__save-btn--active': isCourseSaved(course),
+            }"
             type="button"
             :aria-label="isCourseSaved(course) ? '저장 해제' : '저장하기'"
             @click.stop="toggleSaveCourse(course)"
@@ -582,7 +752,9 @@ watch(
             type="button"
             role="tab"
             class="discover__home-tab"
-            :class="{ 'discover__home-tab--active': homeListTab === 'attractions' }"
+            :class="{
+              'discover__home-tab--active': homeListTab === 'attractions',
+            }"
             :aria-selected="homeListTab === 'attractions'"
             @click="homeListTab = 'attractions'"
           >
@@ -601,7 +773,10 @@ watch(
         </div>
       </div>
 
-      <div v-show="homeListTab === 'attractions'" class="discover__category-row">
+      <div
+        v-show="homeListTab === 'attractions'"
+        class="discover__category-row"
+      >
         <button
           v-for="cat in categories"
           :key="cat.id"
@@ -631,7 +806,10 @@ watch(
             {{ attractionsError }}
           </p>
 
-          <p v-else-if="filteredAttractions.length === 0" class="discover__attractions-empty">
+          <p
+            v-else-if="filteredAttractions.length === 0"
+            class="discover__attractions-empty"
+          >
             해당 카테고리의 관광지가 없습니다.
           </p>
 
@@ -645,9 +823,17 @@ watch(
             >
               <div class="attraction-card__thumb-wrap">
                 <img
-                  v-if="attraction.imageUrl || attraction.image_url || attraction.thumbnail"
+                  v-if="
+                    attraction.imageUrl ||
+                    attraction.image_url ||
+                    attraction.thumbnail
+                  "
                   class="attraction-card__thumb"
-                  :src="attraction.imageUrl || attraction.image_url || attraction.thumbnail"
+                  :src="
+                    attraction.imageUrl ||
+                    attraction.image_url ||
+                    attraction.thumbnail
+                  "
                   :alt="attraction.name"
                 />
                 <div v-else class="attraction-card__thumb-placeholder"></div>
@@ -655,7 +841,11 @@ watch(
               <div class="attraction-card__info">
                 <p class="attraction-card__name">{{ attraction.name }}</p>
                 <p v-if="attraction.address" class="attraction-card__address">
-                  <MapPin :size="11" :stroke-width="2" class="attraction-card__pin" />
+                  <MapPin
+                    :size="11"
+                    :stroke-width="2"
+                    class="attraction-card__pin"
+                  />
                   {{ attraction.address }}
                 </p>
                 <div class="attraction-card__meta">
@@ -664,7 +854,11 @@ watch(
                   </span>
                 </div>
               </div>
-              <ChevronRight :size="16" :stroke-width="2.2" class="attraction-card__arrow" />
+              <ChevronRight
+                :size="16"
+                :stroke-width="2.2"
+                class="attraction-card__arrow"
+              />
             </button>
 
             <div v-if="totalPages > 1" class="discover__pagination">
@@ -678,13 +872,20 @@ watch(
                 <ChevronLeft :size="14" :stroke-width="2.5" />
               </button>
 
-              <template v-for="(item, pi) in pageItems" :key="'a-' + pi + '-' + item">
-                <span v-if="item === '...'" class="discover__pg-ellipsis">…</span>
+              <template
+                v-for="(item, pi) in pageItems"
+                :key="'a-' + pi + '-' + item"
+              >
+                <span v-if="item === '...'" class="discover__pg-ellipsis"
+                  >…</span
+                >
                 <button
                   v-else
                   type="button"
                   class="discover__pg-num"
-                  :class="{ 'discover__pg-num--active': attractionPage === item }"
+                  :class="{
+                    'discover__pg-num--active': attractionPage === item,
+                  }"
                   @click="attractionPage = item"
                 >
                   {{ item }}
@@ -714,7 +915,10 @@ watch(
             {{ eventsError }}
           </p>
 
-          <p v-else-if="events.length === 0" class="discover__attractions-empty">
+          <p
+            v-else-if="events.length === 0"
+            class="discover__attractions-empty"
+          >
             표시할 행사가 없습니다.
           </p>
 
@@ -738,16 +942,26 @@ watch(
               <div class="attraction-card__info">
                 <p class="attraction-card__name">{{ ev.title }}</p>
                 <p v-if="ev.address" class="attraction-card__address">
-                  <MapPin :size="11" :stroke-width="2" class="attraction-card__pin" />
+                  <MapPin
+                    :size="11"
+                    :stroke-width="2"
+                    class="attraction-card__pin"
+                  />
                   {{ ev.address }}
                 </p>
                 <div class="attraction-card__meta">
-                  <span class="attraction-card__cat attraction-card__cat--muted">
+                  <span
+                    class="attraction-card__cat attraction-card__cat--muted"
+                  >
                     {{ eventDateLabel(ev) }}
                   </span>
                 </div>
               </div>
-              <ChevronRight :size="16" :stroke-width="2.2" class="attraction-card__arrow" />
+              <ChevronRight
+                :size="16"
+                :stroke-width="2.2"
+                class="attraction-card__arrow"
+              />
             </button>
 
             <div v-if="totalEventPages > 1" class="discover__pagination">
@@ -761,8 +975,13 @@ watch(
                 <ChevronLeft :size="14" :stroke-width="2.5" />
               </button>
 
-              <template v-for="(item, ei) in eventPageItems" :key="'e-' + ei + '-' + item">
-                <span v-if="item === '...'" class="discover__pg-ellipsis">…</span>
+              <template
+                v-for="(item, ei) in eventPageItems"
+                :key="'e-' + ei + '-' + item"
+              >
+                <span v-if="item === '...'" class="discover__pg-ellipsis"
+                  >…</span
+                >
                 <button
                   v-else
                   type="button"
@@ -800,28 +1019,52 @@ watch(
 
       <button class="nav-btn" aria-label="지도">
         <span class="nav-btn__icon-wrap">
-          <IsIcon name="map" class="nav-btn__icon" variant="twotone" :size="19" />
+          <IsIcon
+            name="map"
+            class="nav-btn__icon"
+            variant="twotone"
+            :size="19"
+          />
         </span>
         <span>지도</span>
       </button>
 
-      <button class="nav-btn nav-btn--center" aria-label="AI 여행 코스 짜기" @click="showAISheet = true">
+      <button
+        class="nav-btn nav-btn--center"
+        aria-label="AI 여행 코스 짜기"
+        @click="showAISheet = true"
+      >
         <span class="nav-btn__icon-wrap">
-          <IsIcon name="magic-star" class="nav-btn__icon" variant="bulk" :size="19" />
+          <IsIcon
+            name="magic-star"
+            class="nav-btn__icon"
+            variant="bulk"
+            :size="19"
+          />
         </span>
         <span>AI 코스</span>
       </button>
 
       <button class="nav-btn" aria-label="저장함">
         <span class="nav-btn__icon-wrap">
-          <IsIcon name="bookmark" class="nav-btn__icon" variant="twotone" :size="19" />
+          <IsIcon
+            name="bookmark"
+            class="nav-btn__icon"
+            variant="twotone"
+            :size="19"
+          />
         </span>
         <span>저장함</span>
       </button>
 
       <button class="nav-btn" aria-label="마이">
         <span class="nav-btn__icon-wrap">
-          <IsIcon name="profile-circle" class="nav-btn__icon" variant="twotone" :size="19" />
+          <IsIcon
+            name="profile-circle"
+            class="nav-btn__icon"
+            variant="twotone"
+            :size="19"
+          />
         </span>
         <span>마이</span>
       </button>
@@ -870,11 +1113,23 @@ watch(
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(circle at 18% 10%, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0) 48%),
-    linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%);
+    radial-gradient(
+      circle at 18% 10%,
+      rgba(255, 255, 255, 0.32) 0%,
+      rgba(255, 255, 255, 0) 48%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
 }
 
-.discover__brand { display: flex; flex-direction: column; line-height: 1.1; }
+.discover__brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
 
 .discover__brand-bts {
   font-size: 22px;
@@ -888,42 +1143,6 @@ watch(
   font-size: 10px;
   color: rgba(255, 255, 255, 0.88);
   letter-spacing: 0.02em;
-}
-
-.discover__header-right { display: flex; align-items: center; gap: 12px; }
-
-.discover__icon-btn {
-  position: relative;
-  background: none;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-}
-
-.discover__notif-dot {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #ef4444;
-  border: 1.5px solid #fff;
-}
-
-.discover__avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.22);
-  border: 2px solid rgba(255, 255, 255, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
 }
 
 /* ─── Greeting ───────────────────────────────────────────────────────────── */
@@ -1063,32 +1282,51 @@ watch(
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.12));
 }
 
-.discover-flight__plane {
+.discover-flight__plane-wrap {
   position: absolute;
   width: 32px;
   height: 32px;
   left: 10px;
   top: 12px;
-  object-fit: contain;
   animation: discover-plane-fly 2.2s ease-in-out infinite;
 }
 
-.discover-flight--header .discover-flight__plane {
+.discover-flight__plane {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scaleX(-1);
+}
+
+.discover-flight--header .discover-flight__plane-wrap {
   width: 34px;
   height: 34px;
-  left: 42px;
+  left: 25px;
   top: 16px;
 }
 
 @keyframes discover-earth-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes discover-plane-fly {
-  0% { transform: translateX(0) translateY(2px) rotate(-8deg); opacity: 0.9; }
-  50% { transform: translateX(44px) translateY(-8px) rotate(2deg); opacity: 1; }
-  100% { transform: translateX(82px) translateY(2px) rotate(8deg); opacity: 0.95; }
+  0% {
+    transform: translateX(0) translateY(2px) rotate(-8deg);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateX(48px) translateY(-8px) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(94px) translateY(2px) rotate(8deg);
+    opacity: 0.95;
+  }
 }
 
 /* ─── Sections ───────────────────────────────────────────────────────────── */
@@ -1146,7 +1384,9 @@ watch(
   color: #666;
   border-radius: 10px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .discover__home-tab--active {
@@ -1196,7 +1436,9 @@ watch(
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
+  transition:
+    background 0.15s,
+    transform 0.1s;
   backdrop-filter: blur(4px);
 }
 
@@ -1245,7 +1487,10 @@ watch(
   background: rgba(255, 255, 255, 0.3);
   cursor: pointer;
   padding: 0;
-  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.12s;
   flex-shrink: 0;
 }
 
@@ -1313,8 +1558,12 @@ watch(
   cursor: pointer;
   text-align: left;
   background: linear-gradient(155deg, #fffbeb 0%, #fff 55%, #f0fdf4 100%);
-  box-shadow: 0 2px 14px rgba(254, 156, 0, 0.12), 0 0 0 1px rgba(251, 191, 36, 0.22);
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  box-shadow:
+    0 2px 14px rgba(254, 156, 0, 0.12),
+    0 0 0 1px rgba(251, 191, 36, 0.22);
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease;
 }
 
 .discover-saved-plan-card:active {
@@ -1366,7 +1615,9 @@ watch(
   touch-action: pan-x;
 }
 
-.discover__course-carousel::-webkit-scrollbar { display: none; }
+.discover__course-carousel::-webkit-scrollbar {
+  display: none;
+}
 
 .discover__course-dots {
   display: flex;
@@ -1383,7 +1634,9 @@ watch(
   background: #ddd;
   cursor: pointer;
   padding: 0;
-  transition: width 0.2s ease, background 0.2s ease;
+  transition:
+    width 0.2s ease,
+    background 0.2s ease;
 }
 
 .discover__course-dot--active {
@@ -1439,7 +1692,10 @@ watch(
   justify-content: center;
   cursor: pointer;
   z-index: 2;
-  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+  transition:
+    transform 0.12s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .discover-course-card__save-btn:active {
@@ -1555,7 +1811,9 @@ watch(
   padding-bottom: 4px;
 }
 
-.discover__category-row::-webkit-scrollbar { display: none; }
+.discover__category-row::-webkit-scrollbar {
+  display: none;
+}
 
 .cat-btn {
   display: flex;
@@ -1568,14 +1826,19 @@ watch(
   border: 1.5px solid #efefed;
   border-radius: 14px;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    transform 0.1s;
   min-width: 68px;
 }
 
-.cat-btn:active { transform: scale(0.93); }
+.cat-btn:active {
+  transform: scale(0.93);
+}
 
 .cat-btn--active {
-  border-color: #FE9C00;
+  border-color: #fe9c00;
   background: #fff8ec;
 }
 
@@ -1591,7 +1854,9 @@ watch(
   white-space: nowrap;
 }
 
-.cat-btn--active .cat-btn__label { color: #c97000; }
+.cat-btn--active .cat-btn__label {
+  color: #c97000;
+}
 
 /* ─── Attractions list ───────────────────────────────────────────────────── */
 .discover__attractions {
@@ -1622,7 +1887,9 @@ watch(
 }
 
 @keyframes discover-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .discover__attractions-error,
@@ -1648,7 +1915,10 @@ watch(
   cursor: pointer;
   text-align: left;
   width: 100%;
-  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    transform 0.1s;
 }
 
 .attraction-card:active {
@@ -1767,7 +2037,10 @@ watch(
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
 }
 
 .discover__pg-arrow:not(:disabled):hover {
@@ -1792,7 +2065,10 @@ watch(
   font-weight: 600;
   cursor: pointer;
   padding: 0 6px;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
 }
 
 .discover__pg-num:hover {
