@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { clearAiSheetSession } from '@/utils/aiSheetSession';
 import { fetchAttractions } from '@/services/attractionService';
 import { fetchEvents } from '@/services/eventService';
+import HotPlacesRanking from '@/components/discover/HotPlacesRanking.vue';
 import { fetchSavedPlans } from '@/services/savedPlansService';
 import earthImage from '../../asset/earth.png';
 import airplaneImage from '../../asset/airplane.png';
@@ -35,38 +36,6 @@ const courseDensityIndex = ref(2);
 const courseTrackRef = ref(null);
 const activeCourseIndex = ref(0);
 
-const realtimeHotPlaces = [
-  {
-    id: 1,
-    name: '성수동',
-    image:
-      'https://images.unsplash.com/photo-1549693578-d683be217e58?auto=format&fit=crop&w=500&q=80',
-  },
-  {
-    id: 2,
-    name: '망원동',
-    image:
-      'https://images.unsplash.com/photo-1538485399081-7c8970b2f31f?auto=format&fit=crop&w=500&q=80',
-  },
-  {
-    id: 3,
-    name: '익선동',
-    image:
-      'https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=500&q=80',
-  },
-  {
-    id: 4,
-    name: '을지로',
-    image:
-      'https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=500&q=80',
-  },
-  {
-    id: 5,
-    name: '연남동',
-    image:
-      'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=500&q=80',
-  },
-];
 
 const categories = computed(() => [
   { id: null,          icon: 'element-4',        color: '#fe9c00', label: t('discover.category.all') },
@@ -328,6 +297,7 @@ onMounted(async () => {
   } finally {
     attractionsLoading.value = false;
   }
+
   void loadSavedPlansRemote();
 });
 
@@ -685,22 +655,7 @@ watch(
     </section>
 
     <!-- ── Real-time Hot Places ───────────────────────────────────────── -->
-    <section class="discover__section">
-      <h3 class="discover__section-title">{{ $t('discover.hotPlaces') }}</h3>
-      <div class="discover__hot-rank-row">
-        <article
-          v-for="place in realtimeHotPlaces"
-          :key="place.id"
-          class="hot-rank-item"
-        >
-          <div class="hot-rank-item__thumb-wrap">
-            <img class="hot-rank-item__thumb" :src="place.image" alt="" />
-            <span class="hot-rank-item__badge">{{ place.id }}</span>
-          </div>
-          <p class="hot-rank-item__name">{{ place.name }}</p>
-        </article>
-      </div>
-    </section>
+    <HotPlacesRanking />
 
     <!-- ── Theme Categories & listings ──────────────────────────────── -->
     <section class="discover__section discover__section--last">
@@ -1656,62 +1611,6 @@ watch(
   backdrop-filter: blur(2px);
 }
 
-/* ─── Real-time hot places ─────────────────────────────────────────────── */
-.discover__hot-rank-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 20px;
-}
-
-.hot-rank-item {
-  width: calc((100% - 32px) / 5);
-  min-width: 0;
-}
-
-.hot-rank-item__thumb-wrap {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-}
-
-.hot-rank-item__thumb {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 2px solid #ffe3ba;
-}
-
-.hot-rank-item__badge {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: #fe9c00;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgba(254, 156, 0, 0.45);
-}
-
-.hot-rank-item__name {
-  margin: 0;
-  margin-top: 8px;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: #4a4a4a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 /* ─── Category row ───────────────────────────────────────────────────────── */
 .discover__category-row {
