@@ -60,6 +60,7 @@ export default {
       'local71-100': '纯本地特色',
     },
     category: {
+      all: '全部',
       food: '美食',
       shopping: '购物',
       experience: '体验游',

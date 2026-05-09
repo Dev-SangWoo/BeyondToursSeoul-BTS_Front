@@ -61,6 +61,7 @@ function changeCourseDensity(delta) {
 
 // ── Categories ───────────────────────────────────────────────────────
 const categories = computed(() => [
+  { id: null,        icon: 'element-4',  color: '#fe9c00', label: t('discover.category.all') },
   { id: '음식',      icon: 'cup',        color: '#f97316', label: t('discover.category.food') },
   { id: '쇼핑',      icon: 'shop',       color: '#ec4899', label: t('discover.category.shopping') },
   { id: '체험관광',  icon: 'people',     color: '#8b5cf6', label: t('discover.category.experience') },
@@ -73,7 +74,7 @@ const categories = computed(() => [
 const activeCategory = ref(null);
 
 function selectCategory(id) {
-  activeCategory.value = activeCategory.value === id ? null : id;
+  activeCategory.value = id;
 }
 
 // ── Attractions ───────────────────────────────────────────────────────
@@ -160,19 +161,16 @@ const allMarkers = computed(() => {
       type: 'locker',
     }));
 
-  let congestionMarkers = [];
-  if (mapStore.showCongestion) {
-    congestionMarkers = congestions.value
-      .filter((c) => c.latitude != null && c.longitude != null)
-      .map((c) => ({
-        id: c.id, // already has 'zone-' prefix from service
-        lat: Number(c.latitude),
-        lng: Number(c.longitude),
-        type: 'congestion',
-        congestionLevel: c.congestion_level,
-        areaName: c.area_name,
-      }));
-  }
+  const congestionMarkers = congestions.value
+    .filter((c) => c.latitude != null && c.longitude != null)
+    .map((c) => ({
+      id: c.id, // already has 'zone-' prefix from service
+      lat: Number(c.latitude),
+      lng: Number(c.longitude),
+      type: 'congestion',
+      congestionLevel: c.congestion_level,
+      areaName: c.area_name,
+    }));
 
   return [...attrMarkers, ...lockerMarkers, ...congestionMarkers];
 });
@@ -327,7 +325,7 @@ function fetchCurrentLocation() {
       <div class="map-page__cat-overlay">
         <button
           v-for="cat in categories"
-          :key="cat.id"
+          :key="cat.id ?? '__all__'"
           class="map-cat-chip"
           :class="{ 'map-cat-chip--active': activeCategory === cat.id }"
           @click="selectCategory(cat.id)"
@@ -415,13 +413,53 @@ function fetchCurrentLocation() {
 
       <!-- 핀 범례 -->
       <div class="map-page__legend">
-        <div class="map-page__legend-item">
-          <span class="map-page__legend-dot" style="background: #fe9c00"></span>
-          <span class="map-page__legend-label">{{ $t('map.legendAttraction') }}</span>
+        <div class="map-page__legend-item map-page__legend-item--attraction">
+          <span
+            class="map-page__legend-dot"
+            :style="{ background: mapStore.showAttraction ? '#fe9c00' : '#b0bec5' }"
+          ></span>
+          <span
+            class="map-page__legend-label"
+            :class="{ 'map-page__legend-label--off': !mapStore.showAttraction }"
+          >{{ $t('map.legendAttraction') }}</span>
+          <div
+            class="attraction-toggle"
+            role="switch"
+            :aria-checked="mapStore.showAttraction"
+            style="pointer-events: auto"
+            @click.stop="mapStore.toggleAttraction"
+          >
+            <div
+              class="toggle-track"
+              :class="{ 'toggle-track--active': mapStore.showAttraction }"
+            >
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
         </div>
-        <div class="map-page__legend-item">
-          <span class="map-page__legend-dot" style="background: #0d9488"></span>
-          <span class="map-page__legend-label">{{ $t('map.legendLocker') }}</span>
+        <div class="map-page__legend-item map-page__legend-item--locker">
+          <span
+            class="map-page__legend-dot"
+            :style="{ background: mapStore.showLocker ? '#0d9488' : '#b0bec5' }"
+          ></span>
+          <span
+            class="map-page__legend-label"
+            :class="{ 'map-page__legend-label--off': !mapStore.showLocker }"
+          >{{ $t('map.legendLocker') }}</span>
+          <div
+            class="locker-toggle"
+            role="switch"
+            :aria-checked="mapStore.showLocker"
+            style="pointer-events: auto"
+            @click.stop="mapStore.toggleLocker"
+          >
+            <div
+              class="toggle-track"
+              :class="{ 'toggle-track--active': mapStore.showLocker }"
+            >
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -826,13 +864,14 @@ function fetchCurrentLocation() {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
   backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.8);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .map-page__legend-item {
   display: flex;
   align-items: center;
   gap: 7px;
+  pointer-events: none;
 }
 
 .map-page__legend-dot {
@@ -849,6 +888,28 @@ function fetchCurrentLocation() {
   font-weight: 700;
   color: #444;
   white-space: nowrap;
+  flex: 1;
+}
+
+.map-page__legend-label--off {
+  color: #b0bec5;
+}
+
+.map-page__legend-item--attraction,
+.map-page__legend-item--locker {
+  pointer-events: auto;
+  cursor: pointer;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.attraction-toggle,
+.locker-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-left: 8px;
+  flex-shrink: 0;
 }
 
 .map-page__locate-btn:active {
@@ -1068,6 +1129,14 @@ function fetchCurrentLocation() {
 
 .toggle-track--active {
   background: #fe9c00;
+}
+
+.attraction-toggle .toggle-track--active {
+  background: #fe9c00;
+}
+
+.locker-toggle .toggle-track--active {
+  background: #0d9488;
 }
 
 .toggle-thumb {
