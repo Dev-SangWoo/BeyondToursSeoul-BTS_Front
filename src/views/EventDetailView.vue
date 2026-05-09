@@ -23,6 +23,11 @@ const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 
+const props = defineProps({
+  eventId: { default: null },
+})
+const emit = defineEmits(['close'])
+
 const eventDetail = ref(null)
 const loading = ref(true)
 const error = ref(null)
@@ -30,7 +35,7 @@ const isLiked = ref(false)
 const showAllDesc = ref(false)
 const showAllProgram = ref(false)
 
-const resolvedId = computed(() => route.params.id)
+const resolvedId = computed(() => props.eventId ?? route.params.id)
 
 watch(
   resolvedId,
@@ -134,6 +139,10 @@ const shortProgram = computed(() => {
 })
 
 function goBack() {
+  if (props.eventId != null) {
+    emit('close')
+    return
+  }
   if (window.history.length > 1) router.back()
   else router.push('/discover')
 }
