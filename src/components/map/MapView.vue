@@ -253,10 +253,17 @@ function syncMarkers(markers) {
     const isSelected = mapStore.selectedMarkerId === marker.id;
     const isCongestion =
       marker.type === 'congestion' || marker.id.toString().startsWith('zone-');
+    const isLocker = marker.type === 'locker';
+
+    const isAttraction = !isLocker && !isCongestion;
+    const hidden =
+      (isAttraction && !mapStore.showAttraction) ||
+      (isLocker && !mapStore.showLocker) ||
+      (isCongestion && !mapStore.showCongestion);
 
     const nm = new window.naver.maps.Marker({
       position: new window.naver.maps.LatLng(marker.lat, marker.lng),
-      map: mapInstance,
+      map: hidden ? null : mapInstance,
       icon: buildMarkerIcon(
         isCongestion ? 'congestion' : marker.type,
         marker.crowdLevel,
@@ -397,6 +404,42 @@ watch(
   () => mapStore.currentLocation,
   (loc) => {
     if (mapInstance) syncCurrentLocation(loc);
+  },
+);
+
+watch(
+  () => mapStore.showAttraction,
+  (show) => {
+    if (!mapInstance) return;
+    naverMarkers.forEach(({ nm, marker }) => {
+      if (marker.type !== 'locker' && marker.type !== 'congestion') {
+        nm.setMap(show ? mapInstance : null);
+      }
+    });
+  },
+);
+
+watch(
+  () => mapStore.showLocker,
+  (show) => {
+    if (!mapInstance) return;
+    naverMarkers.forEach(({ nm, marker }) => {
+      if (marker.type === 'locker') {
+        nm.setMap(show ? mapInstance : null);
+      }
+    });
+  },
+);
+
+watch(
+  () => mapStore.showCongestion,
+  (show) => {
+    if (!mapInstance) return;
+    naverMarkers.forEach(({ nm, marker }) => {
+      if (marker.type === 'congestion') {
+        nm.setMap(show ? mapInstance : null);
+      }
+    });
   },
 );
 </script>
