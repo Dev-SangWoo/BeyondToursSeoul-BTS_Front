@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { MessageCircle, Sparkles } from 'lucide-vue-next'
 import { useMapStore } from '@/stores/useMapStore'
 import MapView from '@/components/map/MapView.vue'
@@ -13,6 +14,8 @@ import {
 } from '@/utils/structuredItinerary'
 import { normalizeStructured } from '@/utils/structuredNormalize'
 import AiChatPlanStrip from './AiChatPlanStrip.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   summaryText: { type: String, default: '' },
@@ -32,8 +35,7 @@ const selectedDayIndex = ref(0)
 
 let mapSnapshot = null
 
-const introAssistant =
-  '위에 정리해 주신 일정·취향·추가 요청을 바탕으로 여행 계획을 같이 다듬어 볼게요. 코스 초안을 바로 불러오고 있어요. 수정이나 추가 요청은 아래 채팅으로 보내 주세요.'
+const introAssistant = computed(() => t('ai.chat.introAssistant'))
 
 /** 채팅 단계 진입 시 자동 전송 — 수동으로 같은 문구를 입력하지 않아도 첫 일정 응답을 받습니다. */
 const INITIAL_COURSE_MESSAGE = '코스 생성'
@@ -51,7 +53,7 @@ const lastStructured = computed(() => {
 function seedThread() {
   thread.value = [
     { id: 'u0', role: 'user', text: props.summaryText || '(입력 요약)' },
-    { id: 'a0', role: 'assistant', text: introAssistant },
+    { id: 'a0', role: 'assistant', text: introAssistant.value },
   ]
 }
 
@@ -131,13 +133,13 @@ async function sendChatWithText(t) {
     thread.value.push({
       id: `a-${Date.now()}`,
       role: 'assistant',
-      text: data.answer || '응답을 받지 못했습니다.',
+      text: data.answer || t('ai.chat.noResponse'),
       markdown: true,
       structured: data.structured,
       model: data.model,
     })
   } catch (e) {
-    chatError.value = e.message || '요청 중 오류가 났어요.'
+    chatError.value = e.message || t('ai.chat.requestError')
   } finally {
     isChatLoading.value = false
   }
@@ -157,11 +159,11 @@ async function sendChat() {
     <header class="chat-step__bar">
       <div class="chat-step__bar-title">
         <MessageCircle :size="17" :stroke-width="2.3" class="chat-step__bar-icon" />
-        <span>AI 여행 계획</span>
-        <span v-if="mapSyncing" class="chat-step__sync">지도 반영 중…</span>
+        <span>{{ $t('ai.chat.title') }}</span>
+        <span v-if="mapSyncing" class="chat-step__sync">{{ $t('ai.chat.mapSyncing') }}</span>
       </div>
       <p class="chat-step__bar-sub">
-        지도·일정은 마지막 AI 응답의 structured 기준입니다. 아래에서 대화를 이어 가세요.
+        {{ $t('ai.chat.barSub') }}
       </p>
     </header>
 
@@ -203,17 +205,17 @@ async function sendChat() {
         v-model="chatInput"
         class="chat-step__input"
         type="text"
-        placeholder="AI에게 질문하기"
+        :placeholder="$t('ai.chat.inputPlaceholder')"
         :disabled="isChatLoading"
         @keydown.enter.prevent="sendChat"
       />
       <button class="chat-step__send" type="button" :disabled="isChatLoading" @click="sendChat">
-        {{ isChatLoading ? '…' : '전송' }}
+        {{ isChatLoading ? $t('ai.chat.sending') : $t('ai.chat.send') }}
       </button>
     </div>
 
     <div class="chat-step__actions">
-      <button type="button" class="chat-step__ghost" @click="emit('back')">이전</button>
+      <button type="button" class="chat-step__ghost" @click="emit('back')">{{ $t('ai.chat.back') }}</button>
       <button
         type="button"
         class="chat-step__primary"
@@ -222,7 +224,7 @@ async function sendChat() {
         @click="emit('generate')"
       >
         <Sparkles :size="18" :stroke-width="2.4" />
-        코스 생성
+        {{ $t('ai.chat.generateCourse') }}
       </button>
     </div>
   </div>

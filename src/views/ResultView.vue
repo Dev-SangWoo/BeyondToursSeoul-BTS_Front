@@ -1,10 +1,12 @@
 <script setup>
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTripStore } from '@/stores/useTripStore'
 import MapView from '@/components/map/MapView.vue'
 import ItineraryTimeline from '@/components/itinerary/ItineraryTimeline.vue'
 import AiChatPanel from '@/components/ai/AiChatPanel.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const tripStore = useTripStore()
 
@@ -24,9 +26,9 @@ function generateAnother() {
 <template>
   <div class="result">
     <header class="result__header">
-      <button class="result__back-btn" @click="goBack" aria-label="뒤로가기">‹</button>
-      <h2 class="result__title">AI 추천 코스 (2박 3일)</h2>
-      <div class="result__weather-badge">☁️ 우천 대비</div>
+      <button class="result__back-btn" @click="goBack" :aria-label="$t('result.back')">‹</button>
+      <h2 class="result__title">{{ $t('result.title') }}</h2>
+      <div class="result__weather-badge">☁️ {{ $t('result.weatherBadge') }}</div>
     </header>
 
     <div class="result__map-section">
@@ -40,10 +42,10 @@ function generateAnother() {
 
     <div class="result__actions">
       <button class="result__btn result__btn--save" @click="saveCourse">
-        🔖 코스 저장
+        {{ $t('result.saveCourse') }}
       </button>
       <button class="result__btn result__btn--another" @click="generateAnother">
-        ↺ 다른 코스 보기
+        {{ $t('result.anotherCourse') }}
       </button>
     </div>
   </div>

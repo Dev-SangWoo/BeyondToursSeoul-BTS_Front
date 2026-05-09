@@ -1,16 +1,18 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { CalendarDays, Heart, MapPin, Sparkles } from 'lucide-vue-next'
 import { useSavedStore } from '@/stores/useSavedStore'
 
+const { t } = useI18n()
 const savedStore = useSavedStore()
 const activeTab = ref('course')
 
-const tabs = [
-  { id: 'course', label: '여행 코스' },
-  { id: 'place', label: '관광지' },
-  { id: 'event', label: '행사' },
-]
+const tabs = computed(() => [
+  { id: 'course', label: t('saved.tabs.course') },
+  { id: 'place', label: t('saved.tabs.place') },
+  { id: 'event', label: t('saved.tabs.event') },
+])
 
 const activeItems = computed(() => {
   if (activeTab.value === 'place') return savedStore.savedPlaces
@@ -22,18 +24,18 @@ const activeItems = computed(() => {
 <template>
   <div class="saved">
     <header class="saved__header">
-      <h1>저장함</h1>
-      <p>저장한 여행 코스를 모아볼 수 있어요.</p>
+      <h1>{{ $t('saved.title') }}</h1>
+      <p>{{ $t('saved.description') }}</p>
     </header>
 
     <section class="saved__summary">
       <div class="saved__summary-item">
         <Heart :size="16" :stroke-width="2.2" />
-        <span>저장 코스 {{ savedStore.savedCourses.length }}개</span>
+        <span>{{ $t('saved.savedCoursesCount', { n: savedStore.savedCourses.length }) }}</span>
       </div>
       <div class="saved__summary-item">
         <Sparkles :size="16" :stroke-width="2.2" />
-        <span>관광지 {{ savedStore.savedPlaces.length }} · 행사 {{ savedStore.savedEvents.length }}</span>
+        <span>{{ $t('saved.attractionsEvents', { a: savedStore.savedPlaces.length, e: savedStore.savedEvents.length }) }}</span>
       </div>
     </section>
 
@@ -58,7 +60,7 @@ const activeItems = computed(() => {
         <p class="saved-card__route">
           <template v-if="activeTab === 'event'">
             <CalendarDays :size="14" :stroke-width="2.2" />
-            <span>{{ item.period || '기간 정보 없음' }}</span>
+            <span>{{ item.period || $t('saved.noPeriod') }}</span>
           </template>
           <template v-else>
             <MapPin :size="14" :stroke-width="2.2" />
@@ -71,8 +73,8 @@ const activeItems = computed(() => {
       </article>
 
       <article v-if="!activeItems.length" class="saved-card saved-card--empty">
-        <h2 class="saved-card__title">아직 저장된 항목이 없어요</h2>
-        <p class="saved-card__route">홈 추천 코스의 하트 버튼으로 저장해보세요.</p>
+        <h2 class="saved-card__title">{{ $t('saved.empty') }}</h2>
+        <p class="saved-card__route">{{ $t('saved.emptyHint') }}</p>
       </article>
     </section>
   </div>

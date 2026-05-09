@@ -1,11 +1,17 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/useAuthStore'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
-const status = ref('로그인 정보를 확인 중입니다...')
+const status = ref('')
+
+onMounted(() => {
+  status.value = t('auth.checking')
+})
 
 function readFromUrl() {
   const url = new URL(window.location.href)
@@ -28,17 +34,17 @@ onMounted(async () => {
   try {
     const payload = readFromUrl()
     if (!payload.accessToken) {
-      status.value = '토큰을 찾지 못했습니다. 로그인 화면으로 이동합니다.'
+      status.value = t('auth.tokenNotFound')
       setTimeout(() => router.replace('/'), 1200)
       return
     }
 
     authStore.setSession(payload)
     await authStore.loadMe().catch(() => null)
-    status.value = '로그인 완료! 홈으로 이동합니다.'
+    status.value = t('auth.loginComplete')
     setTimeout(() => router.replace('/discover'), 500)
   } catch {
-    status.value = '로그인 처리 중 오류가 발생했습니다.'
+    status.value = t('auth.error')
     setTimeout(() => router.replace('/'), 1200)
   }
 })
