@@ -42,6 +42,7 @@ function changeCourseDensity(delta) {
 
 // ── Categories ───────────────────────────────────────────────────────
 const categories = computed(() => [
+  { id: null,        icon: 'element-4',  color: '#fe9c00', label: t('discover.category.all') },
   { id: '음식',      icon: 'cup',        color: '#f97316', label: t('discover.category.food') },
   { id: '쇼핑',      icon: 'shop',       color: '#ec4899', label: t('discover.category.shopping') },
   { id: '체험관광',  icon: 'people',     color: '#8b5cf6', label: t('discover.category.experience') },
@@ -54,7 +55,7 @@ const categories = computed(() => [
 const activeCategory = ref(null);
 
 function selectCategory(id) {
-  activeCategory.value = activeCategory.value === id ? null : id;
+  activeCategory.value = id;
 }
 
 // ── Attractions ───────────────────────────────────────────────────────
@@ -294,7 +295,7 @@ function fetchCurrentLocation() {
       <div class="map-page__cat-overlay">
         <button
           v-for="cat in categories"
-          :key="cat.id"
+          :key="cat.id ?? '__all__'"
           class="map-cat-chip"
           :class="{ 'map-cat-chip--active': activeCategory === cat.id }"
           @click="selectCategory(cat.id)"

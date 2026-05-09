@@ -60,6 +60,7 @@ export default {
       'local71-100': '완전 로컬 핀 위주',
     },
     category: {
+      all: '전체',
       food: '음식',
       shopping: '쇼핑',
       experience: '체험관광',
