@@ -32,6 +32,25 @@ const densityModes = computed(() => [
   { id: 'local71-100', text: t('discover.densityMode.local71-100'), scoreMin: 0.71, scoreMax: 1.0 },
 ]);
 
+const personaDensityIndexMap = {
+  main100: 0,
+  main70: 1,
+  balanced: 2,
+  local70: 3,
+  local100: 4,
+};
+
+function applyInitialDensityFromPersona() {
+  let pref = null;
+  try {
+    pref = JSON.parse(localStorage.getItem('bts:auth:v1') || '{}')?.user?.localPreference;
+  } catch {
+    pref = null;
+  }
+  if (!pref || !(pref in personaDensityIndexMap)) return;
+  courseDensityIndex.value = personaDensityIndexMap[pref];
+}
+
 function changeCourseDensity(delta) {
   const last = densityModes.value.length - 1;
   courseDensityIndex.value = Math.max(
@@ -62,11 +81,20 @@ const attractions = ref([]);
 const lockers = ref([]);
 const attractionsLoading = ref(false);
 
+async function loadAttractionsByDensity() {
+  const mode = densityModes.value[courseDensityIndex.value];
+  attractions.value = await fetchAttractions({
+    minScore: mode.scoreMin,
+    maxScore: mode.scoreMax,
+  });
+}
+
 onMounted(async () => {
+  applyInitialDensityFromPersona();
   attractionsLoading.value = true;
   try {
     const [attrData, lockerData, congData] = await Promise.allSettled([
-      fetchAttractions(),
+      loadAttractionsByDensity(),
       fetchLockers(),
       fetchCongestions(),
     ]);
@@ -91,18 +119,20 @@ onMounted(async () => {
   fetchCurrentLocation();
 });
 
-const filteredAttractions = computed(() => {
-  const mode = densityModes.value[courseDensityIndex.value];
-  let list = attractions.value;
-
-  if (mode.id === 'local0') {
-    list = list.filter((a) => Number(a.score) === 0);
-  } else {
-    list = list.filter((a) => {
-      const s = Number(a.score);
-      return s >= mode.scoreMin && s <= mode.scoreMax;
-    });
+watch(courseDensityIndex, async () => {
+  attractionsLoading.value = true;
+  try {
+    await loadAttractionsByDensity();
+  } catch (e) {
+    console.error('[MapPage] 관광지 재조회 실패:', e);
+    attractions.value = [];
+  } finally {
+    attractionsLoading.value = false;
   }
+});
+
+const filteredAttractions = computed(() => {
+  let list = attractions.value;
 
   if (activeCategory.value) {
     list = list.filter((a) => a.cat1Name === activeCategory.value);

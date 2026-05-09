@@ -2,7 +2,6 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
-import { useI18n } from 'vue-i18n'
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,7 +24,6 @@ const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
-const { t } = useI18n()
 const showAISheet = ref(false);
 const activeCategory = ref(null);
 const courseDensityIndex = ref(2);
@@ -82,6 +80,20 @@ const densityModes = computed(() => [
   { id: 'local51-70',  text: t('discover.densityMode.local51-70'),  scoreMin: 0.51, scoreMax: 0.70 },
   { id: 'local71-100', text: t('discover.densityMode.local71-100'), scoreMin: 0.71, scoreMax: 1.0 },
 ])
+
+const personaDensityIndexMap = {
+  main100: 0,
+  main70: 1,
+  balanced: 2,
+  local70: 3,
+  local100: 4,
+}
+
+function applyInitialDensityFromPersona() {
+  const pref = authStore.user?.localPreference
+  if (!pref || !(pref in personaDensityIndexMap)) return
+  courseDensityIndex.value = personaDensityIndexMap[pref]
+}
 
 const densityCourseMap = {
   local0: [
@@ -352,37 +364,40 @@ function scrollToCourse(index) {
 watch(courseDensityIndex, () => {
   activeCourseIndex.value = 0;
   courseTrackRef.value?.scrollTo({ left: 0, behavior: 'auto' });
+  attractionPage.value = 1;
+  void loadAttractions();
 });
 
 const attractions = ref([]);
 const attractionsLoading = ref(false);
 const attractionsError = ref(null);
 
-onMounted(async () => {
+async function loadAttractions() {
   attractionsLoading.value = true;
+  attractionsError.value = null;
+  const mode = densityModes.value[courseDensityIndex.value];
   try {
-    attractions.value = await fetchAttractions();
+    attractions.value = await fetchAttractions({
+      minScore: mode.scoreMin,
+      maxScore: mode.scoreMax,
+    });
   } catch (e) {
     attractionsError.value = e.message;
+    attractions.value = [];
   } finally {
     attractionsLoading.value = false;
   }
+}
+
+onMounted(async () => {
+  applyInitialDensityFromPersona();
+  await loadAttractions();
   void loadSavedPlansRemote();
   void loadTourCourses();
 });
 
 const filteredAttractions = computed(() => {
-  const mode = densityModes.value[courseDensityIndex.value]
   let list = attractions.value
-
-  if (mode.id === 'local0') {
-    list = list.filter((a) => Number(a.score) === 0);
-  } else {
-    list = list.filter((a) => {
-      const s = Number(a.score);
-      return s >= mode.scoreMin && s <= mode.scoreMax;
-    });
-  }
 
   if (activeCategory.value) {
     list = list.filter((a) => a.cat1Name === activeCategory.value);
@@ -429,11 +444,6 @@ function selectCategory(id) {
   activeCategory.value = activeCategory.value === id ? null : id;
   attractionPage.value = 1;
 }
-
-// density 바꿀 때도 1페이지로 리셋
-watch(courseDensityIndex, () => {
-  attractionPage.value = 1;
-});
 
 const homeListTab = ref('attractions');
 const events = ref([]);
