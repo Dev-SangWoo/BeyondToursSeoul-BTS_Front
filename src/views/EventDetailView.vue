@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   ChevronLeft,
   Heart,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-vue-next'
 import { fetchEventById } from '@/services/eventService'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 
@@ -42,7 +44,7 @@ watch(
     const sid = id != null ? String(id).trim() : ''
     if (!sid) {
       loading.value = false
-      error.value = '행사 번호가 없습니다.'
+      error.value = t('event.noId')
       return
     }
 
@@ -50,7 +52,7 @@ watch(
     try {
       eventDetail.value = await fetchEventById(sid)
     } catch (e) {
-      error.value = e.message || '행사 정보를 불러오지 못했습니다.'
+      error.value = e.message || t('event.loadError')
     } finally {
       loading.value = false
     }
@@ -89,7 +91,7 @@ const d = computed(() => {
   return {
     contentId: e.contentId,
     title: e.title ?? '',
-    categoryBadge: '축제 · 행사',
+    categoryBadge: t('event.categoryBadge'),
     overview: e.overview ?? '',
     address: e.address ?? '',
     eventPlace: e.eventPlace ?? '',
@@ -202,12 +204,12 @@ function openWebsite() {
 <template>
   <div v-if="loading" class="pd-loading">
     <div class="pd-spinner" />
-    <p>불러오는 중...</p>
+    <p>{{ $t('event.loading') }}</p>
   </div>
 
   <div v-else-if="error" class="pd-error">
     <p>{{ error }}</p>
-    <button class="pd-error__back" type="button" @click="goBack">돌아가기</button>
+    <button class="pd-error__back" type="button" @click="goBack">{{ $t('event.back') }}</button>
   </div>
 
   <div v-else-if="d" class="pd">
@@ -223,7 +225,7 @@ function openWebsite() {
       <div class="pd__hero-overlay" />
 
       <div class="pd__hero-actions">
-        <button type="button" class="pd__icon-btn" aria-label="뒤로가기" @click="goBack">
+        <button type="button" class="pd__icon-btn" :aria-label="$t('event.backBtn')" @click="goBack">
           <ChevronLeft :size="22" :stroke-width="2.5" />
         </button>
         <div class="pd__hero-actions-right">
@@ -231,12 +233,12 @@ function openWebsite() {
             type="button"
             class="pd__icon-btn"
             :class="{ 'pd__icon-btn--liked': isLiked }"
-            aria-label="찜하기"
+            :aria-label="$t('event.like')"
             @click="toggleLike"
           >
             <Heart :size="20" :stroke-width="2.2" :fill="isLiked ? '#FE9C00' : 'none'" />
           </button>
-          <button type="button" class="pd__icon-btn" aria-label="공유" @click="shareEvent">
+          <button type="button" class="pd__icon-btn" :aria-label="$t('event.share')" @click="shareEvent">
             <Share2 :size="20" :stroke-width="2.2" />
           </button>
         </div>
@@ -269,7 +271,7 @@ function openWebsite() {
       <div class="pd__quick-actions">
         <button type="button" class="pd__action-btn" @click="openMap">
           <span class="pd__action-icon"><Navigation :size="18" :stroke-width="2" /></span>
-          <span>길찾기</span>
+          <span>{{ $t('event.directions') }}</span>
         </button>
         <button
           type="button"
@@ -279,11 +281,11 @@ function openWebsite() {
           @click="callPhone()"
         >
           <span class="pd__action-icon"><Phone :size="18" :stroke-width="2" /></span>
-          <span>전화</span>
+          <span>{{ $t('event.call') }}</span>
         </button>
         <button v-if="d.homepageUrl" type="button" class="pd__action-btn" @click="openWebsite">
           <span class="pd__action-icon"><Globe :size="18" :stroke-width="2" /></span>
-          <span>홈페이지</span>
+          <span>{{ $t('event.homepage') }}</span>
         </button>
         <button
           type="button"
@@ -294,14 +296,14 @@ function openWebsite() {
           <span class="pd__action-icon">
             <Heart :size="18" :stroke-width="2" :fill="isLiked ? '#FE9C00' : 'none'" />
           </span>
-          <span>{{ isLiked ? '저장됨' : '저장' }}</span>
+          <span>{{ isLiked ? $t('event.saved') : $t('event.save') }}</span>
         </button>
       </div>
 
       <div class="pd__divider" />
 
       <section v-if="d.overview" class="pd__section">
-        <h2 class="pd__section-title">소개</h2>
+        <h2 class="pd__section-title">{{ $t('event.about') }}</h2>
         <p class="pd__desc">{{ showAllDesc ? d.overview : shortDesc }}</p>
         <button
           v-if="d.overview.length > 120"
@@ -309,7 +311,7 @@ function openWebsite() {
           class="pd__more-btn"
           @click="showAllDesc = !showAllDesc"
         >
-          {{ showAllDesc ? '접기' : '더 보기' }}
+          {{ showAllDesc ? $t('event.readLess') : $t('event.readMore') }}
           <ChevronRight
             :size="14"
             :style="{ transform: showAllDesc ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }"
@@ -320,7 +322,7 @@ function openWebsite() {
       <div v-if="d.overview" class="pd__divider" />
 
       <section v-if="d.program" class="pd__section">
-        <h2 class="pd__section-title">프로그램</h2>
+        <h2 class="pd__section-title">{{ $t('event.program') }}</h2>
         <p class="pd__desc pd__desc--pre">{{ showAllProgram ? d.program : shortProgram }}</p>
         <button
           v-if="d.program.length > 160"
@@ -328,7 +330,7 @@ function openWebsite() {
           class="pd__more-btn"
           @click="showAllProgram = !showAllProgram"
         >
-          {{ showAllProgram ? '접기' : '더 보기' }}
+          {{ showAllProgram ? $t('event.readLess') : $t('event.readMore') }}
           <ChevronRight
             :size="14"
             :style="{ transform: showAllProgram ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }"
@@ -339,14 +341,14 @@ function openWebsite() {
       <div v-if="d.program" class="pd__divider" />
 
       <section class="pd__section">
-        <h2 class="pd__section-title">행사 정보</h2>
+        <h2 class="pd__section-title">{{ $t('event.infoTitle') }}</h2>
         <ul class="pd__info-list">
           <li v-if="d.eventPlace" class="pd__info-item">
             <span class="pd__info-icon pd__info-icon--primary">
               <MapPin :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">개최 장소</span>
+              <span class="pd__info-label">{{ $t('event.venue') }}</span>
               <span class="pd__info-value">{{ d.eventPlace }}</span>
             </div>
           </li>
@@ -355,7 +357,7 @@ function openWebsite() {
               <MapPin :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">주소</span>
+              <span class="pd__info-label">{{ $t('event.address') }}</span>
               <span class="pd__info-value">{{ d.address }}</span>
             </div>
           </li>
@@ -364,7 +366,7 @@ function openWebsite() {
               <Calendar :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">기간</span>
+              <span class="pd__info-label">{{ $t('event.period') }}</span>
               <span class="pd__info-value">{{ d.periodLabel }}</span>
             </div>
           </li>
@@ -373,7 +375,7 @@ function openWebsite() {
               <Clock :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">공연 · 운영 시간</span>
+              <span class="pd__info-label">{{ $t('event.playTime') }}</span>
               <span class="pd__info-value" v-html="d.playTime.replace(/\n/g, '<br>')" />
             </div>
           </li>
@@ -382,7 +384,7 @@ function openWebsite() {
               <Banknote :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">이용 요금</span>
+              <span class="pd__info-label">{{ $t('event.fee') }}</span>
               <span class="pd__info-value">{{ d.useTimeFestival }}</span>
             </div>
           </li>
@@ -391,7 +393,7 @@ function openWebsite() {
               <Users :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">관람 연령</span>
+              <span class="pd__info-label">{{ $t('event.ageLimit') }}</span>
               <span class="pd__info-value">{{ d.ageLimit }}</span>
             </div>
           </li>
@@ -400,11 +402,11 @@ function openWebsite() {
               <Phone :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">문의 {{ d.telName ? `(${d.telName})` : '' }}</span>
+              <span class="pd__info-label">{{ $t('event.contact') }}{{ d.telName ? ` (${d.telName})` : '' }}</span>
               <a v-if="d.tel" :href="`tel:${d.tel.replace(/\s/g, '')}`" class="pd__info-value pd__info-value--link">
                 {{ d.tel }}
               </a>
-              <span v-else class="pd__info-value pd__info-value--empty">연락처 정보가 없습니다.</span>
+              <span v-else class="pd__info-value pd__info-value--empty">{{ $t('event.noContact') }}</span>
             </div>
           </li>
           <li v-if="d.homepageUrl" class="pd__info-item">
@@ -412,7 +414,7 @@ function openWebsite() {
               <Globe :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">홈페이지</span>
+              <span class="pd__info-label">{{ $t('event.homepage') }}</span>
               <a :href="d.homepageUrl" target="_blank" rel="noopener" class="pd__info-value pd__info-value--link">
                 {{ d.homepageUrl }}
               </a>
@@ -423,7 +425,7 @@ function openWebsite() {
               <Globe :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">예매</span>
+              <span class="pd__info-label">{{ $t('event.booking') }}</span>
               <span class="pd__info-value pd__desc--pre">{{ d.bookingPlace }}</span>
             </div>
           </li>
@@ -444,11 +446,11 @@ function openWebsite() {
       >
         <div class="pd__divider" />
         <section class="pd__section">
-          <h2 class="pd__section-title">주최 · 기타</h2>
+          <h2 class="pd__section-title">{{ $t('event.sponsorTitle') }}</h2>
           <ul class="pd__info-list">
             <li v-if="d.sponsor1 || d.sponsor1tel" class="pd__info-item">
               <div class="pd__info-body pd__info-body--full">
-                <span class="pd__info-label">주최 · 주관</span>
+                <span class="pd__info-label">{{ $t('event.sponsor') }}</span>
                 <span class="pd__info-value">{{ d.sponsor1 || '—' }}</span>
                 <a
                   v-if="d.sponsor1tel"
@@ -461,7 +463,7 @@ function openWebsite() {
             </li>
             <li v-if="d.sponsor2 || d.sponsor2tel" class="pd__info-item">
               <div class="pd__info-body pd__info-body--full">
-                <span class="pd__info-label">후원 등</span>
+                <span class="pd__info-label">{{ $t('event.supporter') }}</span>
                 <span class="pd__info-value">{{ d.sponsor2 || '—' }}</span>
                 <a
                   v-if="d.sponsor2tel"
@@ -474,25 +476,25 @@ function openWebsite() {
             </li>
             <li v-if="d.discountInfoFestival" class="pd__info-item">
               <div class="pd__info-body pd__info-body--full">
-                <span class="pd__info-label">할인 정보</span>
+                <span class="pd__info-label">{{ $t('event.discount') }}</span>
                 <span class="pd__info-value">{{ d.discountInfoFestival }}</span>
               </div>
             </li>
             <li v-if="d.festivalGrade" class="pd__info-item">
               <div class="pd__info-body pd__info-body--full">
-                <span class="pd__info-label">행사 규모</span>
+                <span class="pd__info-label">{{ $t('event.grade') }}</span>
                 <span class="pd__info-value">{{ d.festivalGrade }}</span>
               </div>
             </li>
             <li v-if="d.subEvent" class="pd__info-item">
               <div class="pd__info-body pd__info-body--full">
-                <span class="pd__info-label">부대 행사</span>
+                <span class="pd__info-label">{{ $t('event.subEvent') }}</span>
                 <span class="pd__info-value pd__desc--pre">{{ d.subEvent }}</span>
               </div>
             </li>
             <li v-if="d.spendTimeFestival" class="pd__info-item">
               <div class="pd__info-body pd__info-body--full">
-                <span class="pd__info-label">체류 시간</span>
+                <span class="pd__info-label">{{ $t('event.spendTime') }}</span>
                 <span class="pd__info-value">{{ d.spendTimeFestival }}</span>
               </div>
             </li>
@@ -504,10 +506,10 @@ function openWebsite() {
         <div class="pd__divider" />
         <section class="pd__section pd__section--no-pad-bottom">
           <div class="pd__gallery-header">
-            <h2 class="pd__section-title">사진</h2>
+            <h2 class="pd__section-title">{{ $t('event.photos') }}</h2>
             <span class="pd__gallery-count">
               <ImageIcon :size="13" />
-              {{ d.images.length }}장
+              {{ $t('event.photoCount', { n: d.images.length }) }}
             </span>
           </div>
         </section>
@@ -528,8 +530,8 @@ function openWebsite() {
   </div>
 
   <div v-else class="pd-error">
-    <p>표시할 행사 정보가 없습니다.</p>
-    <button type="button" class="pd-error__back" @click="goBack">돌아가기</button>
+    <p>{{ $t('event.noData') }}</p>
+    <button type="button" class="pd-error__back" @click="goBack">{{ $t('event.back') }}</button>
   </div>
 </template>
 

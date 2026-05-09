@@ -1,5 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const progress = ref(0)
 let timer = null
@@ -23,7 +26,7 @@ defineExpose({ complete })
 <template>
   <div class="gen-loading">
     <div class="gen-loading__bot">🤖</div>
-    <p class="gen-loading__text">AI가 핀 지수를 분석하여<br />동선을 짜는 중입니다...</p>
+    <p class="gen-loading__text" v-html="$t('ai.loading.text').replace(/\n/g, '<br />')"></p>
     <div class="gen-loading__bar-wrap">
       <div class="gen-loading__bar" :style="{ width: `${Math.min(progress, 100).toFixed(0)}%` }"></div>
     </div>

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { MessageCircle, Sparkles } from 'lucide-vue-next'
 import { useMapStore } from '@/stores/useMapStore'
 import MapView from '@/components/map/MapView.vue'
@@ -14,12 +15,25 @@ import {
 import { normalizeStructured } from '@/utils/structuredNormalize'
 import AiChatPlanStrip from './AiChatPlanStrip.vue'
 
+const { t } = useI18n()
+
 const props = defineProps({
   summaryText: { type: String, default: '' },
+  initialStructured: { type: Object, default: null },
+  initialThread: { type: Array, default: () => [] },
   canSubmitGenerate: { type: Boolean, default: false },
+  preserveMapOnExit: { type: Boolean, default: false },
+  localRatio: { type: Number, default: 50 },
 })
 
-const emit = defineEmits(['back', 'generate'])
+const emit = defineEmits([
+  'back',
+  'generate',
+  'structured-change',
+  'thread-snapshot',
+  'bootstrap-complete',
+  'before-navigate-detail',
+])
 
 const mapStore = useMapStore()
 
@@ -28,50 +42,84 @@ const chatInput = ref('')
 const isChatLoading = ref(false)
 const chatError = ref('')
 const mapSyncing = ref(false)
+const mapExpanded = ref(false)
 const selectedDayIndex = ref(0)
+const allDayMarkers = ref([])
+const allDayPolyline = ref([])
+const threadRef = ref(null)
+const bootstrapping = ref(false)
 
 let mapSnapshot = null
 
-const introAssistant =
-  '위에 정리해 주신 일정·취향·추가 요청을 바탕으로 여행 계획을 같이 다듬어 볼게요. 코스 초안을 바로 불러오고 있어요. 수정이나 추가 요청은 아래 채팅으로 보내 주세요.'
+const introAssistant = computed(() => t('ai.chat.introAssistant'))
 
 /** 채팅 단계 진입 시 자동 전송 — 수동으로 같은 문구를 입력하지 않아도 첫 일정 응답을 받습니다. */
 const INITIAL_COURSE_MESSAGE = '코스 생성'
+
+function hasUsableStructured(structured) {
+  if (!structured || typeof structured !== 'object') return false
+  const days = Array.isArray(structured.days) ? structured.days : []
+  if (days.some((d) => Array.isArray(d?.slots) && d.slots.length > 0)) return true
+  const route = structured.summary?.route
+  if (Array.isArray(route) && route.some((x) => String(x || '').trim())) return true
+  const title = structured.summary?.title
+  return typeof title === 'string' && title.trim().length > 0
+}
 
 const lastStructured = computed(() => {
   for (let i = thread.value.length - 1; i >= 0; i -= 1) {
     const m = thread.value[i]
     if (m.role === 'assistant' && m.structured != null && typeof m.structured === 'object') {
-      return normalizeStructured(m.structured)
+      const normalized = normalizeStructured(m.structured)
+      if (hasUsableStructured(normalized)) return normalized
     }
   }
   return null
 })
 
-function seedThread() {
-  thread.value = [
-    { id: 'u0', role: 'user', text: props.summaryText || '(입력 요약)' },
-    { id: 'a0', role: 'assistant', text: introAssistant },
-  ]
-}
-
-watch(
-  () => props.summaryText,
-  () => seedThread(),
-  { immediate: true },
+const currentDayMarkerCount = computed(() =>
+  allDayMarkers.value.filter((m) => m.dayIndex === selectedDayIndex.value).length,
 )
 
+function seedThread() {
+  if (Array.isArray(props.initialThread) && props.initialThread.length >= 2) {
+    thread.value = props.initialThread.map((m) => ({ ...m }))
+    return
+  }
+  const seeded = [
+    { id: 'u0', role: 'user', text: props.summaryText || '(입력 요약)' },
+    { id: 'a0', role: 'assistant', text: introAssistant.value },
+  ]
+  const normalized = normalizeStructured(props.initialStructured)
+  if (hasUsableStructured(normalized)) {
+    seeded.push({
+      id: 'a-seeded',
+      role: 'assistant',
+      text: resolveAssistantText(normalized),
+      markdown: false,
+      structured: normalized,
+    })
+  }
+  thread.value = seeded
+}
+
 onMounted(() => {
+  seedThread()
   mapSnapshot = {
     markers: [...mapStore.markers],
     polyline: [...mapStore.polyline],
     center: { ...mapStore.mapCenter },
   }
-  void nextTick().then(() => sendChatWithText(INITIAL_COURSE_MESSAGE))
+  if (!lastStructured.value) {
+    bootstrapping.value = true
+    void nextTick().then(() => sendChatWithText(INITIAL_COURSE_MESSAGE, { bootstrap: true }))
+  } else {
+    emit('bootstrap-complete')
+  }
 })
 
 onUnmounted(() => {
-  if (mapSnapshot) {
+  if (!props.preserveMapOnExit && mapSnapshot) {
     mapStore.setMarkers(mapSnapshot.markers)
     mapStore.setPolyline(mapSnapshot.polyline)
     mapStore.setCenter(mapSnapshot.center.lat, mapSnapshot.center.lng)
@@ -80,6 +128,8 @@ onUnmounted(() => {
 
 async function applyStructuredToMap(structured) {
   if (!structured) {
+    allDayMarkers.value = []
+    allDayPolyline.value = []
     mapStore.setMarkers([])
     mapStore.setPolyline([])
     mapStore.setCenter(SEOUL_CENTER.lat, SEOUL_CENTER.lng)
@@ -89,10 +139,17 @@ async function applyStructuredToMap(structured) {
   try {
     const flat = flattenStructuredSlots(structured)
     const { markers, polyline } = await buildMapMarkersFromStructured(flat)
-    mapStore.setMarkers(markers)
-    mapStore.setPolyline(polyline)
-    if (markers.length) {
-      const c = meanCenter(markers)
+    allDayMarkers.value = markers
+    allDayPolyline.value = polyline
+    const day = selectedDayIndex.value
+    const dayMarkers = markers.filter((m) => m.dayIndex === day)
+    const dayPolyline = dayMarkers
+      .filter((m) => m.lat != null && m.lng != null)
+      .map((m) => ({ lat: m.lat, lng: m.lng }))
+    mapStore.setMarkers(dayMarkers)
+    mapStore.setPolyline(dayPolyline)
+    if (dayMarkers.length) {
+      const c = meanCenter(dayMarkers)
       mapStore.setCenter(c.lat, c.lng)
     } else {
       mapStore.setCenter(SEOUL_CENTER.lat, SEOUL_CENTER.lng)
@@ -105,21 +162,51 @@ async function applyStructuredToMap(structured) {
 watch(
   lastStructured,
   (s) => {
+    emit('structured-change', s)
     applyStructuredToMap(s)
   },
   { immediate: true },
 )
 
-watch([selectedDayIndex, () => mapStore.markers], () => {
+watch(
+  () => thread.value.length,
+  async () => {
+    emit('thread-snapshot', thread.value.map((m) => ({ ...m })))
+    await nextTick()
+    const el = threadRef.value
+    if (el) el.scrollTop = el.scrollHeight
+  },
+)
+
+watch(selectedDayIndex, () => {
+  if (!allDayMarkers.value.length) return
   const day = selectedDayIndex.value
-  const mks = mapStore.markers.filter((m) => m.dayIndex === day)
-  if (mks.length) {
-    const c = meanCenter(mks)
+  const dayMarkers = allDayMarkers.value.filter((m) => m.dayIndex === day)
+  const dayPolyline = dayMarkers
+    .filter((m) => m.lat != null && m.lng != null)
+    .map((m) => ({ lat: m.lat, lng: m.lng }))
+  mapStore.setMarkers(dayMarkers)
+  mapStore.setPolyline(dayPolyline)
+  if (dayMarkers.length) {
+    const c = meanCenter(dayMarkers)
     mapStore.setCenter(c.lat, c.lng)
   }
 })
 
-async function sendChatWithText(t) {
+function resolveAssistantText(structured) {
+  const days = Array.isArray(structured?.days) ? structured.days : []
+  if (!days.length) return '응답을 받지 못했습니다.'
+  const dayCount = days.length
+  const places = days
+    .flatMap((d) => (Array.isArray(d?.slots) ? d.slots : []))
+    .map((s) => s?.placeName)
+    .filter(Boolean)
+  const preview = [...new Set(places)].slice(0, 3).join(', ')
+  return `${dayCount}일 여행 일정을 준비했어요.${preview ? ` (${preview} 등)` : ''}`
+}
+
+async function sendChatWithText(t, options = {}) {
+  const { bootstrap = false } = options
   const trimmed = (t || '').trim()
   if (!trimmed || isChatLoading.value) return
   chatError.value = ''
@@ -127,19 +214,23 @@ async function sendChatWithText(t) {
   thread.value.push({ id: `u-${Date.now()}`, role: 'user', text: trimmed })
   isChatLoading.value = true
   try {
-    const data = await requestAiChat(trimmed, 'ko', history)
+    const data = await requestAiChat(trimmed, 'ko', history, props.localRatio)
     thread.value.push({
       id: `a-${Date.now()}`,
       role: 'assistant',
-      text: data.answer || '응답을 받지 못했습니다.',
+      text: data.answer || resolveAssistantText(data.structured) || t('ai.chat.noResponse'),
       markdown: true,
       structured: data.structured,
       model: data.model,
     })
   } catch (e) {
-    chatError.value = e.message || '요청 중 오류가 났어요.'
+    chatError.value = e.message || t('ai.chat.requestError')
   } finally {
     isChatLoading.value = false
+    if (bootstrap) {
+      bootstrapping.value = false
+      emit('bootstrap-complete')
+    }
   }
 }
 
@@ -150,22 +241,62 @@ async function sendChat() {
   await sendChatWithText(t)
 }
 
+function toggleMapExpanded() {
+  mapExpanded.value = !mapExpanded.value
+}
+
+function focusMarkerFromTimeline(payload) {
+  const dayIndex = Math.max(0, (payload?.day ?? 1) - 1)
+  const item = payload?.item
+  if (!item) return
+  const itemName = String(item.name || '').trim().toLowerCase()
+  const itemTime = String(item.time || '').trim().toLowerCase()
+  const target = allDayMarkers.value.find((m) =>
+    m.dayIndex === dayIndex
+    && (
+      String(m.placeName || '').trim().toLowerCase() === itemName
+      || (
+        String(m.slotLabel || '').trim().toLowerCase() === itemTime
+        && String(m.placeName || '').trim().toLowerCase().includes(itemName)
+      )
+    ),
+  )
+  if (!target) return
+  mapStore.selectMarker(target.id)
+  if (target.lat != null && target.lng != null) {
+    mapStore.setCenter(target.lat, target.lng)
+  }
+}
+
 </script>
 
 <template>
   <div class="chat-step">
+    <div v-if="bootstrapping" class="chat-step__bootloading">
+      <div class="chat-step__bootloading-card">
+        <span class="chat-step__bootloading-spinner" />
+        <p class="chat-step__bootloading-title">AI가 코스를 생성하고 있어요</p>
+        <p class="chat-step__bootloading-sub">여행 조건을 바탕으로 최적 코스를 계산 중입니다.</p>
+      </div>
+    </div>
     <header class="chat-step__bar">
       <div class="chat-step__bar-title">
         <MessageCircle :size="17" :stroke-width="2.3" class="chat-step__bar-icon" />
-        <span>AI 여행 계획</span>
-        <span v-if="mapSyncing" class="chat-step__sync">지도 반영 중…</span>
+        <span>{{ $t('ai.chat.title') }}</span>
+        <span v-if="mapSyncing" class="chat-step__sync">{{ $t('ai.chat.mapSyncing') }}</span>
       </div>
       <p class="chat-step__bar-sub">
-        지도·일정은 마지막 AI 응답의 structured 기준입니다. 아래에서 대화를 이어 가세요.
+        {{ $t('ai.chat.barSub') }}
       </p>
     </header>
 
-    <div class="chat-step__map">
+    <div class="chat-step__map" :class="{ 'chat-step__map-expanded': mapExpanded }">
+      <div class="chat-step__map-tools">
+        <span class="chat-step__map-chip">DAY {{ selectedDayIndex + 1 }} · {{ currentDayMarkerCount }}개</span>
+        <button class="chat-step__map-toggle" type="button" @click="toggleMapExpanded">
+          {{ mapExpanded ? '지도 축소' : '지도 확대' }}
+        </button>
+      </div>
       <MapView />
       <div v-if="mapSyncing" class="chat-step__map-overlay" aria-hidden="true" />
     </div>
@@ -175,10 +306,12 @@ async function sendChat() {
         :structured="lastStructured"
         :selected-day-index="selectedDayIndex"
         @update:selected-day-index="selectedDayIndex = $event"
+        @focus-item="focusMarkerFromTimeline"
+        @before-navigate-detail="emit('before-navigate-detail')"
       />
     </section>
 
-    <div class="chat-step__thread">
+    <div ref="threadRef" class="chat-step__thread">
       <article
         v-for="msg in thread"
         :key="msg.id"
@@ -203,17 +336,17 @@ async function sendChat() {
         v-model="chatInput"
         class="chat-step__input"
         type="text"
-        placeholder="AI에게 질문하기"
+        :placeholder="$t('ai.chat.inputPlaceholder')"
         :disabled="isChatLoading"
         @keydown.enter.prevent="sendChat"
       />
       <button class="chat-step__send" type="button" :disabled="isChatLoading" @click="sendChat">
-        {{ isChatLoading ? '…' : '전송' }}
+        {{ isChatLoading ? $t('ai.chat.sending') : $t('ai.chat.send') }}
       </button>
     </div>
 
     <div class="chat-step__actions">
-      <button type="button" class="chat-step__ghost" @click="emit('back')">이전</button>
+      <button type="button" class="chat-step__ghost" @click="emit('back')">{{ $t('ai.chat.back') }}</button>
       <button
         type="button"
         class="chat-step__primary"
@@ -222,7 +355,7 @@ async function sendChat() {
         @click="emit('generate')"
       >
         <Sparkles :size="18" :stroke-width="2.4" />
-        코스 생성
+        {{ lastStructured ? $t('ai.chat.generateCourseConfirm') : $t('ai.chat.generateCourse') }}
       </button>
     </div>
   </div>
@@ -237,6 +370,56 @@ async function sendChat() {
   flex: 1;
   height: 100%;
   overflow: hidden;
+  position: relative;
+}
+
+.chat-step__bootloading {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-step__bootloading-card {
+  width: min(86%, 280px);
+  padding: 16px 14px;
+  border-radius: 14px;
+  border: 1px solid #f1e5d2;
+  background: #fffaf2;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.chat-step__bootloading-spinner {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid #ffe1b0;
+  border-top-color: #fe9c00;
+  animation: chat-step-spin 0.9s linear infinite;
+}
+
+.chat-step__bootloading-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #c97000;
+}
+
+.chat-step__bootloading-sub {
+  margin: 0;
+  font-size: 11px;
+  color: #8f8f8f;
+}
+
+@keyframes chat-step-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .chat-step__bar {
@@ -275,10 +458,45 @@ async function sendChat() {
 .chat-step__map {
   position: relative;
   flex: 1 1 auto;
-  min-height: min(42dvh, 320px);
+  min-height: clamp(160px, 30dvh, 240px);
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid #eceae4;
+}
+
+.chat-step__map-tools {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.chat-step__map-chip {
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #ece5d7;
+  color: #6d4b22;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.chat-step__map-toggle {
+  pointer-events: auto;
+  border: 1px solid #e2e2e2;
+  background: rgba(255, 255, 255, 0.96);
+  color: #555;
+  border-radius: 10px;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .chat-step__map :deep(.map-view) {
@@ -295,22 +513,21 @@ async function sendChat() {
 
 .chat-step__plan-wrap {
   flex-shrink: 0;
-  height: clamp(100px, 15dvh, 220px);
-  min-height: 100px;
-  overflow: hidden;
+  min-height: 72px;
+  max-height: 190px;
+  overflow-y: auto;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid #f0ede6;
 }
 
 .chat-step__plan-wrap :deep(.plan-strip) {
-  max-height: 100%;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .chat-step__thread {
-  flex: 1 1 auto;
-  min-height: 120px;
+  flex: 1 1 0;
+  min-height: 0;
   margin-top: 8px;
   padding: 10px;
   border-radius: 14px;
@@ -391,6 +608,8 @@ async function sendChat() {
   gap: 8px;
   flex-shrink: 0;
   margin-top: 8px;
+  background: #fff;
+  padding-top: 6px;
 }
 
 .chat-step__input {
@@ -425,6 +644,12 @@ async function sendChat() {
   gap: 10px;
   margin-top: 8px;
   flex-shrink: 0;
+  background: #fff;
+  padding-top: 2px;
+}
+
+.chat-step__map-expanded {
+  min-height: min(50dvh, 430px);
 }
 
 .chat-step__ghost {

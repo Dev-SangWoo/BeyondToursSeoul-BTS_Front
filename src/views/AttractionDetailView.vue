@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   ChevronLeft,
   Heart,
@@ -16,8 +17,9 @@ import {
 } from 'lucide-vue-next'
 import { fetchAttractionById } from '@/services/attractionService'
 
+const { t } = useI18n()
+
 const props = defineProps({
-  // 임베드 모드: 이 prop이 있으면 route.params.id 대신 사용
   attractionId: { default: null },
 })
 const emit = defineEmits(['close'])
@@ -177,13 +179,13 @@ function formatCount(n) {
   <!-- Loading -->
   <div v-if="loading" class="pd-loading">
     <div class="pd-spinner" />
-    <p>불러오는 중...</p>
+    <p>{{ $t('attraction.loading') }}</p>
   </div>
 
   <!-- Error -->
   <div v-else-if="error" class="pd-error">
     <p>{{ error }}</p>
-    <button class="pd-error__back" @click="goBack">돌아가기</button>
+    <button class="pd-error__back" @click="goBack">{{ $t('attraction.back') }}</button>
   </div>
 
   <!-- Content -->
@@ -203,7 +205,7 @@ function formatCount(n) {
 
       <!-- 상단 액션 버튼 -->
       <div class="pd__hero-actions">
-        <button class="pd__icon-btn" @click="goBack" aria-label="뒤로가기">
+        <button class="pd__icon-btn" @click="goBack" :aria-label="$t('attraction.back')">
           <ChevronLeft :size="22" :stroke-width="2.5" />
         </button>
         <div class="pd__hero-actions-right">
@@ -211,11 +213,11 @@ function formatCount(n) {
             class="pd__icon-btn"
             :class="{ 'pd__icon-btn--liked': isLiked }"
             @click="toggleLike"
-            aria-label="찜하기"
+            :aria-label="isLiked ? $t('attraction.saved') : $t('attraction.save')"
           >
             <Heart :size="20" :stroke-width="2.2" :fill="isLiked ? '#FE9C00' : 'none'" />
           </button>
-          <button class="pd__icon-btn" @click="sharePlace" aria-label="공유">
+          <button class="pd__icon-btn" @click="sharePlace">
             <Share2 :size="20" :stroke-width="2.2" />
           </button>
         </div>
@@ -262,7 +264,7 @@ function formatCount(n) {
       <div class="pd__quick-actions">
         <button class="pd__action-btn" @click="openMap">
           <span class="pd__action-icon"><Navigation :size="18" :stroke-width="2" /></span>
-          <span>길찾기</span>
+          <span>{{ $t('attraction.directions') }}</span>
         </button>
         <button
           class="pd__action-btn"
@@ -271,11 +273,11 @@ function formatCount(n) {
           @click="callPhone"
         >
           <span class="pd__action-icon"><Phone :size="18" :stroke-width="2" /></span>
-          <span>전화</span>
+          <span>{{ $t('attraction.call') }}</span>
         </button>
         <button v-if="d.website" class="pd__action-btn" @click="openWebsite">
           <span class="pd__action-icon"><Globe :size="18" :stroke-width="2" /></span>
-          <span>웹사이트</span>
+          <span>{{ $t('attraction.website') }}</span>
         </button>
         <button
           class="pd__action-btn"
@@ -285,7 +287,7 @@ function formatCount(n) {
           <span class="pd__action-icon">
             <Heart :size="18" :stroke-width="2" :fill="isLiked ? '#FE9C00' : 'none'" />
           </span>
-          <span>{{ isLiked ? '저장됨' : '저장' }}</span>
+          <span>{{ isLiked ? $t('attraction.saved') : $t('attraction.save') }}</span>
         </button>
       </div>
 
@@ -293,14 +295,14 @@ function formatCount(n) {
 
       <!-- 소개 -->
       <section v-if="d.description" class="pd__section">
-        <h2 class="pd__section-title">소개</h2>
+        <h2 class="pd__section-title">{{ $t('attraction.about') }}</h2>
         <p class="pd__desc">{{ showAllDesc ? d.description : shortDesc }}</p>
         <button
           v-if="d.description.length > 120"
           class="pd__more-btn"
           @click="showAllDesc = !showAllDesc"
         >
-          {{ showAllDesc ? '접기' : '더 보기' }}
+          {{ showAllDesc ? $t('attraction.readLess') : $t('attraction.readMore') }}
           <ChevronRight
             :size="14"
             :style="{ transform: showAllDesc ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }"
@@ -312,14 +314,14 @@ function formatCount(n) {
 
       <!-- 기본 정보 -->
       <section class="pd__section">
-        <h2 class="pd__section-title">정보</h2>
+        <h2 class="pd__section-title">{{ $t('attraction.info') }}</h2>
         <ul class="pd__info-list">
           <li v-if="d.address" class="pd__info-item">
             <span class="pd__info-icon pd__info-icon--primary">
               <MapPin :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">위치</span>
+              <span class="pd__info-label">{{ $t('attraction.location') }}</span>
               <span class="pd__info-value">{{ d.address }}</span>
             </div>
           </li>
@@ -328,9 +330,9 @@ function formatCount(n) {
               <Phone :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">전화번호</span>
+              <span class="pd__info-label">{{ $t('attraction.phone') }}</span>
               <a v-if="d.phone" :href="`tel:${d.phone}`" class="pd__info-value pd__info-value--link">{{ d.phone }}</a>
-              <span v-else class="pd__info-value pd__info-value--empty">전화번호 정보가 없습니다.</span>
+              <span v-else class="pd__info-value pd__info-value--empty">{{ $t('attraction.noPhone') }}</span>
             </div>
           </li>
           <li v-if="d.hours" class="pd__info-item">
@@ -338,7 +340,7 @@ function formatCount(n) {
               <Clock :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">이용시간</span>
+              <span class="pd__info-label">{{ $t('attraction.hours') }}</span>
               <span class="pd__info-value" v-html="d.hours.replace(/\n/g, '<br>')" />
             </div>
           </li>
@@ -347,7 +349,7 @@ function formatCount(n) {
               <Globe :size="16" :stroke-width="2.2" />
             </span>
             <div class="pd__info-body">
-              <span class="pd__info-label">웹사이트</span>
+              <span class="pd__info-label">{{ $t('attraction.website') }}</span>
               <a :href="d.website" target="_blank" rel="noopener" class="pd__info-value pd__info-value--link">
                 {{ d.website }}
               </a>
@@ -361,10 +363,10 @@ function formatCount(n) {
         <div class="pd__divider" />
         <section class="pd__section pd__section--no-pad-bottom">
           <div class="pd__gallery-header">
-            <h2 class="pd__section-title">사진</h2>
+            <h2 class="pd__section-title">{{ $t('attraction.photos') }}</h2>
             <span class="pd__gallery-count">
               <ImageIcon :size="13" />
-              {{ d.images.length }}장
+              {{ $t('attraction.photoCount', { n: d.images.length }) }}
             </span>
           </div>
         </section>

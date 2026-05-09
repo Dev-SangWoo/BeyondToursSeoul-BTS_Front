@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { IsIcon } from '@ratoufa/iconsax-vue';
 import { useMapStore } from '@/stores/useMapStore';
@@ -9,6 +10,7 @@ import MapView from '@/components/map/MapView.vue';
 import AttractionDetailView from '@/views/AttractionDetailView.vue';
 import LockerDetailView from '@/views/LockerDetailView.vue';
 
+const { t } = useI18n();
 const mapStore = useMapStore();
 
 // ── GPS ──────────────────────────────────────────────────────────────
@@ -22,36 +24,16 @@ const showCongestionInfo = ref(false);
 // ── Density ──────────────────────────────────────────────────────────
 const courseDensityIndex = ref(2);
 
-const densityModes = [
-  { id: 'local0', text: '유명 관광지 완전 위주', scoreMin: 0, scoreMax: 0 },
-  {
-    id: 'local1-30',
-    text: '관광지 중심, 로컬 가미',
-    scoreMin: 0.01,
-    scoreMax: 0.3,
-  },
-  {
-    id: 'local31-50',
-    text: '관광지 & 로컬 균형',
-    scoreMin: 0.31,
-    scoreMax: 0.5,
-  },
-  {
-    id: 'local51-70',
-    text: '로컬 핀 중심, 관광지 가미',
-    scoreMin: 0.51,
-    scoreMax: 0.7,
-  },
-  {
-    id: 'local71-100',
-    text: '완전 로컬 핀 위주',
-    scoreMin: 0.71,
-    scoreMax: 1.0,
-  },
-];
+const densityModes = computed(() => [
+  { id: 'local0',      text: t('discover.densityMode.local0'),      scoreMin: 0,    scoreMax: 0 },
+  { id: 'local1-30',   text: t('discover.densityMode.local1-30'),   scoreMin: 0.01, scoreMax: 0.30 },
+  { id: 'local31-50',  text: t('discover.densityMode.local31-50'),  scoreMin: 0.31, scoreMax: 0.50 },
+  { id: 'local51-70',  text: t('discover.densityMode.local51-70'),  scoreMin: 0.51, scoreMax: 0.70 },
+  { id: 'local71-100', text: t('discover.densityMode.local71-100'), scoreMin: 0.71, scoreMax: 1.0 },
+]);
 
 function changeCourseDensity(delta) {
-  const last = densityModes.length - 1;
+  const last = densityModes.value.length - 1;
   courseDensityIndex.value = Math.max(
     0,
     Math.min(last, courseDensityIndex.value + delta),
@@ -59,15 +41,15 @@ function changeCourseDensity(delta) {
 }
 
 // ── Categories ───────────────────────────────────────────────────────
-const categories = [
-  { id: '음식', icon: 'cup', color: '#f97316', label: '음식' },
-  { id: '쇼핑', icon: 'shop', color: '#ec4899', label: '쇼핑' },
-  { id: '체험관광', icon: 'people', color: '#8b5cf6', label: '체험관광' },
-  { id: '자연관광', icon: 'tree', color: '#16a34a', label: '자연관광' },
-  { id: '문화관광', icon: 'courthouse', color: '#a16207', label: '문화관광' },
-  { id: '역사관광', icon: 'building', color: '#78716c', label: '역사관광' },
-  { id: '레저스포츠', icon: 'activity', color: '#2563eb', label: '레저스포츠' },
-];
+const categories = computed(() => [
+  { id: '음식',      icon: 'cup',        color: '#f97316', label: t('discover.category.food') },
+  { id: '쇼핑',      icon: 'shop',       color: '#ec4899', label: t('discover.category.shopping') },
+  { id: '체험관광',  icon: 'people',     color: '#8b5cf6', label: t('discover.category.experience') },
+  { id: '자연관광',  icon: 'tree',       color: '#16a34a', label: t('discover.category.nature') },
+  { id: '문화관광',  icon: 'courthouse', color: '#a16207', label: t('discover.category.culture') },
+  { id: '역사관광',  icon: 'building',   color: '#78716c', label: t('discover.category.history') },
+  { id: '레저스포츠', icon: 'activity',  color: '#2563eb', label: t('discover.category.leisure') },
+]);
 
 const activeCategory = ref(null);
 
@@ -110,7 +92,7 @@ onMounted(async () => {
 });
 
 const filteredAttractions = computed(() => {
-  const mode = densityModes[courseDensityIndex.value];
+  const mode = densityModes.value[courseDensityIndex.value];
   let list = attractions.value;
 
   if (mode.id === 'local0') {
@@ -224,7 +206,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeyDown));
 // ── GPS ──────────────────────────────────────────────────────────────
 function fetchCurrentLocation() {
   if (!navigator.geolocation) {
-    gpsError.value = '이 브라우저는 위치 서비스를 지원하지 않습니다.';
+    gpsError.value = t('map.gps.notSupported');
     return;
   }
   gpsLoading.value = true;
@@ -240,16 +222,16 @@ function fetchCurrentLocation() {
       gpsLoading.value = false;
       switch (err.code) {
         case err.PERMISSION_DENIED:
-          gpsError.value = '위치 접근 권한이 거부되었습니다.';
+          gpsError.value = t('map.gps.denied');
           break;
         case err.POSITION_UNAVAILABLE:
-          gpsError.value = '위치 정보를 가져올 수 없습니다.';
+          gpsError.value = t('map.gps.unavailable');
           break;
         case err.TIMEOUT:
-          gpsError.value = '위치 조회 시간이 초과되었습니다.';
+          gpsError.value = t('map.gps.timeout');
           break;
         default:
-          gpsError.value = '위치를 가져오지 못했습니다.';
+          gpsError.value = t('map.gps.error');
       }
       setTimeout(() => {
         gpsError.value = '';
@@ -264,23 +246,19 @@ function fetchCurrentLocation() {
   <div class="map-page">
     <!-- ── Header ─────────────────────────────────────────────── -->
     <header class="map-page__header">
-      <h1 class="map-page__title">서울 지도</h1>
-      <span v-if="attractionsLoading" class="map-page__loading-badge"
-        >로드 중…</span
-      >
-      <span v-else class="map-page__count-badge"
-        >{{ allMarkers.length }}개 핀</span
-      >
+      <h1 class="map-page__title">{{ $t('map.title') }}</h1>
+      <span v-if="attractionsLoading" class="map-page__loading-badge">{{ $t('map.loading') }}</span>
+      <span v-else class="map-page__count-badge">{{ $t('map.pinCount', { n: allMarkers.length }) }}</span>
     </header>
 
     <!-- ── Density Selector ────────────────────────────────────── -->
     <div class="map-density-bar">
-      <p class="map-density-bar__label">여행 스타일</p>
+      <p class="map-density-bar__label">{{ $t('discover.travelStyle') }}</p>
       <div class="map-density-bar__control">
         <button
           class="map-density-bar__arrow"
           :disabled="courseDensityIndex === 0"
-          aria-label="이전"
+          :aria-label="$t('discover.prevPage')"
           @click="changeCourseDensity(-1)"
         >
           <ChevronLeft :size="16" :stroke-width="2.5" />
@@ -300,7 +278,7 @@ function fetchCurrentLocation() {
         <button
           class="map-density-bar__arrow"
           :disabled="courseDensityIndex === densityModes.length - 1"
-          aria-label="다음"
+          :aria-label="$t('discover.nextPage')"
           @click="changeCourseDensity(1)"
         >
           <ChevronRight :size="16" :stroke-width="2.5" />
@@ -339,7 +317,7 @@ function fetchCurrentLocation() {
         class="map-page__locate-btn"
         :class="{ 'map-page__locate-btn--loading': gpsLoading }"
         :disabled="gpsLoading"
-        aria-label="현재 위치로 이동"
+        :aria-label="$t('map.locateCurrent')"
         @click="fetchCurrentLocation"
       >
         <span v-if="gpsLoading" class="map-page__locate-spinner"></span>
@@ -409,11 +387,11 @@ function fetchCurrentLocation() {
       <div class="map-page__legend">
         <div class="map-page__legend-item">
           <span class="map-page__legend-dot" style="background: #fe9c00"></span>
-          <span class="map-page__legend-label">관광지</span>
+          <span class="map-page__legend-label">{{ $t('map.legendAttraction') }}</span>
         </div>
         <div class="map-page__legend-item">
           <span class="map-page__legend-dot" style="background: #0d9488"></span>
-          <span class="map-page__legend-label">물품보관소</span>
+          <span class="map-page__legend-label">{{ $t('map.legendLocker') }}</span>
         </div>
       </div>
 
