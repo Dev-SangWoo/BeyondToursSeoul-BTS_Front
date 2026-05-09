@@ -10,6 +10,10 @@ let naverMarkers = []
 let naverPolyline = null
 let currentLocationMarker = null
 
+// ── 클러스터링 설정 ─────────────────────────────────────────────
+const CLUSTER_DISTANCE = 60 // 픽셀 기준 클러스터링 반경
+const MIN_ZOOM_FOR_INDIVIDUAL = 15 // 이 줌 레벨 이상이면 개별 표시
+
 // ── Naver Maps 스크립트 동적 로드 ─────────────────────────────
 function loadNaverMapScript() {
   return new Promise((resolve, reject) => {
@@ -79,10 +83,16 @@ function syncCurrentLocation(loc) {
 }
 
 // ── 마커 색상 헬퍼 ─────────────────────────────────────────────
-function markerColor(type, crowdLevel) {
+function markerColor(type, crowdLevel, congestionLevel) {
   if (type === 'start')  return '#22c55e'
   if (type === 'end')    return '#ef4444'
   if (type === 'locker') return '#0d9488'
+  if (type === 'congestion' || type === 'congestion-cluster') {
+    if (congestionLevel === 4) return '#ef4444' // 매우 붐빔
+    if (congestionLevel === 3) return '#f97316' // 붐빔
+    if (congestionLevel === 2) return '#eab308' // 보통
+    return '#22c55e' // 여유
+  }
   if (crowdLevel === 'high')   return '#ef4444'
   if (crowdLevel === 'medium') return '#f97316'
   return '#FE9C00'
@@ -93,16 +103,99 @@ function escapeForOnclickSingleQuoted(id) {
   return String(id).replace(/\\/g, '\\\\').replace(/'/g, "\\'")
 }
 
-function buildMarkerIcon(type, crowdLevel, selected = false, id = null) {
+// ── 혼잡도 레벨 텍스트 ─────────────────────────────────────────
+function congestionLevelText(level) {
+  if (level === 1) return '여유'
+  if (level === 2) return '보통'
+  if (level === 3) return '붐빔'
+  if (level === 4) return '혼잡'
+  return '보통'
+}
+
+function buildMarkerIcon(type, crowdLevel, selected = false, id = null, congestionLevel = null, count = 1, areaName = '') {
+  const isCongestion = type === 'congestion'
+  const isCluster = type === 'congestion-cluster'
+
+  // ── Pill/Chip 라벨 마커 ──────────────────────────────────────
+  // 0×0 컨테이너 + overflow:visible → DOM 겹침 없이 pill 렌더링
+  if (isCongestion || isCluster) {
+    const color = markerColor(type, null, congestionLevel)
+    const levelText = congestionLevelText(congestionLevel)
+    const displayName = areaName || '권역'
+
+    const onclickAttr = (id != null)
+      ? `onclick="event.stopPropagation(); window.__naverPinClick && window.__naverPinClick('${escapeForOnclickSingleQuoted(id)}')" `
+      : ''
+
+    const borderStyle = selected
+      ? '2px solid #fff'
+      : '1.5px solid rgba(255,255,255,0.3)'
+    const shadowStyle = selected
+      ? `0 2px 12px rgba(254,156,0,0.5), 0 4px 16px rgba(0,0,0,0.15)`
+      : `0 2px 8px ${color}55, 0 1px 4px rgba(0,0,0,0.18)`
+    const scaleExtra = selected ? 'scale(1.08)' : ''
+    const dotSize = selected ? 18 : 14
+
+    return {
+      content: `
+        <div style="position:relative; width:0; height:0;">
+          <div style="
+            position:absolute; left:0; top:0;
+            transform: translate(-50%,-50%);
+            width:50px; height:50px;
+            border-radius:50%;
+            background: ${color};
+            opacity:0;
+            animation: cong-wave 2.4s ease-out infinite;
+            pointer-events:none;
+          "></div>
+          <div style="
+            position:absolute; left:0; top:0;
+            transform: translate(-50%,-50%);
+            width:50px; height:50px;
+            border-radius:50%;
+            background: ${color};
+            opacity:0;
+            animation: cong-wave 2.4s ease-out infinite 1.2s;
+            pointer-events:none;
+          "></div>
+          <div
+            ${onclickAttr}
+            style="
+              position:absolute; left:0; top:0;
+              transform: translate(-50%,-50%) ${scaleExtra};
+              width:${dotSize}px; height:${dotSize}px;
+              border-radius:50%;
+              background:${color};
+              border:2.5px solid #fff;
+              box-shadow: 0 0 8px ${color}88, 0 2px 4px rgba(0,0,0,0.2);
+              cursor:pointer;
+              pointer-events:auto;
+              z-index:2;
+            "
+          ></div>
+          <style>
+            @keyframes cong-wave {
+              0%   { transform:translate(-50%,-50%) scale(0.3); opacity:0.35; }
+              100% { transform:translate(-50%,-50%) scale(1); opacity:0; }
+            }
+          </style>
+        </div>`,
+      anchor: new window.naver.maps.Point(0, 0),
+    }
+  }
+
   const color = markerColor(type, crowdLevel)
   const size = selected ? 22 : 14
   const border = selected ? '3px solid #fff' : '2px solid #fff'
   const shadow = selected
     ? '0 3px 10px rgba(0,0,0,.35), 0 0 0 4px rgba(254,156,0,0.3)'
     : '0 2px 6px rgba(0,0,0,.25)'
-  const onclickAttr = id != null
+
+  const onclickAttr = (id != null)
     ? `onclick="window.__naverPinClick && window.__naverPinClick('${escapeForOnclickSingleQuoted(id)}')" `
     : ''
+
   return {
     content: `
       <div
@@ -132,18 +225,33 @@ function buildMarkerIcon(type, crowdLevel, selected = false, id = null) {
 
 // ── 마커 동기화 ────────────────────────────────────────────────
 function syncMarkers(markers) {
+  if (!mapInstance) return
   naverMarkers.forEach(({ nm }) => nm.setMap(null))
   naverMarkers = []
 
-  markers.forEach(marker => {
+  markers.forEach((marker, idx) => {
     if (marker.lat == null || marker.lng == null) return
     const isSelected = mapStore.selectedMarkerId === marker.id
+    const isCongestion = marker.type === 'congestion' || marker.id.toString().startsWith('zone-')
+
     const nm = new window.naver.maps.Marker({
       position: new window.naver.maps.LatLng(marker.lat, marker.lng),
       map: mapInstance,
-      icon: buildMarkerIcon(marker.type, marker.crowdLevel, isSelected, marker.id),
-      zIndex: isSelected ? 100 : 10,
+      icon: buildMarkerIcon(
+        isCongestion ? 'congestion' : marker.type,
+        marker.crowdLevel,
+        isSelected,
+        marker.id,
+        marker.congestionLevel,
+        marker.count,
+        marker.areaName,
+      ),
+      // 혼잡도 마커마다 고유 zIndex 부여 (5 + idx):
+      // 모두 zIndex:5로 동일하면 DOM 추가 순서에 따라 위아래가 결정되어
+      // 나중에 렌더링된 마커의 80px 컨테이너가 이전 마커의 히트박스를 덮을 수 있음
+      zIndex: isSelected ? 100 : (isCongestion ? 5 + idx : 10 + idx),
     })
+
     naverMarkers.push({ nm, marker })
   })
 }
@@ -152,8 +260,17 @@ function syncMarkers(markers) {
 function syncSelectedMarker(selectedId) {
   naverMarkers.forEach(({ nm, marker }) => {
     const isSelected = marker.id === selectedId
-    nm.setIcon(buildMarkerIcon(marker.type, marker.crowdLevel, isSelected, marker.id))
-    nm.setZIndex(isSelected ? 100 : 10)
+    const isCongestion = marker.type === 'congestion' || marker.id.toString().startsWith('zone-')
+    nm.setIcon(buildMarkerIcon(
+      isCongestion ? 'congestion' : marker.type,
+      marker.crowdLevel,
+      isSelected,
+      marker.id,
+      marker.congestionLevel,
+      marker.count,
+      marker.areaName,
+    ))
+    nm.setZIndex(isSelected ? 100 : (isCongestion ? 5 : 10))
   })
 }
 
@@ -193,7 +310,7 @@ onMounted(async () => {
   const { lat, lng } = mapStore.mapCenter
   mapInstance = new window.naver.maps.Map(mapRef.value, {
     center: new window.naver.maps.LatLng(lat, lng),
-    zoom: 14,
+    zoom: 13, // 기본 줌을 약간 더 넓게
     mapTypeControl: false,
     scaleControl: false,
     logoControl: true,

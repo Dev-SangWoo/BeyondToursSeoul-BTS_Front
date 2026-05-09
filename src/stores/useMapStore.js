@@ -10,6 +10,8 @@ export const useMapStore = defineStore('map', () => {
   const mapCenter = ref({ lat: 37.5665, lng: 126.9780 }) // 서울 시청 기본값
   // 현재 GPS 위치 { lat, lng } | null
   const currentLocation = ref(null)
+  // 혼잡도 마커 노출 여부
+  const showCongestion = ref(true)
 
   function setMarkers(newMarkers) {
     markers.value = newMarkers
@@ -31,6 +33,10 @@ export const useMapStore = defineStore('map', () => {
     currentLocation.value = { lat, lng }
   }
 
+  function toggleCongestion() {
+    showCongestion.value = !showCongestion.value
+  }
+
   function reset() {
     markers.value = []
     polyline.value = []
@@ -43,11 +49,13 @@ export const useMapStore = defineStore('map', () => {
     selectedMarkerId,
     mapCenter,
     currentLocation,
+    showCongestion,
     setMarkers,
     setPolyline,
     selectMarker,
     setCenter,
     setCurrentLocation,
+    toggleCongestion,
     reset,
   }
 })
