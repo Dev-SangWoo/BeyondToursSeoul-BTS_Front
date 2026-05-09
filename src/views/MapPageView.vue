@@ -83,22 +83,21 @@ const attractionsLoading = ref(false);
 onMounted(async () => {
   attractionsLoading.value = true;
   try {
-    // const [attrData, lockerData, congData] = await Promise.allSettled([
-    const [congData] = await Promise.allSettled([
-      // fetchAttractions(),
-      // fetchLockers(),
+    const [attrData, lockerData, congData] = await Promise.allSettled([
+      fetchAttractions(),
+      fetchLockers(),
       fetchCongestions(),
     ]);
-    // if (attrData.status === 'fulfilled') {
-    //   attractions.value = attrData.value;
-    // } else {
-    //   console.error('[MapPage] 관광지 로드 실패:', attrData.reason);
-    // }
-    // if (lockerData.status === 'fulfilled') {
-    //   lockers.value = lockerData.value;
-    // } else {
-    //   console.error('[MapPage] 물품보관소 로드 실패:', lockerData.reason);
-    // }
+    if (attrData.status === 'fulfilled') {
+      attractions.value = attrData.value;
+    } else {
+      console.error('[MapPage] 관광지 로드 실패:', attrData.reason);
+    }
+    if (lockerData.status === 'fulfilled') {
+      lockers.value = lockerData.value;
+    } else {
+      console.error('[MapPage] 물품보관소 로드 실패:', lockerData.reason);
+    }
     if (congData.status === 'fulfilled') {
       congestions.value = congData.value;
     } else {
