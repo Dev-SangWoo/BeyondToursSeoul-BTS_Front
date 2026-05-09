@@ -29,12 +29,6 @@ const courseDensityIndex = ref(2);
 const courseTrackRef = ref(null);
 const activeCourseIndex = ref(0);
 
-const headerLiveInfo = [
-  { id: 'weather', icon: 'sun-1', label: '날씨', value: '22℃ / 맑음 봄' },
-  { id: 'crowd', icon: 'location', label: '혼잡도', value: '성수동 보통' },
-  { id: 'fx', icon: 'dollar-circle', label: '환율', value: '1USD = 1,350₩' },
-];
-
 const realtimeHotPlaces = [
   {
     id: 1,
@@ -546,31 +540,6 @@ watch(
           <h2 class="discover__greeting-title">Hi, Explorer! 🔥</h2>
           <p class="discover__greeting-sub">오늘 서울은 어디가 핫할까요?</p>
         </div>
-        <aside class="discover__live-brief" aria-label="실시간 핵심 정보">
-          <IsIcon
-            name="wifi"
-            variant="bulk"
-            class="discover__live-brief-icon"
-            :size="12"
-            aria-hidden="true"
-          />
-          <div class="discover__live-list">
-            <p
-              v-for="item in headerLiveInfo"
-              :key="item.id"
-              class="discover__live-line"
-            >
-              <IsIcon
-                :name="item.icon"
-                variant="bulk"
-                class="discover__live-item-icon"
-                :size="10"
-              />
-              <span class="discover__live-label">{{ item.label }}</span>
-              <span class="discover__live-value">{{ item.value }}</span>
-            </p>
-          </div>
-        </aside>
       </div>
     </div>
 
@@ -1175,65 +1144,6 @@ watch(
   font-size: 14px;
   color: #888;
   margin: 0;
-}
-
-.discover__live-brief {
-  width: min(41vw, 176px);
-  min-width: 138px;
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  padding: 6px 8px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #fffaf1 0%, #fff 100%);
-  border: 1px solid #ffe6bc;
-  margin-left: auto;
-}
-
-.discover__live-brief-icon {
-  font-size: 12px;
-  line-height: 1;
-  color: #9a9a9a;
-  margin-top: 2px;
-}
-
-.discover__live-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.discover__live-label {
-  font-size: 9px;
-  color: #9a9a9a;
-  font-weight: 700;
-  margin-right: 5px;
-  flex-shrink: 0;
-}
-
-.discover__live-value {
-  font-size: 10px;
-  color: #444;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.discover__live-line {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  line-height: 1.2;
-}
-
-.discover__live-item-icon {
-  color: #8f8f8f;
-  flex-shrink: 0;
-  margin-right: 2px;
 }
 
 .discover-flight {
