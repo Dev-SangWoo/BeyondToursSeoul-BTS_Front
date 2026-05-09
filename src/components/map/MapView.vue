@@ -92,13 +92,16 @@ function syncCurrentLocation(loc) {
 }
 
 // ── 마커 색상 헬퍼 ─────────────────────────────────────────────
-function markerColor(type, crowdLevel) {
-  if (type === 'start')  return '#22c55e'
-  if (type === 'end')    return '#ef4444'
-  if (type === 'locker') return '#0d9488'
-  if (crowdLevel === 'high')   return '#ef4444'
-  if (crowdLevel === 'medium') return '#f97316'
-  return '#FE9C00'
+function markerAccent(marker) {
+  if (marker.type === 'start') return '#22c55e'
+  if (marker.type === 'end') return '#ef4444'
+  if (marker.type === 'locker') return '#0d9488'
+  if (marker.placeTone === 'local') return '#0f766e'
+  if (marker.placeTone === 'tourist') return '#ea580c'
+  if (marker.placeTone === 'blend') return '#6d28d9'
+  if (marker.crowdLevel === 'high') return '#ef4444'
+  if (marker.crowdLevel === 'medium') return '#f97316'
+  return '#fe9c00'
 }
 
 /** onclick 내부 단일따옴표 JS 문자열용 이스케이프 (locker- 접두 등 문자열 id 대응) */
@@ -106,40 +109,65 @@ function escapeForOnclickSingleQuoted(id) {
   return String(id).replace(/\\/g, '\\\\').replace(/'/g, "\\'")
 }
 
-function buildMarkerIcon(type, crowdLevel, selected = false, id = null) {
-  const color = markerColor(type, crowdLevel)
-  const size = selected ? 22 : 14
-  const border = selected ? '3px solid #fff' : '2px solid #fff'
+function markerOrderText(marker) {
+  const a = marker.orderShort
+  if (a != null && String(a).trim()) {
+    const digits = String(a).replace(/\D/g, '').slice(0, 2)
+    if (digits) return digits
+  }
+  const n = Number(marker.order)
+  return Number.isFinite(n) && n > 0 ? String(Math.min(99, Math.floor(n))) : '·'
+}
+
+function buildMarkerIcon(marker, selected = false) {
+  const accent = markerAccent(marker)
+  const orderText = markerOrderText(marker)
+  const size = selected ? 30 : 24
+  const pad = 6
+  const box = size + pad * 2
+  const fontPx = selected ? 13 : 11
+  const bg = selected ? '#ff7a18' : accent
+  const ring = selected
+    ? '0 0 0 3px rgba(255,255,255,0.95), 0 0 0 5px rgba(254,156,0,0.35)'
+    : '0 0 0 2px rgba(255,255,255,0.98), 0 0 0 1px rgba(0,0,0,0.06)'
   const shadow = selected
-    ? '0 3px 10px rgba(0,0,0,.35), 0 0 0 4px rgba(254,156,0,0.3)'
-    : '0 2px 6px rgba(0,0,0,.25)'
-  const onclickAttr = id != null
-    ? `onclick="window.__naverPinClick && window.__naverPinClick('${escapeForOnclickSingleQuoted(id)}')" `
+    ? `0 5px 16px rgba(0,0,0,0.32), ${ring}`
+    : `0 2px 10px rgba(0,0,0,0.2), ${ring}`
+  const onclickAttr = marker.id != null
+    ? `onclick="window.__naverPinClick && window.__naverPinClick('${escapeForOnclickSingleQuoted(marker.id)}')" `
     : ''
+
   return {
     content: `
-      <div
-        ${onclickAttr}
+      <div ${onclickAttr}
         style="
+          width:${box}px;
+          height:${box}px;
           display:flex;
-          flex-direction:column;
           align-items:center;
           justify-content:center;
           cursor:pointer;
-          width:30px;
-          height:30px;
+          -webkit-tap-highlight-color:transparent;
         "
       >
         <div style="
-          width:${size}px;height:${size}px;
+          width:${size}px;
+          height:${size}px;
           border-radius:50%;
-          background:${selected ? '#FF6B00' : color};
-          border:${border};
+          background:${bg};
           box-shadow:${shadow};
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          color:#fff;
+          font-size:${fontPx}px;
+          font-weight:800;
+          line-height:1;
           pointer-events:none;
-        "></div>
+          font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+        ">${orderText}</div>
       </div>`,
-    anchor: new window.naver.maps.Point(15, 15),
+    anchor: new window.naver.maps.Point(box / 2, box / 2),
   }
 }
 
@@ -154,7 +182,7 @@ function syncMarkers(markers) {
     const nm = new window.naver.maps.Marker({
       position: new window.naver.maps.LatLng(marker.lat, marker.lng),
       map: mapInstance,
-      icon: buildMarkerIcon(marker.type, marker.crowdLevel, isSelected, marker.id),
+      icon: buildMarkerIcon(marker, isSelected),
       zIndex: isSelected ? 100 : 10,
     })
     naverMarkers.push({ nm, marker })
@@ -165,7 +193,7 @@ function syncMarkers(markers) {
 function syncSelectedMarker(selectedId) {
   naverMarkers.forEach(({ nm, marker }) => {
     const isSelected = marker.id === selectedId
-    nm.setIcon(buildMarkerIcon(marker.type, marker.crowdLevel, isSelected, marker.id))
+    nm.setIcon(buildMarkerIcon(marker, isSelected))
     nm.setZIndex(isSelected ? 100 : 10)
   })
 }
@@ -182,9 +210,9 @@ function syncPolyline(points) {
   naverPolyline = new window.naver.maps.Polyline({
     map: mapInstance,
     path: latLngPoints.map(p => new window.naver.maps.LatLng(p.lat, p.lng)),
-    strokeColor: '#FE9C00',
-    strokeWeight: 4,
-    strokeOpacity: 0.9,
+    strokeColor: '#f59e0b',
+    strokeWeight: 3,
+    strokeOpacity: 0.88,
     strokeLineCap: 'round',
     strokeLineJoin: 'round',
   })
