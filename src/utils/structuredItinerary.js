@@ -1,4 +1,5 @@
 import { sortSlotsForTimeline } from '@/utils/slotTimeline'
+import { slotToneFromSlot } from '@/utils/slotPlaceTone'
 
 /** 서울 중심 기본 좌표 (지오코딩 실패 시 마커 분산용) */
 export const SEOUL_CENTER = { lat: 37.5665, lng: 126.978 }
@@ -25,6 +26,10 @@ export function flattenStructuredSlots(structured) {
         reason: slot?.reason != null ? String(slot.reason) : '',
         type: slot?.type,
         slotLabel: slot?.label != null ? String(slot.label) : '',
+        lat: Number.isFinite(Number(slot?.lat)) ? Number(slot.lat) : null,
+        lng: Number.isFinite(Number(slot?.lng)) ? Number(slot.lng) : null,
+        category: slot?.category != null ? String(slot.category).trim() : '',
+        localScore: Number.isFinite(Number(slot?.localScore)) ? Number(slot.localScore) : null,
       })
     })
   })
@@ -98,28 +103,41 @@ export async function buildMapMarkersFromStructured(flat) {
   if (!flat.length) return { markers: [], polyline: [] }
 
   const markers = []
+  const dayOrderCounter = new Map()
   for (let i = 0; i < flat.length; i += 1) {
     const item = flat[i]
-    const query = [item.placeName, item.address].filter(Boolean).join(' ').trim()
-    let lat
-    let lng
-    if (query) {
-      const g = await geocodeQuery(query)
-      if (g) {
-        lat = g.lat
-        lng = g.lng
+    const currentOrder = (dayOrderCounter.get(item.dayIndex) ?? 0) + 1
+    dayOrderCounter.set(item.dayIndex, currentOrder)
+    let lat = item.lat
+    let lng = item.lng
+    if (lat == null || lng == null) {
+      const query = [item.placeName, item.address].filter(Boolean).join(' ').trim()
+      if (query) {
+        const g = await geocodeQuery(query)
+        if (g) {
+          lat = g.lat
+          lng = g.lng
+        }
       }
     }
     const fb = buildFallbackMarkers([item])[0]
     const labelSource = item.placeName || item.address || `장소 ${i + 1}`
     const label = labelSource.length > 14 ? `${labelSource.slice(0, 14)}…` : labelSource
+    const tone = slotToneFromSlot(item)
     markers.push({
+      id: `day-${item.dayIndex}-slot-${item.slotIndex}-${i}`,
       lat: lat ?? fb.lat,
       lng: lng ?? fb.lng,
       label,
+      placeName: item.placeName || labelSource,
+      slotLabel: item.slotLabel || item.type || '',
+      order: currentOrder,
+      orderShort: String(currentOrder),
+      orderLabel: `${item.slotLabel || item.type || '코스'} ${currentOrder}`,
       type: 'default',
       crowdLevel: 'low',
       dayIndex: item.dayIndex,
+      placeTone: tone.kind,
     })
   }
 

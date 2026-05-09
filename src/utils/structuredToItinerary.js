@@ -1,4 +1,5 @@
 import { sortSlotsForTimeline, getPhaseShortLabel } from '@/utils/slotTimeline'
+import { slotToneFromSlot } from '@/utils/slotPlaceTone'
 
 /**
  * structured → Result 페이지 ItineraryTimeline 과 같은 형태
@@ -12,16 +13,31 @@ export function structuredToItineraryDays(structured) {
     const mapped = days.map((day, i) => {
       const slots = Array.isArray(day.slots) ? day.slots : []
       const ordered = sortSlotsForTimeline(slots)
-      let items = ordered.map(({ slot }) => ({
-        time: getPhaseShortLabel(slot),
-        name: String(slot?.placeName || slot?.address || '장소').trim() || '장소',
-        crowdTag: '',
-        crowdLevel: 'low',
-        address: String(slot?.address || '').trim(),
-        desc: String(slot?.reason || slot?.label || slot?.description || '').trim(),
-        reason: String(slot?.tip || slot?.memo || '').trim(),
-        type: String(slot?.type || slot?.phase || '').trim(),
-      }))
+      let items = ordered.map(({ slot }) => {
+        const tone = slotToneFromSlot(slot)
+        const sourceType = String(slot?.sourceType || slot?.source_type || '').trim().toLowerCase()
+        const category = String(slot?.category || slot?.cat || '').trim().toLowerCase()
+        const isLocker = sourceType.includes('locker') || category === 'locker'
+        const lat = Number(slot?.lat)
+        const lng = Number(slot?.lng)
+        return {
+          time: isLocker ? '보관함' : getPhaseShortLabel(slot),
+          name: String(slot?.placeName || slot?.address || '장소').trim() || '장소',
+          crowdTag: '',
+          crowdLevel: 'low',
+          address: String(slot?.address || '').trim(),
+          desc: '',
+          reason: '',
+          lat: Number.isFinite(lat) ? lat : null,
+          lng: Number.isFinite(lng) ? lng : null,
+          type: String(slot?.type || slot?.phase || '').trim(),
+          sourceType: String(slot?.sourceType || slot?.source_type || '').trim(),
+          sourceId: String(slot?.sourceId || slot?.source_id || '').trim(),
+          toneLabel: tone.label,
+          toneKind: tone.kind,
+          isLocker,
+        }
+      })
       if (!items.length) {
         const dayLabel = String(day.label ?? '').trim()
         const note = String(day.dayNote ?? day.summary ?? day.description ?? '').trim()

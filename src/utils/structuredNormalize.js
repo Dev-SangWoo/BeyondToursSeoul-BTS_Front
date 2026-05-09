@@ -16,6 +16,12 @@ function routeToArray(route) {
   return expandSingleRouteString(s)
 }
 
+function toNumberOrNull(value) {
+  if (value == null || value === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
 /**
  * 한 문자열에 "1일차 ... 2일차 ..." 가 같이 붙어 있는 경우 나눔
  */
@@ -70,6 +76,12 @@ function normalizeSlotEntry(raw) {
     reason: String(o.reason ?? o.note ?? o.notes ?? o.description ?? '').trim(),
     label: String(o.label ?? o.slotLabel ?? o.phase ?? '').trim(),
     type: o.type,
+    sourceType: String(o.sourceType ?? o.source_type ?? o.st ?? '').trim(),
+    sourceId: String(o.sourceId ?? o.source_id ?? o.sid ?? '').trim(),
+    lat: toNumberOrNull(o.lat ?? o.latitude ?? o.y),
+    lng: toNumberOrNull(o.lng ?? o.longitude ?? o.x),
+    category: String(o.category ?? o.cat ?? '').trim(),
+    localScore: toNumberOrNull(o.localScore ?? o.ls),
   }
 }
 
