@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { generateCourse } from '@/services/tripService'
+import { structuredToItineraryDays } from '@/utils/structuredToItinerary'
 
 export const useTripStore = defineStore('trip', () => {
   const tripInput = ref({
@@ -11,6 +12,9 @@ export const useTripStore = defineStore('trip', () => {
   })
 
   const itinerary = ref([])
+  const aiStructured = ref(null)
+  /** 서버 저장 일정 연동 시 { planId, title } 또는 null(AI 새 일정 등) */
+  const savedPlanMeta = ref(null)
   const weatherMode = ref('normal') // 'normal' | 'rainy'
   const isLoading = ref(false)
   const error = ref(null)
@@ -23,6 +27,23 @@ export const useTripStore = defineStore('trip', () => {
     tripInput.value = { ...tripInput.value, ...input }
   }
 
+  /**
+   * @param {object|null} structured
+   * @param {{ planId?: number, title?: string } | null} [fromSavedPlan] 저장함에서 불러온 경우
+   */
+  function setAiStructured(structured, fromSavedPlan = null) {
+    aiStructured.value = structured || null
+    itinerary.value = structured ? structuredToItineraryDays(structured) : []
+    if (fromSavedPlan && fromSavedPlan.planId != null) {
+      savedPlanMeta.value = {
+        planId: fromSavedPlan.planId,
+        title: fromSavedPlan.title != null ? String(fromSavedPlan.title).trim() : '',
+      }
+    } else {
+      savedPlanMeta.value = null
+    }
+  }
+
   function setWeatherMode(mode) {
     weatherMode.value = mode
   }
@@ -33,6 +54,8 @@ export const useTripStore = defineStore('trip', () => {
     try {
       const result = await generateCourse(tripInput.value)
       itinerary.value = result
+      aiStructured.value = null
+      savedPlanMeta.value = null
     } catch (e) {
       error.value = e.message
     } finally {
@@ -45,18 +68,23 @@ export const useTripStore = defineStore('trip', () => {
 
   function reset() {
     itinerary.value = []
+    aiStructured.value = null
+    savedPlanMeta.value = null
     error.value = null
   }
 
   return {
     tripInput,
     itinerary,
+    aiStructured,
+    savedPlanMeta,
     weatherMode,
     isLoading,
     error,
     hasItinerary,
     isRainyMode,
     setInput,
+    setAiStructured,
     setWeatherMode,
     generateCourse: generateCourseAction,
     reset,

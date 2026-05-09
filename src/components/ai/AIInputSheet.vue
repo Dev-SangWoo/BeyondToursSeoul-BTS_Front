@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTripStore } from '@/stores/useTripStore'
 import GenerateLoading from './GenerateLoading.vue'
@@ -8,6 +8,12 @@ import AiInputSheetHeader from './input-sheet/AiInputSheetHeader.vue'
 import AiInputDetailSteps from './input-sheet/AiInputDetailSteps.vue'
 import AiInputChatStep from './input-sheet/AiInputChatStep.vue'
 import { interestOptions, mobilityOptions, simOptions } from './input-sheet/aiInputFlowConstants'
+import {
+  AI_SHEET_DRAFT_KEY,
+  clearAiSheetSession,
+  consumeDetailReturnIntent,
+  setDetailReturnIntent,
+} from '@/utils/aiSheetSession'
 
 const emit = defineEmits(['close', 'generated'])
 const router = useRouter()
@@ -30,6 +36,10 @@ const flowStage = ref('primary')
 const detailPage = ref(1)
 const specialRequest = ref('')
 const showTopGuide = ref(false)
+const chatStructured = ref(null)
+const chatThread = ref([])
+const preserveChatMapOnExit = ref(false)
+const generatingInitialCourse = ref(false)
 
 const startDate = ref(formatLocalIsoDate(_today))
 const endDate = ref(formatLocalIsoDate(_defaultEnd))
@@ -156,6 +166,8 @@ async function proceedToDetail() {
 
 function proceedToChat() {
   if (!canProceedChat.value) return
+  preserveChatMapOnExit.value = false
+  generatingInitialCourse.value = true
   flowStage.value = 'chat'
 }
 
@@ -167,6 +179,7 @@ function backToDetail() {
 async function generate() {
   if (!canSubmitGenerate.value) return
 
+  preserveChatMapOnExit.value = !!chatStructured.value
   step.value = 'loading'
 
   tripStore.setInput({
@@ -191,10 +204,15 @@ async function generate() {
     specialRequest: specialRequest.value.trim(),
   })
 
-  await tripStore.generateCourse()
+  if (chatStructured.value) {
+    tripStore.setAiStructured(chatStructured.value, null)
+  } else {
+    await tripStore.generateCourse()
+  }
   loadingRef.value?.complete()
 
   setTimeout(() => {
+    clearDraftState()
     emit('generated')
     router.push('/result')
   }, 600)
@@ -253,6 +271,80 @@ function focusStartDate() {
 function blurStartDate() {
   showTopGuide.value = false
 }
+
+function buildDraftState() {
+  return {
+    flowStage: flowStage.value,
+    detailPage: detailPage.value,
+    specialRequest: specialRequest.value,
+    chatStructured: chatStructured.value,
+    chatThread: chatThread.value,
+    preserveChatMapOnExit: preserveChatMapOnExit.value,
+    startDate: startDate.value,
+    endDate: endDate.value,
+    arrivalTime: arrivalTime.value,
+    departureTime: departureTime.value,
+    partySize: partySize.value,
+    relationship: relationship.value,
+    mobilityMode: mobilityMode.value,
+    simOption: simOption.value,
+    interests: interests.value,
+    density: density.value,
+  }
+}
+
+function prepareDraftForDetailReturn() {
+  saveDraftState()
+  setDetailReturnIntent()
+}
+
+function saveDraftState() {
+  try {
+    sessionStorage.setItem(AI_SHEET_DRAFT_KEY, JSON.stringify(buildDraftState()))
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function clearDraftState() {
+  clearAiSheetSession()
+}
+
+function restoreDraftState() {
+  try {
+    const raw = sessionStorage.getItem(AI_SHEET_DRAFT_KEY)
+    if (!raw) return
+    const d = JSON.parse(raw)
+    if (!d || typeof d !== 'object') return
+
+    flowStage.value = d.flowStage === 'chat' || d.flowStage === 'detail' ? d.flowStage : flowStage.value
+    detailPage.value = Number.isInteger(d.detailPage) ? d.detailPage : detailPage.value
+    specialRequest.value = typeof d.specialRequest === 'string' ? d.specialRequest : specialRequest.value
+    chatStructured.value = d.chatStructured && typeof d.chatStructured === 'object' ? d.chatStructured : null
+    chatThread.value = Array.isArray(d.chatThread) ? d.chatThread : []
+    preserveChatMapOnExit.value = !!d.preserveChatMapOnExit
+    startDate.value = typeof d.startDate === 'string' ? d.startDate : startDate.value
+    endDate.value = typeof d.endDate === 'string' ? d.endDate : endDate.value
+    arrivalTime.value = typeof d.arrivalTime === 'string' ? d.arrivalTime : arrivalTime.value
+    departureTime.value = typeof d.departureTime === 'string' ? d.departureTime : departureTime.value
+    partySize.value = Number.isFinite(Number(d.partySize)) ? Number(d.partySize) : partySize.value
+    relationship.value = typeof d.relationship === 'string' ? d.relationship : relationship.value
+    mobilityMode.value = typeof d.mobilityMode === 'string' ? d.mobilityMode : mobilityMode.value
+    simOption.value = typeof d.simOption === 'string' ? d.simOption : simOption.value
+    interests.value = Array.isArray(d.interests) ? d.interests : interests.value
+    density.value = Number.isFinite(Number(d.density)) ? Number(d.density) : density.value
+  } catch {
+    // ignore parse failures
+  }
+}
+
+onMounted(() => {
+  if (consumeDetailReturnIntent()) {
+    restoreDraftState()
+  } else {
+    clearAiSheetSession()
+  }
+})
 </script>
 
 <template>
@@ -314,15 +406,24 @@ function blurStartDate() {
               v-model:detail-page="detailPage"
               :needs-party-input="needsPartyInput"
               :can-proceed-chat="canProceedChat"
+              :is-generating-course="generatingInitialCourse"
               @proceed-chat="proceedToChat"
             />
 
             <AiInputChatStep
               v-if="flowStage === 'chat'"
               :summary-text="chatSummaryMessage"
+              :initial-structured="chatStructured"
+              :initial-thread="chatThread"
               :can-submit-generate="canSubmitGenerate"
+              :preserve-map-on-exit="preserveChatMapOnExit"
+              :local-ratio="density"
               @back="backToDetail"
               @generate="generate"
+              @structured-change="chatStructured = $event"
+              @thread-snapshot="chatThread = $event"
+              @bootstrap-complete="generatingInitialCourse = false"
+              @before-navigate-detail="prepareDraftForDetailReturn"
             />
           </div>
 

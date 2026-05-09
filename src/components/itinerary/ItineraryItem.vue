@@ -6,6 +6,10 @@ defineProps({
   crowdLevel: { type: String, default: 'low' }, // 'low' | 'medium' | 'high'
   desc: { type: String, default: '' },
   reason: { type: String, default: '' },
+  /** 로컬 / 유명 톤 (structuredToItinerary) */
+  toneLabel: { type: String, default: '' },
+  toneKind: { type: String, default: '' },
+  isLocker: { type: Boolean, default: false },
   isFirst: { type: Boolean, default: false },
   isLast: { type: Boolean, default: false },
 })
@@ -26,11 +30,21 @@ const crowdColors = { low: '#22c55e', medium: '#f97316', high: '#ef4444' }
     <div class="itinerary-item__content">
       <div class="itinerary-item__top">
         <span class="itinerary-item__time">{{ time }}</span>
+        <span v-if="isLocker" class="itinerary-item__locker-tag">🧳 보관함</span>
         <span v-if="crowdTag" class="itinerary-item__crowd-tag" :style="{ color: crowdColors[crowdLevel] }">
           {{ crowdTag }}
         </span>
       </div>
       <p class="itinerary-item__name">{{ name }}</p>
+      <p
+        v-if="toneLabel"
+        class="itinerary-item__tone"
+        :class="{
+          'itinerary-item__tone--local': toneKind === 'local',
+          'itinerary-item__tone--tourist': toneKind === 'tourist',
+          'itinerary-item__tone--blend': toneKind === 'blend',
+        }"
+      >{{ toneLabel }}</p>
       <p v-if="desc" class="itinerary-item__desc">{{ desc }}</p>
       <div v-if="reason" class="itinerary-item__reason">
         <span class="itinerary-item__reason-icon">💡</span>
@@ -93,6 +107,15 @@ const crowdColors = { low: '#22c55e', medium: '#f97316', high: '#ef4444' }
   color: #FE9C00;
 }
 
+.itinerary-item__locker-tag {
+  font-size: 10px;
+  font-weight: 800;
+  color: #0f766e;
+  background: #ecfdf5;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
 .itinerary-item__crowd-tag {
   font-size: 10px;
   font-weight: 600;
@@ -104,9 +127,19 @@ const crowdColors = { low: '#22c55e', medium: '#f97316', high: '#ef4444' }
 .itinerary-item__name {
   font-size: 15px;
   font-weight: 700;
-  margin: 0 0 4px;
+  margin: 0 0 2px;
   color: #1a1a1a;
 }
+
+.itinerary-item__tone {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.itinerary-item__tone--local { color: #0f766e; }
+.itinerary-item__tone--tourist { color: #c2410c; }
+.itinerary-item__tone--blend { color: #6d28d9; }
 
 .itinerary-item__desc {
   font-size: 12px;
