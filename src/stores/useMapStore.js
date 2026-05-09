@@ -12,6 +12,8 @@ export const useMapStore = defineStore('map', () => {
   const currentLocation = ref(null)
   // 혼잡도 마커 노출 여부
   const showCongestion = ref(true)
+  // 물품보관소 마커 노출 여부
+  const showLocker = ref(true)
 
   function setMarkers(newMarkers) {
     markers.value = newMarkers
@@ -37,6 +39,10 @@ export const useMapStore = defineStore('map', () => {
     showCongestion.value = !showCongestion.value
   }
 
+  function toggleLocker() {
+    showLocker.value = !showLocker.value
+  }
+
   function reset() {
     markers.value = []
     polyline.value = []
@@ -50,12 +56,14 @@ export const useMapStore = defineStore('map', () => {
     mapCenter,
     currentLocation,
     showCongestion,
+    showLocker,
     setMarkers,
     setPolyline,
     selectMarker,
     setCenter,
     setCurrentLocation,
     toggleCongestion,
+    toggleLocker,
     reset,
   }
 })
