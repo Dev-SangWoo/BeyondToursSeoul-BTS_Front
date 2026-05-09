@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import {
   ChevronLeft,
@@ -19,6 +20,7 @@ import { fetchSavedPlans } from '@/services/savedPlansService';
 import earthImage from '../../asset/earth.png';
 import airplaneImage from '../../asset/airplane.png';
 
+const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const savedStore = useSavedStore();
@@ -74,10 +76,10 @@ const categories = computed(() => [
 
 const densityModes = computed(() => [
   { id: 'local0',      text: t('discover.densityMode.local0'),      scoreMin: 0,    scoreMax: 0 },
-  { id: 'local1-30',   text: t('discover.densityMode[\'local1-30\']'),  scoreMin: 0.01, scoreMax: 0.30 },
-  { id: 'local31-50',  text: t('discover.densityMode[\'local31-50\']'), scoreMin: 0.31, scoreMax: 0.50 },
-  { id: 'local51-70',  text: t('discover.densityMode[\'local51-70\']'), scoreMin: 0.51, scoreMax: 0.70 },
-  { id: 'local71-100', text: t('discover.densityMode[\'local71-100\']'), scoreMin: 0.71, scoreMax: 1.0 },
+  { id: 'local1-30',   text: t('discover.densityMode.local1-30'),   scoreMin: 0.01, scoreMax: 0.30 },
+  { id: 'local31-50',  text: t('discover.densityMode.local31-50'),  scoreMin: 0.31, scoreMax: 0.50 },
+  { id: 'local51-70',  text: t('discover.densityMode.local51-70'),  scoreMin: 0.51, scoreMax: 0.70 },
+  { id: 'local71-100', text: t('discover.densityMode.local71-100'), scoreMin: 0.71, scoreMax: 1.0 },
 ])
 
 const densityCourseMap = {
