@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   Bell,
   ChevronLeft,
@@ -20,6 +21,7 @@ import { fetchSavedPlans } from '@/services/savedPlansService'
 import earthImage from '../../asset/earth.png'
 import airplaneImage from '../../asset/airplane.png'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const savedStore = useSavedStore()
@@ -30,11 +32,11 @@ const courseDensityIndex = ref(2)
 const courseTrackRef = ref(null)
 const activeCourseIndex = ref(0)
 
-const headerLiveInfo = [
-  { id: 'weather', icon: 'sun-1', label: '날씨', value: '22℃ / 맑음 봄' },
-  { id: 'crowd', icon: 'location', label: '혼잡도', value: '성수동 보통' },
-  { id: 'fx', icon: 'dollar-circle', label: '환율', value: '1USD = 1,350₩' },
-]
+const headerLiveInfo = computed(() => [
+  { id: 'weather', icon: 'sun-1', label: t('discover.weather'), value: '22℃ / 맑음 봄' },
+  { id: 'crowd', icon: 'location', label: t('discover.crowd'), value: '성수동 보통' },
+  { id: 'fx', icon: 'dollar-circle', label: t('discover.fx'), value: '1USD = 1,350₩' },
+])
 
 const realtimeHotPlaces = [
   { id: 1, name: '성수동', image: 'https://images.unsplash.com/photo-1549693578-d683be217e58?auto=format&fit=crop&w=500&q=80' },
@@ -44,23 +46,23 @@ const realtimeHotPlaces = [
   { id: 5, name: '연남동', image: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=500&q=80' },
 ]
 
-const categories = [
-  { id: '음식',         icon: 'cup',             color: '#f97316', label: '음식' },
-  { id: '쇼핑',         icon: 'shop',            color: '#ec4899', label: '쇼핑' },
-  { id: '체험관광',      icon: 'people',          color: '#8b5cf6', label: '체험관광' },
-  { id: '자연관광',      icon: 'tree',            color: '#16a34a', label: '자연관광' },
-  { id: '문화관광',      icon: 'courthouse',      color: '#a16207', label: '문화관광' },
-  { id: '역사관광',      icon: 'building',        color: '#78716c', label: '역사관광' },
-  { id: '레저스포츠',    icon: 'activity',        color: '#2563eb', label: '레저스포츠' },
-]
+const categories = computed(() => [
+  { id: '음식',         icon: 'cup',             color: '#f97316', label: t('discover.category.food') },
+  { id: '쇼핑',         icon: 'shop',            color: '#ec4899', label: t('discover.category.shopping') },
+  { id: '체험관광',      icon: 'people',          color: '#8b5cf6', label: t('discover.category.experience') },
+  { id: '자연관광',      icon: 'tree',            color: '#16a34a', label: t('discover.category.nature') },
+  { id: '문화관광',      icon: 'courthouse',      color: '#a16207', label: t('discover.category.culture') },
+  { id: '역사관광',      icon: 'building',        color: '#78716c', label: t('discover.category.history') },
+  { id: '레저스포츠',    icon: 'activity',        color: '#2563eb', label: t('discover.category.leisure') },
+])
 
-const densityModes = [
-  { id: 'local0',      text: '유명 관광지 완전 위주', scoreMin: 0,    scoreMax: 0 },
-  { id: 'local1-30',   text: '관광지 중심, 로컬 가미', scoreMin: 0.01, scoreMax: 0.30 },
-  { id: 'local31-50',  text: '관광지 & 로컬 균형',    scoreMin: 0.31, scoreMax: 0.50 },
-  { id: 'local51-70',  text: '로컬 핀 중심, 관광지 가미', scoreMin: 0.51, scoreMax: 0.70 },
-  { id: 'local71-100', text: '완전 로컬 핀 위주',      scoreMin: 0.71, scoreMax: 1.0 },
-]
+const densityModes = computed(() => [
+  { id: 'local0',      text: t('discover.densityMode.local0'),      scoreMin: 0,    scoreMax: 0 },
+  { id: 'local1-30',   text: t('discover.densityMode[\'local1-30\']'),  scoreMin: 0.01, scoreMax: 0.30 },
+  { id: 'local31-50',  text: t('discover.densityMode[\'local31-50\']'), scoreMin: 0.31, scoreMax: 0.50 },
+  { id: 'local51-70',  text: t('discover.densityMode[\'local51-70\']'), scoreMin: 0.51, scoreMax: 0.70 },
+  { id: 'local71-100', text: t('discover.densityMode[\'local71-100\']'), scoreMin: 0.71, scoreMax: 1.0 },
+])
 
 const densityCourseMap = {
   'local0': [
@@ -104,11 +106,11 @@ const coursePhotos = [
   'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=80',
 ]
 const currentCourses = computed(
-  () => densityCourseMap[densityModes[courseDensityIndex.value].id] ?? [],
+  () => densityCourseMap[densityModes.value[courseDensityIndex.value].id] ?? [],
 )
 
 function getHomeCourseRefId(course) {
-  return `course:${densityModes[courseDensityIndex.value].id}:${course.id}`
+  return `course:${densityModes.value[courseDensityIndex.value].id}:${course.id}`
 }
 
 function isCourseSaved(course) {
@@ -118,7 +120,7 @@ function isCourseSaved(course) {
 function toggleSaveCourse(course) {
   savedStore.toggleCourseFromHome({
     course,
-    densityModeId: densityModes[courseDensityIndex.value].id,
+    densityModeId: densityModes.value[courseDensityIndex.value].id,
   })
 }
 
@@ -166,7 +168,7 @@ function openSavedPlan(planId) {
 }
 
 function changeCourseDensity(delta) {
-  const last = densityModes.length - 1
+  const last = densityModes.value.length - 1
   const next = Math.max(0, Math.min(last, courseDensityIndex.value + delta))
   courseDensityIndex.value = next
 }
@@ -216,7 +218,7 @@ onMounted(async () => {
 })
 
 const filteredAttractions = computed(() => {
-  const mode = densityModes[courseDensityIndex.value]
+  const mode = densityModes.value[courseDensityIndex.value]
   let list = attractions.value
 
   if (mode.id === 'local0') {
@@ -393,7 +395,7 @@ watch(
           <span class="discover__brand-sub">Beyond Tours Seoul</span>
         </div>
         <div class="discover__header-right">
-          <button class="discover__icon-btn" aria-label="알림">
+          <button class="discover__icon-btn" :aria-label="$t('discover.notification')">
             <Bell :size="20" :stroke-width="2" />
             <span class="discover__notif-dot"></span>
           </button>
@@ -409,9 +411,9 @@ watch(
       <div class="discover__greeting-row">
         <div class="discover__greeting-copy">
           <h2 class="discover__greeting-title">Hi, Explorer! 🔥</h2>
-          <p class="discover__greeting-sub">오늘 서울은 어디가 핫할까요?</p>
+          <p class="discover__greeting-sub">{{ $t('discover.greeting') }}</p>
         </div>
-        <aside class="discover__live-brief" aria-label="실시간 핵심 정보">
+        <aside class="discover__live-brief">
           <IsIcon
             name="wifi"
             variant="bulk"
@@ -436,12 +438,12 @@ watch(
 
     <!-- ── Density Selector ──────────────────────────────────────────── -->
     <div class="discover__density-bar">
-      <p class="discover__density-bar-label">여행 스타일</p>
+      <p class="discover__density-bar-label">{{ $t('discover.travelStyle') }}</p>
       <div class="discover__density-bar-control">
         <button
           class="discover__density-arrow"
           :disabled="courseDensityIndex === 0"
-          aria-label="이전"
+          :aria-label="$t('discover.prevPage')"
           @click="changeCourseDensity(-1)"
         >
           <ChevronLeft :size="16" :stroke-width="2.5" />
@@ -459,7 +461,7 @@ watch(
         <button
           class="discover__density-arrow"
           :disabled="courseDensityIndex === densityModes.length - 1"
-          aria-label="다음"
+          :aria-label="$t('discover.nextPage')"
           @click="changeCourseDensity(1)"
         >
           <ChevronRight :size="16" :stroke-width="2.5" />
@@ -504,7 +506,7 @@ watch(
 
     <!-- ── Hot Areas ──────────────────────────────────────────────────── -->
     <section class="discover__section">
-      <h3 class="discover__section-title">추천 여행 코스</h3>
+      <h3 class="discover__section-title">{{ $t('discover.recommendedCourse') }}</h3>
       <div
         ref="courseTrackRef"
         class="discover__course-carousel"
@@ -523,7 +525,7 @@ watch(
             class="discover-course-card__save-btn"
             :class="{ 'discover-course-card__save-btn--active': isCourseSaved(course) }"
             type="button"
-            :aria-label="isCourseSaved(course) ? '저장 해제' : '저장하기'"
+            :aria-label="isCourseSaved(course) ? $t('discover.unsaveCourse') : $t('discover.saveCourse')"
             @click.stop="toggleSaveCourse(course)"
           >
             <Heart :size="14" :stroke-width="2.3" />
@@ -555,7 +557,7 @@ watch(
 
     <!-- ── Real-time Hot Places ───────────────────────────────────────── -->
     <section class="discover__section">
-      <h3 class="discover__section-title">실시간 핫플레이스 순위</h3>
+      <h3 class="discover__section-title">{{ $t('discover.hotPlaces') }}</h3>
       <div class="discover__hot-rank-row">
         <article
           v-for="place in realtimeHotPlaces"
@@ -575,9 +577,9 @@ watch(
     <section class="discover__section discover__section--last">
       <div class="discover__list-heading">
         <h3 class="discover__section-title">
-          {{ homeListTab === 'attractions' ? '테마별 추천' : '축제 · 행사' }}
+          {{ homeListTab === 'attractions' ? $t('discover.themeRecommend') : $t('discover.festival') }}
         </h3>
-        <div class="discover__home-tabs" role="tablist" aria-label="목록 유형">
+        <div class="discover__home-tabs" role="tablist" :aria-label="$t('discover.listType')">
           <button
             type="button"
             role="tab"
@@ -586,7 +588,7 @@ watch(
             :aria-selected="homeListTab === 'attractions'"
             @click="homeListTab = 'attractions'"
           >
-            관광지
+            {{ $t('discover.attractions') }}
           </button>
           <button
             type="button"
@@ -596,7 +598,7 @@ watch(
             :aria-selected="homeListTab === 'events'"
             @click="homeListTab = 'events'"
           >
-            행사
+            {{ $t('discover.events') }}
           </button>
         </div>
       </div>
@@ -624,7 +626,7 @@ watch(
         <template v-if="homeListTab === 'attractions'">
           <div v-if="attractionsLoading" class="discover__attractions-loading">
             <div class="discover__attractions-spinner"></div>
-            <span>관광지 목록 불러오는 중...</span>
+            <span>{{ $t('discover.loadingAttractions') }}</span>
           </div>
 
           <p v-else-if="attractionsError" class="discover__attractions-error">
@@ -632,7 +634,7 @@ watch(
           </p>
 
           <p v-else-if="filteredAttractions.length === 0" class="discover__attractions-empty">
-            해당 카테고리의 관광지가 없습니다.
+            {{ $t('discover.noAttractions') }}
           </p>
 
           <template v-else>
@@ -672,7 +674,7 @@ watch(
                 type="button"
                 class="discover__pg-arrow"
                 :disabled="attractionPage === 1"
-                aria-label="이전"
+                :aria-label="$t('discover.prevPage')"
                 @click="attractionPage--"
               >
                 <ChevronLeft :size="14" :stroke-width="2.5" />
@@ -695,7 +697,7 @@ watch(
                 type="button"
                 class="discover__pg-arrow"
                 :disabled="attractionPage === totalPages"
-                aria-label="다음"
+                :aria-label="$t('discover.nextPage')"
                 @click="attractionPage++"
               >
                 <ChevronRight :size="14" :stroke-width="2.5" />
@@ -707,7 +709,7 @@ watch(
         <template v-else>
           <div v-if="eventsLoading" class="discover__attractions-loading">
             <div class="discover__attractions-spinner"></div>
-            <span>행사 목록 불러오는 중...</span>
+            <span>{{ $t('discover.loadingEvents') }}</span>
           </div>
 
           <p v-else-if="eventsError" class="discover__attractions-error">
@@ -715,7 +717,7 @@ watch(
           </p>
 
           <p v-else-if="events.length === 0" class="discover__attractions-empty">
-            표시할 행사가 없습니다.
+            {{ $t('discover.noEvents') }}
           </p>
 
           <template v-else>
@@ -755,7 +757,7 @@ watch(
                 type="button"
                 class="discover__pg-arrow"
                 :disabled="eventPage === 1"
-                aria-label="이전"
+                :aria-label="$t('discover.prevPage')"
                 @click="eventPage--"
               >
                 <ChevronLeft :size="14" :stroke-width="2.5" />
@@ -778,7 +780,7 @@ watch(
                 type="button"
                 class="discover__pg-arrow"
                 :disabled="eventPage === totalEventPages"
-                aria-label="다음"
+                :aria-label="$t('discover.nextPage')"
                 @click="eventPage++"
               >
                 <ChevronRight :size="14" :stroke-width="2.5" />
@@ -791,39 +793,39 @@ watch(
 
     <!-- ── Bottom Nav (4 items) ───────────────────────────────────────── -->
     <nav class="discover__nav">
-      <button class="nav-btn nav-btn--active" aria-label="홈">
+      <button class="nav-btn nav-btn--active" :aria-label="$t('nav.home')">
         <span class="nav-btn__icon-wrap">
           <IsIcon name="home" class="nav-btn__icon" variant="bulk" :size="19" />
         </span>
-        <span>홈</span>
+        <span>{{ $t('nav.home') }}</span>
       </button>
 
-      <button class="nav-btn" aria-label="지도">
+      <button class="nav-btn" :aria-label="$t('nav.map')">
         <span class="nav-btn__icon-wrap">
           <IsIcon name="map" class="nav-btn__icon" variant="twotone" :size="19" />
         </span>
-        <span>지도</span>
+        <span>{{ $t('nav.map') }}</span>
       </button>
 
-      <button class="nav-btn nav-btn--center" aria-label="AI 여행 코스 짜기" @click="showAISheet = true">
+      <button class="nav-btn nav-btn--center" :aria-label="$t('nav.aiCourse')" @click="showAISheet = true">
         <span class="nav-btn__icon-wrap">
           <IsIcon name="magic-star" class="nav-btn__icon" variant="bulk" :size="19" />
         </span>
-        <span>AI 코스</span>
+        <span>{{ $t('nav.aiCourse') }}</span>
       </button>
 
-      <button class="nav-btn" aria-label="저장함">
+      <button class="nav-btn" :aria-label="$t('nav.saved')">
         <span class="nav-btn__icon-wrap">
           <IsIcon name="bookmark" class="nav-btn__icon" variant="twotone" :size="19" />
         </span>
-        <span>저장함</span>
+        <span>{{ $t('nav.saved') }}</span>
       </button>
 
-      <button class="nav-btn" aria-label="마이">
+      <button class="nav-btn" :aria-label="$t('nav.my')">
         <span class="nav-btn__icon-wrap">
           <IsIcon name="profile-circle" class="nav-btn__icon" variant="twotone" :size="19" />
         </span>
-        <span>마이</span>
+        <span>{{ $t('nav.my') }}</span>
       </button>
     </nav>
 

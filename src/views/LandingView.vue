@@ -1,33 +1,29 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { getGoogleLoginUrl } from '@/services/authService'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { SUPPORTED_LOCALES, setLocale, getCurrentLocale } from '@/i18n'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const authMode = ref('login')
-const selectedLang = ref('Language / 언어')
 const showLangDrop = ref(false)
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const loginError = ref('')
 
-const languages = [
-  { code: 'en', label: 'English' },
-  { code: 'ko', label: '한국어' },
-  { code: 'zh', label: '中文' },
-  { code: 'ja', label: '日本語' },
-  { code: 'fr', label: 'Français' },
-  { code: 'es', label: 'Español' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'ar', label: 'العربية' },
-]
+const currentLangLabel = computed(
+  () => SUPPORTED_LOCALES.find((l) => l.code === getCurrentLocale())?.label ?? 'Language / 언어',
+)
 
 function selectLang(lang) {
-  selectedLang.value = lang.label
+  setLocale(lang.code)
   showLangDrop.value = false
+  loginError.value = ''
 }
 
 function go() {
@@ -39,19 +35,18 @@ async function loginWithEmail() {
   try {
     if (authMode.value === 'signup') {
       if (!email.value.trim() || !password.value) {
-        throw new Error('이메일과 비밀번호를 입력해 주세요.')
+        throw new Error(t('landing.validation.emailPasswordRequired'))
       }
       if (password.value.length < 8) {
-        throw new Error('비밀번호는 8자 이상으로 입력해 주세요.')
+        throw new Error(t('landing.validation.passwordMinLength'))
       }
       if (password.value !== confirmPassword.value) {
-        throw new Error('비밀번호 확인이 일치하지 않습니다.')
+        throw new Error(t('landing.validation.passwordMismatch'))
       }
       const result = await authStore.signup(email.value.trim(), password.value)
-      // 가입 응답이 토큰이 없으면 로그인 모드로 전환 안내
       if (!result?.accessToken) {
         authMode.value = 'login'
-        loginError.value = '회원가입 완료! 로그인해 주세요.'
+        loginError.value = t('landing.validation.signupComplete')
         return
       }
     } else {
@@ -60,7 +55,7 @@ async function loginWithEmail() {
     await authStore.loadMe().catch(() => null)
     router.push('/discover')
   } catch (e) {
-    loginError.value = e.message || '인증 처리에 실패했습니다.'
+    loginError.value = e.message || t('landing.validation.authFailed')
   }
 }
 </script>
@@ -141,7 +136,7 @@ async function loginWithEmail() {
         <div class="landing__hero">
           <h1 class="landing__logo">BTS</h1>
           <p class="landing__subtitle">Beyond Tours Seoul</p>
-          <p class="landing__tagline">서울, 그 이상을 여행하다</p>
+          <p class="landing__tagline">{{ $t('landing.tagline') }}</p>
         </div>
 
         <!-- Actions -->
@@ -150,13 +145,13 @@ async function loginWithEmail() {
         <div class="landing__lang-wrap" @click.stop>
           <button class="landing__lang-btn" @click="showLangDrop = !showLangDrop">
             <span class="landing__lang-globe">🌐</span>
-            <span>{{ selectedLang }}</span>
+            <span>{{ currentLangLabel }}</span>
             <span class="landing__lang-arrow" :class="{ 'landing__lang-arrow--open': showLangDrop }">›</span>
           </button>
           <Transition name="drop">
             <div v-if="showLangDrop" class="landing__lang-drop">
               <button
-                v-for="lang in languages"
+                v-for="lang in SUPPORTED_LOCALES"
                 :key="lang.code"
                 class="landing__lang-option"
                 @click="selectLang(lang)"
@@ -168,13 +163,13 @@ async function loginWithEmail() {
         <!-- Google button -->
         <button class="landing__btn landing__btn--google" @click="go">
           <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G" />
-          Continue with Google
+          {{ $t('landing.continueGoogle') }}
         </button>
 
         <!-- Email divider -->
         <div class="landing__or">
           <span class="landing__or-line"></span>
-          <span class="landing__or-text">or continue with email</span>
+          <span class="landing__or-text">{{ $t('landing.orEmail') }}</span>
           <span class="landing__or-line"></span>
         </div>
 
@@ -185,7 +180,7 @@ async function loginWithEmail() {
             type="button"
             @click="authMode = 'login'"
           >
-            로그인
+            {{ $t('landing.loginBtn') }}
           </button>
           <button
             class="landing__auth-tab"
@@ -193,7 +188,7 @@ async function loginWithEmail() {
             type="button"
             @click="authMode = 'signup'"
           >
-            회원가입
+            {{ $t('landing.signupBtn') }}
           </button>
         </div>
 
@@ -217,14 +212,14 @@ async function loginWithEmail() {
             v-model="confirmPassword"
             class="landing__input"
             type="password"
-            placeholder="Password 확인"
+            :placeholder="$t('landing.passwordConfirmPlaceholder')"
             autocomplete="new-password"
           />
           <button class="landing__btn landing__btn--email" @click="loginWithEmail" :disabled="authStore.isLoading">
             {{
               authStore.isLoading
-                ? (authMode === 'signup' ? '가입 중...' : '로그인 중...')
-                : (authMode === 'signup' ? '회원가입' : '로그인')
+                ? (authMode === 'signup' ? $t('landing.signupLoading') : $t('landing.loginLoading'))
+                : (authMode === 'signup' ? $t('landing.signupBtn') : $t('landing.loginBtn'))
             }}
           </button>
           <p v-if="loginError" class="landing__error">{{ loginError }}</p>

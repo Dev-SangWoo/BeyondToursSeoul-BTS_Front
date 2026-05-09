@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   ChevronLeft,
   MapPin,
@@ -17,6 +18,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['close'])
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 
@@ -197,22 +199,22 @@ const sizeInfoStructured = computed(() => parseLockerSizeInfo(d.value?.sizeInfo)
   <div class="ld-root">
     <div v-if="loading" class="ld-loading">
       <div class="ld-spinner" />
-      <p>불러오는 중...</p>
+      <p>{{ $t('locker.loading') }}</p>
     </div>
 
     <div v-else-if="error" class="ld-error">
       <p>{{ error }}</p>
-      <button type="button" class="ld-error__back" @click="goBack">돌아가기</button>
+      <button type="button" class="ld-error__back" @click="goBack">{{ $t('locker.back') }}</button>
     </div>
 
     <div v-else-if="d" class="ld">
       <div class="ld__hero">
         <div class="ld__hero-pattern" aria-hidden="true" />
         <div class="ld__hero-actions">
-          <button type="button" class="ld__icon-btn" aria-label="뒤로가기" @click="goBack">
+          <button type="button" class="ld__icon-btn" :aria-label="$t('locker.backBtn')" @click="goBack">
             <ChevronLeft :size="22" :stroke-width="2.5" />
           </button>
-          <button type="button" class="ld__icon-btn" aria-label="공유" @click="shareLocker">
+          <button type="button" class="ld__icon-btn" :aria-label="$t('locker.share')" @click="shareLocker">
             <Share2 :size="20" :stroke-width="2.2" />
           </button>
         </div>
@@ -227,13 +229,13 @@ const sizeInfoStructured = computed(() => parseLockerSizeInfo(d.value?.sizeInfo)
       <div class="ld__card">
         <div v-if="d.totalCnt != null" class="ld__stat">
           <span class="ld__stat-num">{{ d.totalCnt }}</span>
-          <span class="ld__stat-label">보관함 개수</span>
+          <span class="ld__stat-label">{{ $t('locker.lockerCount') }}</span>
         </div>
 
         <div class="ld__quick-actions">
           <button type="button" class="ld__action-btn" @click="openMap">
             <span class="ld__action-icon"><Navigation :size="18" :stroke-width="2" /></span>
-            <span>길찾기</span>
+            <span>{{ $t('locker.directions') }}</span>
           </button>
         </div>
 
@@ -242,7 +244,7 @@ const sizeInfoStructured = computed(() => parseLockerSizeInfo(d.value?.sizeInfo)
         <section v-if="d.detailLocation" class="ld__section">
           <h2 class="ld__section-title">
             <MapPin :size="16" class="ld__section-title-icon" />
-            위치
+            {{ $t('locker.location') }}
           </h2>
           <p class="ld__text">{{ d.detailLocation }}</p>
         </section>
@@ -252,25 +254,25 @@ const sizeInfoStructured = computed(() => parseLockerSizeInfo(d.value?.sizeInfo)
         <section v-if="d.weekdayOperTime || d.weekendOperTime" class="ld__section">
           <h2 class="ld__section-title">
             <Clock :size="16" class="ld__section-title-icon" />
-            운영 시간
+            {{ $t('locker.operHours') }}
           </h2>
           <ul class="ld__time-list">
             <li v-if="d.weekdayOperTime">
-              <span class="ld__time-label">평일</span>
+              <span class="ld__time-label">{{ $t('locker.weekday') }}</span>
               <span class="ld__time-value">{{ formatOperTime(d.weekdayOperTime) }}</span>
             </li>
             <li v-if="d.weekendOperTime">
-              <span class="ld__time-label">주말</span>
+              <span class="ld__time-label">{{ $t('locker.weekend') }}</span>
               <span class="ld__time-value">{{ formatOperTime(d.weekendOperTime) }}</span>
             </li>
           </ul>
-          <p class="ld__hint">※ 표시는 역(출입구) 운영시간 기준일 수 있습니다.</p>
+          <p class="ld__hint">{{ $t('locker.operNote') }}</p>
         </section>
 
         <div v-if="d.weekdayOperTime || d.weekendOperTime" class="ld__divider" />
 
         <section v-if="d.sizeInfo" class="ld__section">
-          <h2 class="ld__section-title">보관함 크기</h2>
+          <h2 class="ld__section-title">{{ $t('locker.lockerSize') }}</h2>
           <div v-if="sizeInfoStructured?.length" class="ld__size-wrap">
             <div
               v-for="row in sizeInfoStructured"
@@ -294,14 +296,14 @@ const sizeInfoStructured = computed(() => parseLockerSizeInfo(d.value?.sizeInfo)
         <div v-if="d.sizeInfo" class="ld__divider" />
 
         <section v-if="d.basePriceInfo" class="ld__section">
-          <h2 class="ld__section-title">이용 요금</h2>
+          <h2 class="ld__section-title">{{ $t('locker.price') }}</h2>
           <p class="ld__text ld__text--pre">{{ d.basePriceInfo.replace(/\r\n/g, '\n') }}</p>
         </section>
 
         <div v-if="d.basePriceInfo" class="ld__divider" />
 
         <section v-if="d.addPriceInfo" class="ld__section">
-          <h2 class="ld__section-title">추가 요금</h2>
+          <h2 class="ld__section-title">{{ $t('locker.extraPrice') }}</h2>
           <p class="ld__text ld__text--pre">{{ d.addPriceInfo.replace(/\r\n/g, '\n') }}</p>
         </section>
 
@@ -310,7 +312,7 @@ const sizeInfoStructured = computed(() => parseLockerSizeInfo(d.value?.sizeInfo)
         <section v-if="d.limitItemsInfo" class="ld__section ld__section--warning">
           <h2 class="ld__section-title">
             <AlertCircle :size="16" class="ld__section-title-icon ld__warn-icon" />
-            보관 제한 물품
+            {{ $t('locker.limitItems') }}
           </h2>
           <p class="ld__text ld__text--pre">{{ d.limitItemsInfo.replace(/\r\n/g, '\n') }}</p>
         </section>

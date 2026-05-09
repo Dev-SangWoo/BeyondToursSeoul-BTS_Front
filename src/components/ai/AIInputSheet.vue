@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTripStore } from '@/stores/useTripStore'
 import GenerateLoading from './GenerateLoading.vue'
 import AiTicketModal from './input-sheet/AiTicketModal.vue'
@@ -15,6 +16,7 @@ import {
   setDetailReturnIntent,
 } from '@/utils/aiSheetSession'
 
+const { t } = useI18n()
 const emit = defineEmits(['close', 'generated'])
 const router = useRouter()
 const tripStore = useTripStore()
@@ -58,10 +60,16 @@ const selectedInterestLabels = computed(() =>
     .map((item) => item.label),
 )
 const selectedMobilityLabel = computed(
-  () => mobilityOptions.find((item) => item.id === mobilityMode.value)?.label || '대중교통 중심',
+  () => {
+    const found = mobilityOptions.find((item) => item.id === mobilityMode.value)
+    return found ? t(found.labelKey) : t('ai.mobility.public')
+  },
 )
 const selectedSimLabel = computed(
-  () => simOptions.find((item) => item.id === simOption.value)?.label || '필요 없음',
+  () => {
+    const found = simOptions.find((item) => item.id === simOption.value)
+    return found ? t(found.labelKey) : t('ai.sim.skip')
+  },
 )
 
 const stylePresetFromSlider = computed(() => {
@@ -356,7 +364,7 @@ onMounted(() => {
     >
       <Transition name="guide-fade">
         <p v-if="showTicketModal && showTopGuide" class="sheet-top-guide">
-          출발일은 항공편 기준으로 입력해 주세요. (YYYY-MM-DD)
+          {{ $t('ai.sheet.topGuide') }}
         </p>
       </Transition>
 

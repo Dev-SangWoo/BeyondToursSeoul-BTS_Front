@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTripStore } from '@/stores/useTripStore'
 import { useMapStore } from '@/stores/useMapStore'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -14,6 +15,7 @@ import {
   SEOUL_CENTER,
 } from '@/utils/structuredItinerary'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const tripStore = useTripStore()
@@ -171,7 +173,7 @@ function generateAnother() {
 <template>
   <div class="result">
     <header class="result__header">
-      <button class="result__back-btn" @click="goBack" aria-label="뒤로가기">‹</button>
+      <button class="result__back-btn" @click="goBack" :aria-label="$t('result.back')">‹</button>
       <h2 class="result__title">{{ resultTitle }}</h2>
     </header>
 
@@ -201,10 +203,10 @@ function generateAnother() {
         :disabled="savingCourse || planLoadError"
         @click="saveCourse"
       >
-        {{ savingCourse ? '저장 중…' : '코스 저장' }}
+        {{ savingCourse ? $t('result.saving') : $t('result.saveCourse') }}
       </button>
       <button class="result__btn result__btn--another" type="button" @click="generateAnother">
-        다시 생성
+        {{ $t('result.anotherCourse') }}
       </button>
     </div>
   </div>

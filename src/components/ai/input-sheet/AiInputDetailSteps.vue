@@ -1,9 +1,11 @@
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { FileText } from 'lucide-vue-next'
 import TravelDensitySlider from '../TravelDensitySlider.vue'
 import { interestOptions, mobilityOptions, relationshipOptions, simOptions } from './aiInputFlowConstants'
 
+const { t } = useI18n()
 const relationship = defineModel('relationship', { type: String, default: '친구' })
 const partySize = defineModel('partySize', { type: Number, default: 2 })
 const mobilityMode = defineModel('mobilityMode', { type: String, default: 'public' })
@@ -62,7 +64,7 @@ function goPrevPage() {
 
 <template>
   <div class="detail-steps">
-    <div class="detail-steps__tabs" role="tablist" aria-label="입력 단계">
+    <div class="detail-steps__tabs" role="tablist" :aria-label="$t('ai.detail.inputStage')">
       <button
         type="button"
         class="detail-steps__tab"
@@ -72,7 +74,7 @@ function goPrevPage() {
         @click="detailPage = 1"
       >
         <span class="detail-steps__tab-num">1</span>
-        동행 · 이동 · 연결
+        {{ $t('ai.detail.tab1') }}
       </button>
       <button
         type="button"
@@ -83,7 +85,7 @@ function goPrevPage() {
         @click="detailPage = 2"
       >
         <span class="detail-steps__tab-num">2</span>
-        스타일 · 테마 · 추가
+        {{ $t('ai.detail.tab2') }}
       </button>
     </div>
 
@@ -91,7 +93,7 @@ function goPrevPage() {
     <section class="sheet__section">
       <div class="sheet__section-label">
         <span class="sheet__step-num">2</span>
-        <span class="sheet__step-text">동행 유형 · 인원</span>
+        <span class="sheet__step-text">{{ $t('ai.detail.step2') }}</span>
       </div>
       <div class="sheet__chip-row">
         <button
@@ -108,47 +110,47 @@ function goPrevPage() {
             :stroke-width="relationship === item.id ? 2.5 : 2.2"
             :color="item.color"
           />
-          <span class="travel-type-btn__label">{{ item.label }}</span>
+          <span class="travel-type-btn__label">{{ $t(item.labelKey) }}</span>
         </button>
       </div>
       <div class="sheet__party-extra">
-        <span class="sheet__field-label">인원 수</span>
+        <span class="sheet__field-label">{{ $t('ai.detail.partyCount') }}</span>
         <div
           class="sheet__stepper"
           :class="{ 'sheet__stepper--locked': !needsPartyInput }"
           role="group"
-          aria-label="인원 수 조절"
+          :aria-label="$t('ai.detail.partyCount')"
           :aria-disabled="!needsPartyInput"
         >
           <button
             type="button"
             class="sheet__stepper-btn"
-            aria-label="한 명 빼기"
+            :aria-label="$t('ai.detail.decrementParty')"
             :disabled="!needsPartyInput || partySize <= PARTY_MIN"
             @click="decrementParty"
           >
             −
           </button>
-          <span class="sheet__stepper-value">{{ partySize }}명</span>
+          <span class="sheet__stepper-value">{{ $t('ai.detail.partyCountUnit', { n: partySize }) }}</span>
           <button
             type="button"
             class="sheet__stepper-btn"
-            aria-label="한 명 추가"
+            :aria-label="$t('ai.detail.incrementParty')"
             :disabled="!needsPartyInput || partySize >= PARTY_MAX"
             @click="incrementParty"
           >
             +
           </button>
         </div>
-        <p v-if="!needsPartyInput" class="sheet__party-lock-hint">혼자·연인은 인원이 고정됩니다.</p>
+        <p v-if="!needsPartyInput" class="sheet__party-lock-hint">{{ $t('ai.detail.partyLocked') }}</p>
       </div>
     </section>
 
     <section class="sheet__section">
       <div class="sheet__section-label">
         <span class="sheet__step-num">3</span>
-        <span class="sheet__step-text">이동 방식</span>
-        <span class="sheet__step-hint">코스 동선 전략</span>
+        <span class="sheet__step-text">{{ $t('ai.detail.step3') }}</span>
+        <span class="sheet__step-hint">{{ $t('ai.detail.step3hint') }}</span>
       </div>
       <div class="sheet__option-grid">
         <button
@@ -165,7 +167,7 @@ function goPrevPage() {
             :stroke-width="mobilityMode === item.id ? 2.5 : 2.2"
             :color="item.color"
           />
-          <span class="sheet__option-label">{{ item.label }}</span>
+          <span class="sheet__option-label">{{ $t(item.labelKey) }}</span>
         </button>
       </div>
     </section>
@@ -173,8 +175,8 @@ function goPrevPage() {
     <section class="sheet__section">
       <div class="sheet__section-label">
         <span class="sheet__step-num">4</span>
-        <span class="sheet__step-text">유심 / 연결</span>
-        <span class="sheet__step-hint">선택</span>
+        <span class="sheet__step-text">{{ $t('ai.detail.step4') }}</span>
+        <span class="sheet__step-hint">{{ $t('ai.detail.step4hint') }}</span>
       </div>
       <div class="sheet__option-grid sheet__option-grid--sim">
         <button
@@ -191,7 +193,7 @@ function goPrevPage() {
             :stroke-width="simOption === item.id ? 2.5 : 2.2"
             :color="item.color"
           />
-          <span class="sheet__option-label">{{ item.label }}</span>
+          <span class="sheet__option-label">{{ $t(item.labelKey) }}</span>
         </button>
       </div>
     </section>
@@ -200,7 +202,7 @@ function goPrevPage() {
       <span class="sheet__submit-icon">
         <FileText :size="20" :stroke-width="2.4" color="#fff" />
       </span>
-      다음 · 스타일·테마 입력
+      {{ $t('ai.detail.nextStyle') }}
     </button>
     </div>
 
@@ -208,8 +210,8 @@ function goPrevPage() {
     <section class="sheet__section">
       <div class="sheet__section-label">
         <span class="sheet__step-num">5</span>
-        <span class="sheet__step-text">여행 스타일</span>
-        <span class="sheet__step-hint">관광지 ↔ 로컬</span>
+        <span class="sheet__step-text">{{ $t('ai.detail.step5') }}</span>
+        <span class="sheet__step-hint">{{ $t('ai.detail.step5hint') }}</span>
       </div>
       <TravelDensitySlider v-model="density" />
     </section>
@@ -217,7 +219,7 @@ function goPrevPage() {
     <section class="sheet__section">
       <div class="sheet__section-label">
         <span class="sheet__step-num">6</span>
-        <span class="sheet__step-text">테마 선택</span>
+        <span class="sheet__step-text">{{ $t('ai.detail.step6') }}</span>
         <span
           class="sheet__interest-counter"
           :class="{ 'sheet__interest-counter--max': atMaxInterests }"
@@ -244,7 +246,7 @@ function goPrevPage() {
             :stroke-width="interests.includes(item.id) ? 2.5 : 2.2"
             :color="item.color"
           />
-          <span class="interest-btn__label">{{ item.label }}</span>
+          <span class="interest-btn__label">{{ $t(item.labelKey) }}</span>
           <span v-if="interests.includes(item.id)" class="interest-btn__check">✓</span>
         </button>
       </div>
@@ -253,15 +255,15 @@ function goPrevPage() {
     <section class="sheet__section">
       <div class="sheet__section-label">
         <span class="sheet__step-num">7</span>
-        <span class="sheet__step-text">추가 요청 사항</span>
-        <span class="sheet__step-hint">선택</span>
+        <span class="sheet__step-text">{{ $t('ai.detail.step7') }}</span>
+        <span class="sheet__step-hint">{{ $t('ai.detail.step7hint') }}</span>
       </div>
       <label class="sheet__field">
         <textarea
           v-model="specialRequest"
           class="sheet__textarea"
           maxlength="300"
-          placeholder="예: 계단 적게, 야경 위주, 가족 동반 고려 등"
+          :placeholder="$t('ai.detail.textareaPlaceholder')"
           rows="3"
         />
         <span class="sheet__textarea-count">{{ specialRequest.length }}/300</span>
@@ -269,7 +271,7 @@ function goPrevPage() {
     </section>
 
     <div class="detail-steps__actions">
-      <button type="button" class="sheet__ghost" @click="goPrevPage">이전</button>
+      <button type="button" class="sheet__ghost" @click="goPrevPage">{{ $t('ai.detail.prev') }}</button>
       <button
         class="sheet__submit sheet__submit--split"
         :class="{ 'sheet__submit--disabled': !props.canProceedChat || props.isGeneratingCourse }"
@@ -279,12 +281,12 @@ function goPrevPage() {
         <span class="sheet__submit-icon">
           <FileText :size="20" :stroke-width="2.4" color="#fff" />
         </span>
-        {{ props.isGeneratingCourse ? '코스 생성 중…' : '코스 생성' }}
+        {{ props.isGeneratingCourse ? $t('ai.detail.generatingCourse') : $t('ai.detail.generateCourse') }}
       </button>
     </div>
 
     <p v-if="!props.canProceedChat" class="sheet__submit-hint">
-      스타일·테마(1개 이상)를 입력해 주세요
+      {{ $t('ai.detail.needStyleTheme') }}
     </p>
     </div>
   </div>
