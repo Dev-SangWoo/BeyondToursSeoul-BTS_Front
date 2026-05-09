@@ -40,9 +40,14 @@ onMounted(async () => {
     }
 
     authStore.setSession(payload)
-    await authStore.loadMe().catch(() => null)
-    status.value = t('auth.loginComplete')
-    setTimeout(() => router.replace('/discover'), 500)
+    const me = await authStore.loadMe().catch(() => null)
+    const hasNickname = !!(me?.nickname && String(me.nickname).trim())
+    const hasPersona = !!(me?.localPreference && String(me.localPreference).trim())
+    const onboardingDone = hasNickname && hasPersona
+    status.value = onboardingDone
+      ? '로그인 완료! 홈으로 이동합니다.'
+      : '첫 로그인 확인! 닉네임과 페르소나를 설정해 주세요.'
+    setTimeout(() => router.replace(onboardingDone ? '/discover' : '/profile/setup'), 500)
   } catch {
     status.value = t('auth.error')
     setTimeout(() => router.replace('/'), 1200)

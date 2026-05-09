@@ -55,3 +55,36 @@ export const simOptions = [
   { id: 'esim', icon: Wifi,        color: '#0ea5e9', labelKey: 'ai.sim.esim' },
   { id: 'sim',  icon: Smartphone,  color: '#f59e0b', labelKey: 'ai.sim.sim' },
 ]
+
+export const personaOptions = [
+  {
+    id: 'main100',
+    label: '명소 올인',
+    description: '유명 관광지 완전 위주',
+    localDensity: 0,
+  },
+  {
+    id: 'main70',
+    label: '명소 중심 + 로컬 한 스푼',
+    description: '관광지 중심, 로컬 가미',
+    localDensity: 25,
+  },
+  {
+    id: 'balanced',
+    label: '밸런스 탐험',
+    description: '관광지와 로컬 균형',
+    localDensity: 50,
+  },
+  {
+    id: 'local70',
+    label: '로컬 중심 + 명소 한 스푼',
+    description: '로컬 핀 중심, 관광지 가미',
+    localDensity: 75,
+  },
+  {
+    id: 'local100',
+    label: '로컬 딥다이브',
+    description: '완전 로컬 핀 위주',
+    localDensity: 100,
+  },
+]
