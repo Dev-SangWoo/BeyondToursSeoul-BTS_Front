@@ -83,6 +83,34 @@ export async function fetchMe(accessToken) {
   return data
 }
 
+export async function updateMyNickname(accessToken, nickname) {
+  const res = await fetch(buildUrl('/api/v1/auth/me/nickname'), {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ nickname }),
+  })
+  const data = await parseJson(res)
+  if (!res.ok) throw new Error(data.message || '닉네임 저장에 실패했습니다.')
+  return data
+}
+
+export async function updateMyProfile(accessToken, { nickname, localPreference }) {
+  const res = await fetch(buildUrl('/api/v1/auth/me/profile'), {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ nickname, localPreference }),
+  })
+  const data = await parseJson(res)
+  if (!res.ok) throw new Error(data.message || '프로필 저장에 실패했습니다.')
+  return data
+}
+
 export function getGoogleLoginUrl() {
   return resolveGoogleAuthUrl()
 }
