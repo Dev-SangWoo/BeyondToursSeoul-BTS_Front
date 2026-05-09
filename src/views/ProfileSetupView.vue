@@ -8,13 +8,16 @@ const authStore = useAuthStore()
 const router = useRouter()
 const nickname = ref((authStore.user?.nickname || '').trim())
 const selectedPersona = ref(authStore.user?.localPreference || 'balanced')
+const selectedLanguage = ref(authStore.user?.preferredLanguage || '한국어')
 const saving = ref(false)
 const error = ref('')
+const languageOptions = ['한국어', 'English', '日本語', '中文']
 
 const canSubmit = computed(() =>
   nickname.value.trim().length >= 2 &&
   nickname.value.trim().length <= 20 &&
-  !!selectedPersona.value,
+  !!selectedPersona.value &&
+  languageOptions.includes(selectedLanguage.value),
 )
 
 async function submit() {
@@ -25,6 +28,7 @@ async function submit() {
     await authStore.saveProfile({
       nickname: nickname.value.trim(),
       localPreference: selectedPersona.value,
+      preferredLanguage: selectedLanguage.value,
     })
     router.replace('/discover')
   } catch (e) {
@@ -51,6 +55,22 @@ async function submit() {
           @keyup.enter="submit"
         />
       </label>
+
+      <div class="setup__language">
+        <span class="setup__persona-title">표시 언어 선택</span>
+        <div class="setup__language-options">
+          <button
+            v-for="lang in languageOptions"
+            :key="lang"
+            type="button"
+            class="setup__language-btn"
+            :class="{ 'setup__language-btn--active': selectedLanguage === lang }"
+            @click="selectedLanguage = lang"
+          >
+            {{ lang }}
+          </button>
+        </div>
+      </div>
 
       <div class="setup__persona">
         <span class="setup__persona-title">여행 페르소나 선택</span>
@@ -169,6 +189,35 @@ async function submit() {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.setup__language {
+  margin-top: 14px;
+}
+
+.setup__language-options {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.setup__language-btn {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafaf8;
+  padding: 10px 11px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  cursor: pointer;
+}
+
+.setup__language-btn--active {
+  border-color: #fe9c00;
+  background: #fff8ec;
+  color: #c97000;
 }
 
 .setup__persona-title {

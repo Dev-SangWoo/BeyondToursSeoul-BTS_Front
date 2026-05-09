@@ -352,7 +352,7 @@ function focusMarkerFromTimeline(payload) {
         class="chat-step__primary"
         :class="{ 'chat-step__primary--disabled': !canSubmitGenerate }"
         :disabled="!canSubmitGenerate"
-        @click="emit('generate')"
+        @click="emit('generate', lastStructured)"
       >
         <Sparkles :size="18" :stroke-width="2.4" />
         {{ lastStructured ? $t('ai.chat.generateCourseConfirm') : $t('ai.chat.generateCourse') }}

@@ -4,7 +4,8 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
-const hideNavRoutes = ['/']
+/** 하단 탭이 가리는 화면(랜딩, 전체 높이 결과 등) */
+const hideNavRoutes = ['/', '/result']
 </script>
 
 <template>

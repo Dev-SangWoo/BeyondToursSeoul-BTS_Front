@@ -97,14 +97,14 @@ export async function updateMyNickname(accessToken, nickname) {
   return data
 }
 
-export async function updateMyProfile(accessToken, { nickname, localPreference }) {
+export async function updateMyProfile(accessToken, { nickname, localPreference, preferredLanguage }) {
   const res = await fetch(buildUrl('/api/v1/auth/me/profile'), {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ nickname, localPreference }),
+    body: JSON.stringify({ nickname, localPreference, preferredLanguage }),
   })
   const data = await parseJson(res)
   if (!res.ok) throw new Error(data.message || '프로필 저장에 실패했습니다.')

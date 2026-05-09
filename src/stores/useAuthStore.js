@@ -119,9 +119,9 @@ export const useAuthStore = defineStore('auth', () => {
     return me
   }
 
-  async function saveProfile({ nickname, localPreference }) {
+  async function saveProfile({ nickname, localPreference, preferredLanguage }) {
     if (!accessToken.value) throw new Error('로그인이 필요합니다.')
-    const me = await updateMyProfile(accessToken.value, { nickname, localPreference })
+    const me = await updateMyProfile(accessToken.value, { nickname, localPreference, preferredLanguage })
     user.value = me
     persist()
     return me

@@ -3,79 +3,48 @@ import { defineStore } from 'pinia'
 
 const STORAGE_KEY = 'bts:saved:v1'
 
-function parsePlacesFromRoute(routeText) {
-  if (!routeText) return []
-  return routeText
-    .split(/\s*→\s*/)
-    .map((name) => name.trim())
-    .filter(Boolean)
+/** 예전 로컬 홈 코스 찜 항목 제거 (DB로 이전) */
+function purgeLegacyHomeCourseItems(items) {
+  return (items || []).filter((item) => {
+    if (item.type === 'home_course') return false
+    if (item.type === 'course' && typeof item.refId === 'string' && item.refId.startsWith('course:')) {
+      return false
+    }
+    return true
+  })
 }
 
 export const useSavedStore = defineStore('saved', () => {
   const savedItems = ref([])
   const placesById = ref({})
   const eventsById = ref({})
-  const coursesById = ref({})
 
-  const savedCourses = computed(() =>
-    savedItems.value
-      .filter((item) => item.type === 'course')
-      .map((item) => coursesById.value[item.refId])
-      .filter(Boolean),
-  )
-
-  const savedPlaces = computed(() => {
-    const merged = new Map()
-
+  const savedPlaces = computed(() =>
     savedItems.value
       .filter((item) => item.type === 'place')
       .map((item) => placesById.value[item.refId])
-      .filter(Boolean)
-      .forEach((place) => merged.set(place.id, place))
+      .filter(Boolean),
+  )
 
-    savedCourses.value.forEach((course) => {
-      ;(course.placeIds || []).forEach((id) => {
-        const p = placesById.value[id]
-        if (p) merged.set(p.id, p)
-      })
-    })
-
-    return [...merged.values()]
-  })
-
-  const savedEvents = computed(() => {
-    const merged = new Map()
-
+  const savedEvents = computed(() =>
     savedItems.value
       .filter((item) => item.type === 'event')
       .map((item) => eventsById.value[item.refId])
-      .filter(Boolean)
-      .forEach((event) => merged.set(event.id, event))
-
-    savedCourses.value.forEach((course) => {
-      ;(course.eventIds || []).forEach((id) => {
-        const e = eventsById.value[id]
-        if (e) merged.set(e.id, e)
-      })
-    })
-
-    return [...merged.values()]
-  })
+      .filter(Boolean),
+  )
 
   function hydrate() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (!raw) return
       const parsed = JSON.parse(raw)
-      savedItems.value = parsed.savedItems || []
+      savedItems.value = purgeLegacyHomeCourseItems(parsed.savedItems || [])
       placesById.value = parsed.placesById || {}
       eventsById.value = parsed.eventsById || {}
-      coursesById.value = parsed.coursesById || {}
     } catch {
       savedItems.value = []
       placesById.value = {}
       eventsById.value = {}
-      coursesById.value = {}
     }
   }
 
@@ -86,12 +55,11 @@ export const useSavedStore = defineStore('saved', () => {
         savedItems: savedItems.value,
         placesById: placesById.value,
         eventsById: eventsById.value,
-        coursesById: coursesById.value,
       }),
     )
   }
 
-  watch([savedItems, placesById, eventsById, coursesById], persist, { deep: true })
+  watch([savedItems, placesById, eventsById], persist, { deep: true })
 
   function isSaved(type, refId) {
     return savedItems.value.some((item) => item.type === type && item.refId === refId)
@@ -114,59 +82,16 @@ export const useSavedStore = defineStore('saved', () => {
     })
   }
 
-  function saveCourseFromHome({ course, densityModeId }) {
-    const courseId = `course:${densityModeId}:${course.id}`
-    const placeNames = parsePlacesFromRoute(course.route)
-    const placeIds = placeNames.map((name) => `place:${name}`)
-
-    placeNames.forEach((name, i) => {
-      const pid = placeIds[i]
-      if (!placesById.value[pid]) {
-        placesById.value[pid] = {
-          id: pid,
-          name,
-          source: 'course',
-        }
-      }
-    })
-
-    coursesById.value[courseId] = {
-      id: courseId,
-      title: course.title,
-      route: course.route,
-      tags: course.tags || [],
-      densityModeId,
-      placeIds,
-      eventIds: [],
-    }
-
-    addSaved('course', courseId, 'home_recommendation')
-  }
-
-  function toggleCourseFromHome(payload) {
-    const refId = `course:${payload.densityModeId}:${payload.course.id}`
-    if (isSaved('course', refId)) {
-      removeSaved('course', refId)
-      return false
-    }
-    saveCourseFromHome(payload)
-    return true
-  }
-
   hydrate()
 
   return {
     savedItems,
     placesById,
     eventsById,
-    coursesById,
-    savedCourses,
     savedPlaces,
     savedEvents,
     isSaved,
     removeSaved,
     addSaved,
-    saveCourseFromHome,
-    toggleCourseFromHome,
   }
 })
