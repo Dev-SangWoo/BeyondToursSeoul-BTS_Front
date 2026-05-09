@@ -35,3 +35,14 @@ export function setLocale(localeCode) {
 export function getCurrentLocale() {
   return i18n.global.locale.value
 }
+
+const LOCALE_TO_API_LANG = {
+  ko: 'KOR',
+  en: 'ENG',
+  ja: 'JPN',
+  zh: 'CHS',
+}
+
+export function getApiLangCode() {
+  return LOCALE_TO_API_LANG[getCurrentLocale()] ?? 'KOR'
+}
