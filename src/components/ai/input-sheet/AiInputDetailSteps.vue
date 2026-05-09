@@ -2,8 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FileText } from 'lucide-vue-next'
-import TravelDensitySlider from '../TravelDensitySlider.vue'
-import { interestOptions, mobilityOptions, relationshipOptions, simOptions } from './aiInputFlowConstants'
+import { interestOptions, mobilityOptions, personaOptions, relationshipOptions, simOptions } from './aiInputFlowConstants'
 
 const { t } = useI18n()
 const relationship = defineModel('relationship', { type: String, default: '친구' })
@@ -28,6 +27,16 @@ const PARTY_MAX = 20
 
 const interestCount = computed(() => interests.value.length)
 const atMaxInterests = computed(() => interestCount.value >= 3)
+const selectedPersonaId = computed({
+  get() {
+    const current = Number(density.value)
+    return personaOptions.find((item) => item.localDensity === current)?.id || 'balanced'
+  },
+  set(id) {
+    const item = personaOptions.find((p) => p.id === id)
+    if (item) density.value = item.localDensity
+  },
+})
 
 function decrementParty() {
   if (!props.needsPartyInput) return
@@ -213,7 +222,22 @@ function goPrevPage() {
         <span class="sheet__step-text">{{ $t('ai.detail.step5') }}</span>
         <span class="sheet__step-hint">{{ $t('ai.detail.step5hint') }}</span>
       </div>
-      <TravelDensitySlider v-model="density" />
+      <div class="sheet__persona-list">
+        <button
+          v-for="item in personaOptions"
+          :key="item.id"
+          type="button"
+          class="sheet__persona-card"
+          :class="{ 'sheet__persona-card--active': selectedPersonaId === item.id }"
+          @click="selectedPersonaId = item.id"
+        >
+          <div class="sheet__persona-head">
+            <strong>{{ item.label }}</strong>
+            <span class="sheet__persona-badge">로컬 {{ item.localDensity }}%</span>
+          </div>
+          <p>{{ item.description }}</p>
+        </button>
+      </div>
     </section>
 
     <section class="sheet__section">
@@ -452,6 +476,56 @@ function goPrevPage() {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+}
+
+.sheet__persona-list {
+  display: grid;
+  gap: 8px;
+}
+
+.sheet__persona-card {
+  text-align: left;
+  border: 2px solid #ebebeb;
+  border-radius: 12px;
+  background: #fafaf8;
+  padding: 11px 12px;
+  cursor: pointer;
+}
+
+.sheet__persona-card--active {
+  border-color: #fe9c00;
+  background: #fff8ec;
+}
+
+.sheet__persona-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sheet__persona-head strong {
+  font-size: 13px;
+  color: #1f2937;
+  font-weight: 800;
+}
+
+.sheet__persona-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #c97000;
+  background: #fff;
+  border: 1px solid #f3d19f;
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+.sheet__persona-card p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
 }
 
 .sheet__option-grid--sim {
