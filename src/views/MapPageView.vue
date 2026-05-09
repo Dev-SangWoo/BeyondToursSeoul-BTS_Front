@@ -382,9 +382,29 @@ function fetchCurrentLocation() {
 
       <!-- 핀 범례 -->
       <div class="map-page__legend">
-        <div class="map-page__legend-item">
-          <span class="map-page__legend-dot" style="background: #fe9c00"></span>
-          <span class="map-page__legend-label">{{ $t('map.legendAttraction') }}</span>
+        <div class="map-page__legend-item map-page__legend-item--attraction">
+          <span
+            class="map-page__legend-dot"
+            :style="{ background: mapStore.showAttraction ? '#fe9c00' : '#b0bec5' }"
+          ></span>
+          <span
+            class="map-page__legend-label"
+            :class="{ 'map-page__legend-label--off': !mapStore.showAttraction }"
+          >{{ $t('map.legendAttraction') }}</span>
+          <div
+            class="attraction-toggle"
+            role="switch"
+            :aria-checked="mapStore.showAttraction"
+            style="pointer-events: auto"
+            @click.stop="mapStore.toggleAttraction"
+          >
+            <div
+              class="toggle-track"
+              :class="{ 'toggle-track--active': mapStore.showAttraction }"
+            >
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
         </div>
         <div class="map-page__legend-item map-page__legend-item--locker">
           <span
@@ -843,11 +863,13 @@ function fetchCurrentLocation() {
   color: #b0bec5;
 }
 
+.map-page__legend-item--attraction,
 .map-page__legend-item--locker {
   pointer-events: auto;
   cursor: pointer;
 }
 
+.attraction-toggle,
 .locker-toggle {
   display: flex;
   align-items: center;
@@ -1071,6 +1093,10 @@ function fetchCurrentLocation() {
 }
 
 .toggle-track--active {
+  background: #fe9c00;
+}
+
+.attraction-toggle .toggle-track--active {
   background: #fe9c00;
 }
 

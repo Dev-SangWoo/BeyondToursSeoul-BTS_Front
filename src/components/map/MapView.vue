@@ -255,7 +255,9 @@ function syncMarkers(markers) {
       marker.type === 'congestion' || marker.id.toString().startsWith('zone-');
     const isLocker = marker.type === 'locker';
 
+    const isAttraction = !isLocker && !isCongestion;
     const hidden =
+      (isAttraction && !mapStore.showAttraction) ||
       (isLocker && !mapStore.showLocker) ||
       (isCongestion && !mapStore.showCongestion);
 
@@ -402,6 +404,18 @@ watch(
   () => mapStore.currentLocation,
   (loc) => {
     if (mapInstance) syncCurrentLocation(loc);
+  },
+);
+
+watch(
+  () => mapStore.showAttraction,
+  (show) => {
+    if (!mapInstance) return;
+    naverMarkers.forEach(({ nm, marker }) => {
+      if (marker.type !== 'locker' && marker.type !== 'congestion') {
+        nm.setMap(show ? mapInstance : null);
+      }
+    });
   },
 );
 

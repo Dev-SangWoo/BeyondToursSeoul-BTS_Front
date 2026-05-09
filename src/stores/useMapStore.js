@@ -10,6 +10,8 @@ export const useMapStore = defineStore('map', () => {
   const mapCenter = ref({ lat: 37.5665, lng: 126.9780 }) // 서울 시청 기본값
   // 현재 GPS 위치 { lat, lng } | null
   const currentLocation = ref(null)
+  // 관광지 마커 노출 여부
+  const showAttraction = ref(true)
   // 혼잡도 마커 노출 여부
   const showCongestion = ref(true)
   // 물품보관소 마커 노출 여부
@@ -35,6 +37,10 @@ export const useMapStore = defineStore('map', () => {
     currentLocation.value = { lat, lng }
   }
 
+  function toggleAttraction() {
+    showAttraction.value = !showAttraction.value
+  }
+
   function toggleCongestion() {
     showCongestion.value = !showCongestion.value
   }
@@ -55,6 +61,7 @@ export const useMapStore = defineStore('map', () => {
     selectedMarkerId,
     mapCenter,
     currentLocation,
+    showAttraction,
     showCongestion,
     showLocker,
     setMarkers,
@@ -62,6 +69,7 @@ export const useMapStore = defineStore('map', () => {
     selectMarker,
     setCenter,
     setCurrentLocation,
+    toggleAttraction,
     toggleCongestion,
     toggleLocker,
     reset,
