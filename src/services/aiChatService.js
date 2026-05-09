@@ -52,18 +52,55 @@ export function normalizeAiChatResponse(raw) {
 }
 
 /**
+ * assistant 메시지에 붙일 짧은 일정 스냅샷 (수정 요청 시 모델이 이전 코스를 알 수 있게)
+ * @param {object|null|undefined} structured
+ * @param {number} maxLen
+ */
+function compactItineraryForHistory(structured, maxLen = 420) {
+  if (!structured || typeof structured !== 'object') return ''
+  const norm = normalizeStructured(structured)
+  const days = Array.isArray(norm?.days) ? norm.days : []
+  if (!days.length) return ''
+  const parts = []
+  for (let i = 0; i < days.length; i += 1) {
+    const day = days[i]
+    const slots = Array.isArray(day?.slots) ? day.slots : []
+    if (!slots.length) continue
+    const dayLabel = String(day.label || day.date || `${i + 1}일차`).trim() || `${i + 1}일차`
+    const slotStr = slots
+      .map((s) => {
+        const typ = String(s?.type || s?.label || '').trim() || '?'
+        const n = String(s?.placeName || '').trim() || '?'
+        return `${typ}:${n}`
+      })
+      .join('; ')
+    parts.push(`${dayLabel}→${slotStr}`)
+  }
+  let out = parts.join(' | ')
+  if (out.length > maxLen) out = `${out.slice(0, maxLen - 1)}…`
+  return `[이전일정] ${out}`
+}
+
+/**
  * UI 스레드({ role, text }) → API history({ role, content })
- * @param {Array<{ role: string, text?: string, content?: string }>} items
+ * @param {Array<{ role: string, text?: string, content?: string, structured?: object }>} items
  * @returns {Array<{ role: 'user' | 'assistant', content: string }>}
  */
 export function toChatHistoryPayload(items) {
   if (!Array.isArray(items)) return []
   return items
     .filter((m) => m && (m.role === 'user' || m.role === 'assistant'))
-    .map((m) => ({
-      role: m.role,
-      content: String(m.text ?? m.content ?? '').trim(),
-    }))
+    .map((m) => {
+      const text = String(m.text ?? m.content ?? '').trim()
+      if (m.role === 'assistant' && m.structured && typeof m.structured === 'object') {
+        const snap = compactItineraryForHistory(m.structured, 400)
+        if (snap) {
+          const rest = text.length > 220 ? `${text.slice(0, 219)}…` : text
+          return { role: m.role, content: `${snap}\n${rest}`.trim() }
+        }
+      }
+      return { role: m.role, content: text }
+    })
     .filter((m) => m.content.length > 0)
 }
 
