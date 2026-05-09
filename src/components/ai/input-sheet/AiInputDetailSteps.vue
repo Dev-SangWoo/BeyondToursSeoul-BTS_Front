@@ -18,6 +18,7 @@ const detailPage = defineModel('detailPage', { type: Number, default: 1 })
 const props = defineProps({
   needsPartyInput: { type: Boolean, default: false },
   canProceedChat: { type: Boolean, default: false },
+  isGeneratingCourse: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['proceed-chat'])
@@ -273,14 +274,14 @@ function goPrevPage() {
       <button type="button" class="sheet__ghost" @click="goPrevPage">{{ $t('ai.detail.prev') }}</button>
       <button
         class="sheet__submit sheet__submit--split"
-        :class="{ 'sheet__submit--disabled': !props.canProceedChat }"
-        :disabled="!props.canProceedChat"
+        :class="{ 'sheet__submit--disabled': !props.canProceedChat || props.isGeneratingCourse }"
+        :disabled="!props.canProceedChat || props.isGeneratingCourse"
         @click="onProceedChat"
       >
         <span class="sheet__submit-icon">
           <FileText :size="20" :stroke-width="2.4" color="#fff" />
         </span>
-        {{ $t('ai.detail.startAiChat') }}
+        {{ props.isGeneratingCourse ? $t('ai.detail.generatingCourse') : $t('ai.detail.generateCourse') }}
       </button>
     </div>
 

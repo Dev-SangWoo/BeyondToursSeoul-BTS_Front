@@ -8,12 +8,16 @@ import {
   ChevronRight,
   Heart,
   MapPin,
+  Sparkles,
 } from 'lucide-vue-next'
 import { IsIcon } from '@ratoufa/iconsax-vue'
 import AIInputSheet from '@/components/ai/AIInputSheet.vue'
 import { useSavedStore } from '@/stores/useSavedStore'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { clearAiSheetSession } from '@/utils/aiSheetSession'
 import { fetchAttractions } from '@/services/attractionService'
 import { fetchEvents } from '@/services/eventService'
+import { fetchSavedPlans } from '@/services/savedPlansService'
 import earthImage from '../../asset/earth.png'
 import airplaneImage from '../../asset/airplane.png'
 
@@ -21,6 +25,7 @@ const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const savedStore = useSavedStore()
+const authStore = useAuthStore()
 const showAISheet = ref(false)
 const activeCategory = ref(null)
 const courseDensityIndex = ref(2)
@@ -119,6 +124,49 @@ function toggleSaveCourse(course) {
   })
 }
 
+const savedPlansRemote = ref([])
+const savedPlansLoading = ref(false)
+const savedPlansError = ref(null)
+
+function formatSavedPlanDate(iso) {
+  if (iso == null || String(iso).trim() === '') return ''
+  try {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return ''
+    return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', year: 'numeric' })
+  } catch {
+    return ''
+  }
+}
+
+async function loadSavedPlansRemote() {
+  savedPlansError.value = null
+  if (!authStore.isAuthenticated || !authStore.accessToken) {
+    savedPlansRemote.value = []
+    return
+  }
+  savedPlansLoading.value = true
+  try {
+    savedPlansRemote.value = await fetchSavedPlans(authStore.accessToken)
+  } catch (e) {
+    savedPlansRemote.value = []
+    savedPlansError.value = e?.message || String(e)
+  } finally {
+    savedPlansLoading.value = false
+  }
+}
+
+watch(
+  () => authStore.accessToken,
+  () => loadSavedPlansRemote(),
+)
+
+function openSavedPlan(planId) {
+  const sid = planId != null ? String(planId).trim() : ''
+  if (!sid) return
+  router.push({ name: 'result', query: { planId: sid } })
+}
+
 function changeCourseDensity(delta) {
   const last = densityModes.value.length - 1
   const next = Math.max(0, Math.min(last, courseDensityIndex.value + delta))
@@ -166,6 +214,7 @@ onMounted(async () => {
   } finally {
     attractionsLoading.value = false
   }
+  void loadSavedPlansRemote()
 })
 
 const filteredAttractions = computed(() => {
@@ -314,6 +363,7 @@ function onCourseGenerated() {
 
 function closeAISheet() {
   showAISheet.value = false
+  clearAiSheetSession()
   if (route.path === '/ai') router.replace('/discover')
 }
 
@@ -419,6 +469,40 @@ watch(
       </div>
       <p class="discover__density-bar-text">{{ densityModes[courseDensityIndex].text }}</p>
     </div>
+
+    <!-- ── My saved itineraries (서버 user_saved_plans) ─────────────────── -->
+    <section v-if="authStore.isAuthenticated" class="discover__section discover__saved-plans">
+      <div class="discover__saved-plans-heading">
+        <Sparkles :size="16" :stroke-width="2.4" class="discover__saved-plans-heading-icon" />
+        <h3 class="discover__section-title discover__saved-plans-title">내가 저장한 일정</h3>
+      </div>
+      <div v-if="savedPlansLoading" class="discover__saved-plans-msg">불러오는 중…</div>
+      <p v-else-if="savedPlansError" class="discover__saved-plans-msg discover__saved-plans-msg--error">
+        {{ savedPlansError }}
+      </p>
+      <p
+        v-else-if="!savedPlansRemote.length"
+        class="discover__saved-plans-msg"
+      >
+        AI로 만든 코스 결과 화면에서 「코스 저장」으로 저장해 보세요.
+      </p>
+      <div v-else class="discover__course-carousel discover__saved-plans-scroll">
+        <button
+          v-for="p in savedPlansRemote"
+          :key="p.id"
+          type="button"
+          class="discover-saved-plan-card"
+          @click="openSavedPlan(p.id)"
+        >
+          <Sparkles :size="18" :stroke-width="2.2" class="discover-saved-plan-card__icon" aria-hidden="true" />
+          <p class="discover-saved-plan-card__title">{{ p.title || '저장 일정' }}</p>
+          <p v-if="formatSavedPlanDate(p.savedAt)" class="discover-saved-plan-card__date">
+            저장 {{ formatSavedPlanDate(p.savedAt) }}
+          </p>
+          <span class="discover-saved-plan-card__cta">일정 보기</span>
+        </button>
+      </div>
+    </section>
 
     <!-- ── Hot Areas ──────────────────────────────────────────────────── -->
     <section class="discover__section">
@@ -1186,6 +1270,92 @@ watch(
   color: #fff;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
   letter-spacing: -0.2px;
+}
+
+.discover__saved-plans-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.discover__saved-plans-heading-icon {
+  flex-shrink: 0;
+  color: #fe9c00;
+}
+
+.discover__saved-plans-title {
+  margin-bottom: 0 !important;
+}
+
+.discover__saved-plans-msg {
+  margin: 0 4px;
+  padding: 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #78716c;
+  line-height: 1.45;
+}
+
+.discover__saved-plans-msg--error {
+  color: #b91c1c;
+}
+
+.discover__saved-plans-scroll {
+  margin-top: 4px;
+}
+
+.discover-saved-plan-card {
+  position: relative;
+  min-width: min(72vw, 240px);
+  scroll-snap-align: start;
+  border-radius: 14px;
+  padding: 16px 14px 44px;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  background: linear-gradient(155deg, #fffbeb 0%, #fff 55%, #f0fdf4 100%);
+  box-shadow: 0 2px 14px rgba(254, 156, 0, 0.12), 0 0 0 1px rgba(251, 191, 36, 0.22);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.discover-saved-plan-card:active {
+  transform: scale(0.98);
+}
+
+.discover-saved-plan-card__icon {
+  display: block;
+  color: #ea580c;
+  margin-bottom: 8px;
+}
+
+.discover-saved-plan-card__title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1c1917;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.discover-saved-plan-card__date {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #78716c;
+}
+
+.discover-saved-plan-card__cta {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #d97706;
 }
 
 .discover__course-carousel {

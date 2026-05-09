@@ -6,6 +6,18 @@ import { renderMarkdownHtml } from '@/utils/renderMarkdown'
 const input = ref('')
 const isLoading = ref(false)
 const error = ref('')
+
+function resolveAssistantText(structured) {
+  const days = Array.isArray(structured?.days) ? structured.days : []
+  if (!days.length) return '응답을 받지 못했습니다.'
+  const dayCount = days.length
+  const places = days
+    .flatMap((d) => (Array.isArray(d?.slots) ? d.slots : []))
+    .map((s) => s?.placeName)
+    .filter(Boolean)
+  const preview = [...new Set(places)].slice(0, 3).join(', ')
+  return `${dayCount}일 여행 일정을 준비했어요.${preview ? ` (${preview} 등)` : ''}`
+}
 const messages = ref([
   {
     id: 'welcome',
@@ -33,7 +45,7 @@ async function sendMessage() {
     messages.value.push({
       id: `a-${Date.now()}`,
       role: 'assistant',
-      text: data.answer || '응답을 받지 못했습니다.',
+      text: data.answer || resolveAssistantText(data.structured),
       markdown: true,
       structured: data.structured,
       model: data.model,
