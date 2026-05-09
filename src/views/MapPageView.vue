@@ -857,6 +857,7 @@ function fetchCurrentLocation() {
   font-weight: 700;
   color: #444;
   white-space: nowrap;
+  flex: 1;
 }
 
 .map-page__legend-label--off {
@@ -867,6 +868,8 @@ function fetchCurrentLocation() {
 .map-page__legend-item--locker {
   pointer-events: auto;
   cursor: pointer;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .attraction-toggle,
@@ -874,7 +877,8 @@ function fetchCurrentLocation() {
   display: flex;
   align-items: center;
   cursor: pointer;
-  margin-left: 2px;
+  margin-left: 8px;
+  flex-shrink: 0;
 }
 
 .map-page__locate-btn:active {
