@@ -1,6 +1,8 @@
 <script setup>
 import { Sparkles } from 'lucide-vue-next'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 defineEmits(['close'])
 </script>
 
@@ -11,11 +13,11 @@ defineEmits(['close'])
         <Sparkles :size="26" :stroke-width="2.3" />
       </span>
       <div>
-        <p class="sheet__title">AI 여행 코스 짜기</p>
-        <p class="sheet__subtitle">여행 정보와 취향을 알려주시면 맞춤 코스를 생성해요</p>
+        <p class="sheet__title">{{ $t('ai.sheet.title') }}</p>
+        <p class="sheet__subtitle">{{ $t('ai.sheet.subtitle') }}</p>
       </div>
     </div>
-    <button class="sheet__close" type="button" aria-label="닫기" @click="$emit('close')">✕</button>
+    <button class="sheet__close" type="button" :aria-label="$t('ai.sheet.close')" @click="$emit('close')">✕</button>
   </div>
 </template>
 

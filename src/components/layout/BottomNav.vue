@@ -1,5 +1,7 @@
 <script setup>
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   Bookmark,
   CircleUserRound,
@@ -8,16 +10,17 @@ import {
   Sparkles,
 } from 'lucide-vue-next'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
-const navItems = [
-  { path: '/discover', icon: Home, label: '홈' },
-  { path: '/map', icon: Map, label: '지도' },
-  { path: '/ai', icon: Sparkles, label: 'AI 코스', fab: true },
-  { path: '/saved', icon: Bookmark, label: '저장함' },
-  { path: '/profile', icon: CircleUserRound, label: '마이' },
-]
+const navItems = computed(() => [
+  { path: '/discover', icon: Home, label: t('nav.home') },
+  { path: '/map', icon: Map, label: t('nav.map') },
+  { path: '/ai', icon: Sparkles, label: t('nav.aiCourse'), fab: true },
+  { path: '/saved', icon: Bookmark, label: t('nav.saved') },
+  { path: '/profile', icon: CircleUserRound, label: t('nav.my') },
+])
 
 function navigate(path) {
   router.push(path)

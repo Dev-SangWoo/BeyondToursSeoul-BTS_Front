@@ -30,7 +30,7 @@ function onNext() {
       <div class="ticket-modal__fields">
         <div class="ticket-modal__title-row">
           <p class="ticket-modal__title">
-            탑승권
+            {{ $t('ai.ticket.boardingPass') }}
             <span class="ticket-modal__title-sub">BOARDING PASS</span>
           </p>
           <span class="ticket-modal__flight-no">BTS-0724</span>
@@ -45,7 +45,7 @@ function onNext() {
         </div>
         <div class="ticket-modal__grid">
           <label class="ticket-modal__field">
-            <span class="ticket-modal__label">출발일</span>
+            <span class="ticket-modal__label">{{ $t('ai.ticket.departDate') }}</span>
             <input
               v-model="startDate"
               class="ticket-modal__input"
@@ -61,7 +61,7 @@ function onNext() {
             />
           </label>
           <label class="ticket-modal__field">
-            <span class="ticket-modal__label">도착 시간</span>
+            <span class="ticket-modal__label">{{ $t('ai.ticket.arrivalTime') }}</span>
             <input
               v-model="arrivalTime"
               class="ticket-modal__input"
@@ -76,7 +76,7 @@ function onNext() {
             />
           </label>
           <label class="ticket-modal__field">
-            <span class="ticket-modal__label">떠나는 날짜</span>
+            <span class="ticket-modal__label">{{ $t('ai.ticket.returnDate') }}</span>
             <input
               v-model="endDate"
               class="ticket-modal__input"
@@ -90,7 +90,7 @@ function onNext() {
             />
           </label>
           <label class="ticket-modal__field">
-            <span class="ticket-modal__label">출발 시간</span>
+            <span class="ticket-modal__label">{{ $t('ai.ticket.departTime') }}</span>
             <input
               v-model="departureTime"
               class="ticket-modal__input"
@@ -122,7 +122,7 @@ function onNext() {
       :disabled="!canProceedPrimary"
       @click="onNext"
     >
-      다음 질문 보기
+      {{ $t('ai.ticket.nextBtn') }}
     </button>
   </div>
 </template>
