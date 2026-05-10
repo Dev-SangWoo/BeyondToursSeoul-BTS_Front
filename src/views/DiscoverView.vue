@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter, useRoute } from 'vue-router';
 import {
   ChevronLeft,
@@ -10,59 +11,33 @@ import {
 } from 'lucide-vue-next';
 import { IsIcon } from '@ratoufa/iconsax-vue';
 import AIInputSheet from '@/components/ai/AIInputSheet.vue';
-import { useSavedStore } from '@/stores/useSavedStore';
+import AttractionDetailView from '@/views/AttractionDetailView.vue';
+import EventDetailView from '@/views/EventDetailView.vue';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { clearAiSheetSession } from '@/utils/aiSheetSession';
 import { fetchAttractions } from '@/services/attractionService';
 import { fetchEvents } from '@/services/eventService';
+import HotPlacesRanking from '@/components/discover/HotPlacesRanking.vue';
 import { fetchSavedPlans } from '@/services/savedPlansService';
+import { fetchTourCourses, toggleTourCourseSave } from '@/services/tourCourseService'
 import earthImage from '../../asset/earth.png';
 import airplaneImage from '../../asset/airplane.png';
 
+const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
-const savedStore = useSavedStore();
 const authStore = useAuthStore();
 const showAISheet = ref(false);
+const selectedAttractionId = ref(null);
+const selectedEventId = ref(null);
 const activeCategory = ref(null);
 const courseDensityIndex = ref(2);
 const courseTrackRef = ref(null);
 const activeCourseIndex = ref(0);
 
-const realtimeHotPlaces = [
-  {
-    id: 1,
-    name: '성수동',
-    image:
-      'https://images.unsplash.com/photo-1549693578-d683be217e58?auto=format&fit=crop&w=500&q=80',
-  },
-  {
-    id: 2,
-    name: '망원동',
-    image:
-      'https://images.unsplash.com/photo-1538485399081-7c8970b2f31f?auto=format&fit=crop&w=500&q=80',
-  },
-  {
-    id: 3,
-    name: '익선동',
-    image:
-      'https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=500&q=80',
-  },
-  {
-    id: 4,
-    name: '을지로',
-    image:
-      'https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=500&q=80',
-  },
-  {
-    id: 5,
-    name: '연남동',
-    image:
-      'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=500&q=80',
-  },
-];
 
 const categories = computed(() => [
+  { id: null,          icon: 'element-4',        color: '#fe9c00', label: t('discover.category.all') },
   { id: '음식',         icon: 'cup',             color: '#f97316', label: t('discover.category.food') },
   { id: '쇼핑',         icon: 'shop',            color: '#ec4899', label: t('discover.category.shopping') },
   { id: '체험관광',      icon: 'people',          color: '#8b5cf6', label: t('discover.category.experience') },
@@ -74,11 +49,25 @@ const categories = computed(() => [
 
 const densityModes = computed(() => [
   { id: 'local0',      text: t('discover.densityMode.local0'),      scoreMin: 0,    scoreMax: 0 },
-  { id: 'local1-30',   text: t('discover.densityMode[\'local1-30\']'),  scoreMin: 0.01, scoreMax: 0.30 },
-  { id: 'local31-50',  text: t('discover.densityMode[\'local31-50\']'), scoreMin: 0.31, scoreMax: 0.50 },
-  { id: 'local51-70',  text: t('discover.densityMode[\'local51-70\']'), scoreMin: 0.51, scoreMax: 0.70 },
-  { id: 'local71-100', text: t('discover.densityMode[\'local71-100\']'), scoreMin: 0.71, scoreMax: 1.0 },
+  { id: 'local1-30',   text: t('discover.densityMode.local1-30'),   scoreMin: 0.01, scoreMax: 0.30 },
+  { id: 'local31-50',  text: t('discover.densityMode.local31-50'),  scoreMin: 0.31, scoreMax: 0.50 },
+  { id: 'local51-70',  text: t('discover.densityMode.local51-70'),  scoreMin: 0.51, scoreMax: 0.70 },
+  { id: 'local71-100', text: t('discover.densityMode.local71-100'), scoreMin: 0.71, scoreMax: 1.0 },
 ])
+
+const personaDensityIndexMap = {
+  main100: 0,
+  main70: 1,
+  balanced: 2,
+  local70: 3,
+  local100: 4,
+}
+
+function applyInitialDensityFromPersona() {
+  const pref = authStore.user?.localPreference
+  if (!pref || !(pref in personaDensityIndexMap)) return
+  courseDensityIndex.value = personaDensityIndexMap[pref]
+}
 
 const densityCourseMap = {
   local0: [
@@ -196,23 +185,63 @@ const coursePhotos = [
   'https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1200&q=80',
   'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=80',
 ];
-const currentCourses = computed(
-  () => densityCourseMap[densityModes.value[courseDensityIndex.value].id] ?? [],
-)
+const tourCourses = ref([])
+const tourCoursesLoading = ref(false)
+const tourCoursesError = ref(null)
+const savingTourCourseId = ref(null)
 
-function getHomeCourseRefId(course) {
-  return `course:${densityModes.value[courseDensityIndex.value].id}:${course.id}`
+function hashtagTags(hashtags) {
+  if (hashtags == null || String(hashtags).trim() === '') return []
+  return String(hashtags)
+    .split(/[#\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 12)
 }
 
-function isCourseSaved(course) {
-  return savedStore.isSaved('course', getHomeCourseRefId(course));
+function courseCardBackground(course, index) {
+  const grad = coursePhotoGradients[index % coursePhotoGradients.length]
+  const img = (course.featuredImage && String(course.featuredImage).trim())
+    ? String(course.featuredImage).trim()
+    : coursePhotos[index % coursePhotos.length]
+  return `${grad}, url(${img})`
 }
 
-function toggleSaveCourse(course) {
-  savedStore.toggleCourseFromHome({
-    course,
-    densityModeId: densityModes.value[courseDensityIndex.value].id,
-  })
+function isTourCourseSaved(course) {
+  return course.isSaved === true
+}
+
+async function loadTourCourses() {
+  tourCoursesError.value = null
+  tourCoursesLoading.value = true
+  try {
+    tourCourses.value = await fetchTourCourses('KOR', authStore.accessToken || null)
+  } catch (e) {
+    tourCourses.value = []
+    tourCoursesError.value = e?.message || String(e)
+  } finally {
+    tourCoursesLoading.value = false
+  }
+}
+
+async function toggleSaveCourse(course) {
+  if (!authStore.accessToken) {
+    window.alert?.('로그인 후 찜할 수 있습니다.')
+    router.push({ name: 'landing' })
+    return
+  }
+  const cid = course?.id
+  if (cid == null || savingTourCourseId.value != null) return
+  savingTourCourseId.value = cid
+  try {
+    const saved = await toggleTourCourseSave(cid, authStore.accessToken)
+    const row = tourCourses.value.find((c) => c.id === cid)
+    if (row) row.isSaved = saved
+  } catch (e) {
+    window.alert?.(e?.message || '저장에 실패했습니다.')
+  } finally {
+    savingTourCourseId.value = null
+  }
 }
 
 const savedPlansRemote = ref([]);
@@ -253,7 +282,10 @@ async function loadSavedPlansRemote() {
 
 watch(
   () => authStore.accessToken,
-  () => loadSavedPlansRemote(),
+  () => {
+    loadSavedPlansRemote()
+    loadTourCourses()
+  },
 );
 
 function openSavedPlan(planId) {
@@ -306,36 +338,40 @@ function scrollToCourse(index) {
 watch(courseDensityIndex, () => {
   activeCourseIndex.value = 0;
   courseTrackRef.value?.scrollTo({ left: 0, behavior: 'auto' });
+  attractionPage.value = 1;
+  void loadAttractions();
 });
 
 const attractions = ref([]);
 const attractionsLoading = ref(false);
 const attractionsError = ref(null);
 
-onMounted(async () => {
+async function loadAttractions() {
   attractionsLoading.value = true;
+  attractionsError.value = null;
+  const mode = densityModes.value[courseDensityIndex.value];
   try {
-    attractions.value = await fetchAttractions();
+    attractions.value = await fetchAttractions({
+      minScore: mode.scoreMin,
+      maxScore: mode.scoreMax,
+    });
   } catch (e) {
     attractionsError.value = e.message;
+    attractions.value = [];
   } finally {
     attractionsLoading.value = false;
   }
+}
+
+onMounted(async () => {
+  applyInitialDensityFromPersona();
+  await loadAttractions();
   void loadSavedPlansRemote();
+  void loadTourCourses();
 });
 
 const filteredAttractions = computed(() => {
-  const mode = densityModes.value[courseDensityIndex.value]
   let list = attractions.value
-
-  if (mode.id === 'local0') {
-    list = list.filter((a) => Number(a.score) === 0);
-  } else {
-    list = list.filter((a) => {
-      const s = Number(a.score);
-      return s >= mode.scoreMin && s <= mode.scoreMax;
-    });
-  }
 
   if (activeCategory.value) {
     list = list.filter((a) => a.cat1Name === activeCategory.value);
@@ -379,14 +415,9 @@ const pageItems = computed(() => {
 });
 
 function selectCategory(id) {
-  activeCategory.value = activeCategory.value === id ? null : id;
+  activeCategory.value = id;
   attractionPage.value = 1;
 }
-
-// density 바꿀 때도 1페이지로 리셋
-watch(courseDensityIndex, () => {
-  attractionPage.value = 1;
-});
 
 const homeListTab = ref('attractions');
 const events = ref([]);
@@ -462,13 +493,18 @@ const eventPageItems = computed(() => {
 });
 
 function goToAttraction(id) {
-  router.push({ name: 'attraction-detail', params: { id } });
+  selectedAttractionId.value = String(id);
 }
 
 function goToEvent(contentId) {
   const sid = contentId != null ? String(contentId).trim() : '';
   if (!sid) return;
-  router.push({ name: 'event-detail', params: { id: sid } });
+  selectedEventId.value = sid;
+}
+
+function closeDetailSheet() {
+  selectedAttractionId.value = null;
+  selectedEventId.value = null;
 }
 
 function onCourseGenerated() {
@@ -619,76 +655,70 @@ watch(
       </div>
     </section>
 
-    <!-- ── Hot Areas ──────────────────────────────────────────────────── -->
+    <!-- ── 공식 추천 코스 (tour_courses) ─────────────────────────────── -->
     <section class="discover__section">
-      <h3 class="discover__section-title">{{ $t('discover.recommendedCourse') }}</h3>
-      <div
-        ref="courseTrackRef"
-        class="discover__course-carousel"
-        @scroll.passive="onCourseTrackScroll"
-      >
-        <article
-          v-for="(course, i) in currentCourses"
-          :key="course.id"
-          class="discover-course-card"
-          :style="{
-            backgroundImage: `${coursePhotoGradients[i % coursePhotoGradients.length]}, url(${coursePhotos[i % coursePhotos.length]})`,
-          }"
+      <h3 class="discover__section-title">추천 여행 코스</h3>
+      <p class="discover__section-sub">
+        서버에 등록된 공식 추천 코스입니다. 하트는 로그인 시 계정에 저장됩니다.
+      </p>
+      <div v-if="tourCoursesLoading" class="discover__tour-courses-msg">코스 불러오는 중…</div>
+      <p v-else-if="tourCoursesError" class="discover__tour-courses-msg discover__tour-courses-msg--error">
+        {{ tourCoursesError }}
+      </p>
+      <p v-else-if="!tourCourses.length" class="discover__tour-courses-msg">
+        등록된 추천 코스가 없습니다.
+      </p>
+      <template v-else>
+        <div
+          ref="courseTrackRef"
+          class="discover__course-carousel"
+          @scroll.passive="onCourseTrackScroll"
         >
-          <div class="discover-course-card__photo-overlay"></div>
-          <button
-            class="discover-course-card__save-btn"
-            :class="{
-              'discover-course-card__save-btn--active': isCourseSaved(course),
-            }"
-            type="button"
-            :aria-label="isCourseSaved(course) ? $t('discover.unsaveCourse') : $t('discover.saveCourse')"
-            @click.stop="toggleSaveCourse(course)"
+          <article
+            v-for="(course, i) in tourCourses"
+            :key="course.id"
+            class="discover-course-card"
+            :style="{ backgroundImage: courseCardBackground(course, i) }"
           >
-            <Heart :size="14" :stroke-width="2.3" />
-          </button>
-          <p class="discover-course-card__title">{{ course.title }}</p>
-          <p class="discover-course-card__route">{{ course.route }}</p>
-          <div class="discover-course-card__tags">
-            <span
-              v-for="tag in course.tags"
-              :key="tag"
-              class="discover-course-card__tag"
+            <div class="discover-course-card__photo-overlay"></div>
+            <button
+              class="discover-course-card__save-btn"
+              :class="{ 'discover-course-card__save-btn--active': isTourCourseSaved(course) }"
+              type="button"
+              :disabled="savingTourCourseId === course.id"
+              :aria-label="isTourCourseSaved(course) ? '저장 해제' : '저장하기'"
+              @click.stop="toggleSaveCourse(course)"
             >
-              #{{ tag }}
-            </span>
-          </div>
-        </article>
-      </div>
-      <div class="discover__course-dots">
-        <button
-          v-for="(_, i) in currentCourses"
-          :key="i"
-          class="discover__course-dot"
-          :class="{ 'discover__course-dot--active': activeCourseIndex === i }"
-          :aria-label="`${i + 1}번 코스로 이동`"
-          @click="scrollToCourse(i)"
-        />
-      </div>
+              <Heart :size="14" :stroke-width="2.3" />
+            </button>
+            <p class="discover-course-card__title">{{ course.title }}</p>
+            <p v-if="course.hashtags" class="discover-course-card__route">{{ course.hashtags }}</p>
+            <div v-if="hashtagTags(course.hashtags).length" class="discover-course-card__tags">
+              <span
+                v-for="tag in hashtagTags(course.hashtags)"
+                :key="tag"
+                class="discover-course-card__tag"
+              >
+                #{{ tag }}
+              </span>
+            </div>
+          </article>
+        </div>
+        <div class="discover__course-dots">
+          <button
+            v-for="(_, i) in tourCourses"
+            :key="i"
+            class="discover__course-dot"
+            :class="{ 'discover__course-dot--active': activeCourseIndex === i }"
+            :aria-label="`${i + 1}번 코스로 이동`"
+            @click="scrollToCourse(i)"
+          />
+        </div>
+      </template>
     </section>
 
     <!-- ── Real-time Hot Places ───────────────────────────────────────── -->
-    <section class="discover__section">
-      <h3 class="discover__section-title">{{ $t('discover.hotPlaces') }}</h3>
-      <div class="discover__hot-rank-row">
-        <article
-          v-for="place in realtimeHotPlaces"
-          :key="place.id"
-          class="hot-rank-item"
-        >
-          <div class="hot-rank-item__thumb-wrap">
-            <img class="hot-rank-item__thumb" :src="place.image" alt="" />
-            <span class="hot-rank-item__badge">{{ place.id }}</span>
-          </div>
-          <p class="hot-rank-item__name">{{ place.name }}</p>
-        </article>
-      </div>
-    </section>
+    <HotPlacesRanking />
 
     <!-- ── Theme Categories & listings ──────────────────────────────── -->
     <section class="discover__section discover__section--last">
@@ -728,7 +758,7 @@ watch(
       >
         <button
           v-for="cat in categories"
-          :key="cat.id"
+          :key="cat.id ?? '__all__'"
           class="cat-btn"
           :class="{ 'cat-btn--active': activeCategory === cat.id }"
           @click="selectCategory(cat.id)"
@@ -1015,6 +1045,25 @@ watch(
       @close="closeAISheet"
       @generated="onCourseGenerated"
     />
+
+    <!-- ── Detail Overlay (관광지 / 행사) ────────────────────────────── -->
+    <Transition name="discover-page">
+      <div
+        v-if="selectedAttractionId || selectedEventId"
+        class="discover-detail-overlay"
+      >
+        <AttractionDetailView
+          v-if="selectedAttractionId"
+          :attraction-id="selectedAttractionId"
+          @close="closeDetailSheet"
+        />
+        <EventDetailView
+          v-else-if="selectedEventId"
+          :event-id="selectedEventId"
+          @close="closeDetailSheet"
+        />
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -1235,6 +1284,14 @@ watch(
   margin: 0 0 14px;
 }
 
+.discover__section-sub {
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #737373;
+  line-height: 1.45;
+}
+
 .discover__list-heading {
   display: flex;
   flex-direction: column;
@@ -1418,6 +1475,19 @@ watch(
   font-weight: 600;
   color: #78716c;
   line-height: 1.45;
+}
+
+.discover__tour-courses-msg {
+  margin: 0 4px 12px;
+  padding: 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #78716c;
+  line-height: 1.45;
+}
+
+.discover__tour-courses-msg--error {
+  color: #b91c1c;
 }
 
 .discover__saved-plans-msg--error {
@@ -1625,62 +1695,6 @@ watch(
   backdrop-filter: blur(2px);
 }
 
-/* ─── Real-time hot places ─────────────────────────────────────────────── */
-.discover__hot-rank-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 20px;
-}
-
-.hot-rank-item {
-  width: calc((100% - 32px) / 5);
-  min-width: 0;
-}
-
-.hot-rank-item__thumb-wrap {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-}
-
-.hot-rank-item__thumb {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 2px solid #ffe3ba;
-}
-
-.hot-rank-item__badge {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: #fe9c00;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgba(254, 156, 0, 0.45);
-}
-
-.hot-rank-item__name {
-  margin: 0;
-  margin-top: 8px;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: #4a4a4a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 /* ─── Category row ───────────────────────────────────────────────────────── */
 .discover__category-row {
@@ -2041,5 +2055,41 @@ watch(
   background: #fe9c00;
   color: #fff;
   box-shadow: 0 4px 10px rgba(254, 156, 0, 0.35);
+}
+
+/* ── Detail Overlay ─────────────────────────────────────────────────────── */
+/*
+ * MainLayout가 max-width: 430px / margin: 0 auto 로 앱 폭을 제한하므로
+ * fixed 오버레이도 동일한 폭·위치로 맞춤.
+ * left/right = max(0px, 50vw - 215px) → 뷰포트 중앙 430px 영역에 정확히 고정.
+ */
+.discover-detail-overlay {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: max(0px, calc(50% - 215px));
+  right: max(0px, calc(50% - 215px));
+  z-index: 200;
+  background: #fafaf8;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Transition: 오른쪽에서 슬라이드인 (일반 페이지 전환처럼) */
+.discover-page-enter-active {
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.discover-page-leave-active {
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.discover-page-enter-from {
+  transform: translateX(100%);
+}
+
+.discover-page-leave-to {
+  transform: translateX(100%);
 }
 </style>

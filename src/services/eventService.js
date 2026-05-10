@@ -1,13 +1,23 @@
-import { getApiLangCode } from '@/i18n'
+import { getCurrentLocale, getApiLangCode } from '@/i18n'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL
+
+function toTourLang(lang) {
+  const value = String(lang || '').trim().toLowerCase()
+  if (value === 'ko') return 'KOR'
+  if (value === 'en') return 'ENG'
+  if (value === 'ja') return 'JPN'
+  if (value === 'zh') return 'CHS'
+  if (value === 'kor' || value === 'eng' || value === 'jpn' || value === 'chs') return value.toUpperCase()
+  return getApiLangCode()
+}
 
 /**
  * 행사·축제 전용 API (상세 스키마는 백엔드와 맞춤)
  * @returns {Promise<Array>}
  */
 export async function fetchEvents() {
-  const lang = getApiLangCode()
+  const lang = toTourLang(getCurrentLocale())
   const res = await fetch(`${BASE_URL}/api/v1/tour/events?lang=${lang}`)
   if (!res.ok) throw new Error(`행사 목록 조회 실패: ${res.status}`)
   return res.json()
@@ -18,7 +28,7 @@ export async function fetchEvents() {
  * @returns {Promise<Object>}
  */
 export async function fetchEventById(id) {
-  const lang = getApiLangCode()
+  const lang = toTourLang(getCurrentLocale())
   const res = await fetch(`${BASE_URL}/api/v1/tour/events/${id}?lang=${lang}`)
   if (!res.ok) throw new Error(`행사 상세 조회 실패: ${res.status}`)
   return res.json()

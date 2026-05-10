@@ -18,19 +18,29 @@ import {
   Banknote,
 } from 'lucide-vue-next'
 import { fetchEventById } from '@/services/eventService'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { useServerSavedEventsStore } from '@/stores/useServerSavedEventsStore'
 
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
+const serverEvents = useServerSavedEventsStore()
+
+const props = defineProps({
+  eventId: { default: null },
+})
+const emit = defineEmits(['close'])
 
 const eventDetail = ref(null)
 const loading = ref(true)
 const error = ref(null)
 const isLiked = ref(false)
+const likeSaving = ref(false)
 const showAllDesc = ref(false)
 const showAllProgram = ref(false)
 
-const resolvedId = computed(() => route.params.id)
+const resolvedId = computed(() => props.eventId ?? route.params.id)
 
 watch(
   resolvedId,
@@ -51,6 +61,10 @@ watch(
     loading.value = true
     try {
       eventDetail.value = await fetchEventById(sid)
+      if (authStore.accessToken) {
+        await serverEvents.refresh(authStore.accessToken)
+        isLiked.value = serverEvents.isSaved(sid)
+      }
     } catch (e) {
       error.value = e.message || t('event.loadError')
     } finally {
@@ -58,6 +72,20 @@ watch(
     }
   },
   { immediate: true },
+)
+
+watch(
+  () => authStore.accessToken,
+  async (token) => {
+    const sid = resolvedId.value != null ? String(resolvedId.value).trim() : ''
+    if (!sid || !eventDetail.value) return
+    if (token) {
+      await serverEvents.refresh(token)
+      isLiked.value = serverEvents.isSaved(sid)
+    } else {
+      isLiked.value = false
+    }
+  },
 )
 
 function extractFirstUrl(text) {
@@ -134,12 +162,32 @@ const shortProgram = computed(() => {
 })
 
 function goBack() {
+  if (props.eventId != null) {
+    emit('close')
+    return
+  }
   if (window.history.length > 1) router.back()
   else router.push('/discover')
 }
 
-function toggleLike() {
-  isLiked.value = !isLiked.value
+async function toggleLike() {
+  const sid = d.value?.contentId != null ? String(d.value.contentId).trim() : ''
+  if (!sid) return
+  if (!authStore.accessToken) {
+    window.alert?.('로그인 후 저장할 수 있습니다.')
+    router.push({ name: 'landing' })
+    return
+  }
+  if (likeSaving.value) return
+  likeSaving.value = true
+  try {
+    const saved = await serverEvents.toggle(sid, authStore.accessToken)
+    isLiked.value = saved
+  } catch (e) {
+    window.alert?.(e?.message || '행사 저장 처리에 실패했습니다.')
+  } finally {
+    likeSaving.value = false
+  }
 }
 
 function openMap() {
@@ -234,6 +282,7 @@ function openWebsite() {
             class="pd__icon-btn"
             :class="{ 'pd__icon-btn--liked': isLiked }"
             :aria-label="$t('event.like')"
+            :disabled="likeSaving"
             @click="toggleLike"
           >
             <Heart :size="20" :stroke-width="2.2" :fill="isLiked ? '#FE9C00' : 'none'" />
@@ -290,7 +339,8 @@ function openWebsite() {
         <button
           type="button"
           class="pd__action-btn"
-          :class="{ 'pd__action-btn--liked': isLiked }"
+          :class="{ 'pd__action-btn--liked': isLiked, 'pd__action-btn--disabled': likeSaving }"
+          :disabled="likeSaving"
           @click="toggleLike"
         >
           <span class="pd__action-icon">

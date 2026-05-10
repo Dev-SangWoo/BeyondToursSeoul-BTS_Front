@@ -188,11 +188,19 @@ function backToDetail() {
   flowStage.value = 'detail';
 }
 
-async function generate() {
-  if (!canSubmitGenerate.value) return;
+/**
+ * @param {object|null|undefined} structuredFromChat - 채팅 단계의 최신 일정(동기 지연 없이 전달)
+ */
+async function generate(structuredFromChat) {
+  if (!canSubmitGenerate.value) return
 
-  preserveChatMapOnExit.value = !!chatStructured.value;
-  step.value = 'loading';
+  const resolvedStructured =
+    structuredFromChat && typeof structuredFromChat === 'object'
+      ? structuredFromChat
+      : chatStructured.value
+
+  preserveChatMapOnExit.value = !!resolvedStructured
+  step.value = 'loading'
 
   tripStore.setInput({
     duration: durationLabel.value || '1박 2일',
@@ -216,8 +224,8 @@ async function generate() {
     specialRequest: specialRequest.value.trim(),
   });
 
-  if (chatStructured.value) {
-    tripStore.setAiStructured(chatStructured.value, null);
+  if (resolvedStructured) {
+    tripStore.setAiStructured(resolvedStructured, null)
   } else {
     await tripStore.generateCourse();
   }

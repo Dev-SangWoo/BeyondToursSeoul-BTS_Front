@@ -2,6 +2,8 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { useServerSavedAttractionsStore } from '@/stores/useServerSavedAttractionsStore'
 import {
   ChevronLeft,
   Heart,
@@ -26,11 +28,14 @@ const emit = defineEmits(['close'])
 
 const router = useRouter()
 const route  = useRoute()
+const authStore = useAuthStore()
+const serverAttractions = useServerSavedAttractionsStore()
 
 const attraction   = ref(null)
 const loading      = ref(true)
 const error        = ref(null)
 const isLiked      = ref(false)
+const likeSaving   = ref(false)
 const showAllDesc  = ref(false)
 
 // props.attractionId 또는 route.params.id 중 유효한 값 사용
@@ -47,6 +52,10 @@ watch(
     showAllDesc.value = false
     try {
       attraction.value = await fetchAttractionById(id)
+      if (authStore.accessToken) {
+        await serverAttractions.refresh(authStore.accessToken)
+        isLiked.value = serverAttractions.isSaved(id)
+      }
     } catch (e) {
       error.value = e.message
     } finally {
@@ -54,6 +63,20 @@ watch(
     }
   },
   { immediate: true },
+)
+
+watch(
+  () => authStore.accessToken,
+  async (token) => {
+    const id = resolvedId.value
+    if (!id || !attraction.value) return
+    if (token) {
+      await serverAttractions.refresh(token)
+      isLiked.value = serverAttractions.isSaved(id)
+    } else {
+      isLiked.value = false
+    }
+  },
 )
 
 // ── 필드 정규화 ────────────────────────────────────────────────────────────
@@ -103,8 +126,24 @@ function goBack() {
   else router.push('/discover')
 }
 
-function toggleLike() {
-  isLiked.value = !isLiked.value
+async function toggleLike() {
+  const id = d.value?.id
+  if (id == null) return
+  if (!authStore.accessToken) {
+    window.alert?.('로그인 후 찜할 수 있습니다.')
+    router.push({ name: 'landing' })
+    return
+  }
+  if (likeSaving.value) return
+  likeSaving.value = true
+  try {
+    const saved = await serverAttractions.toggle(id, authStore.accessToken)
+    isLiked.value = saved
+  } catch (e) {
+    window.alert?.(e?.message || '저장 처리에 실패했습니다.')
+  } finally {
+    likeSaving.value = false
+  }
 }
 
 function openMap() {
@@ -212,6 +251,8 @@ function formatCount(n) {
           <button
             class="pd__icon-btn"
             :class="{ 'pd__icon-btn--liked': isLiked }"
+            type="button"
+            :disabled="likeSaving"
             @click="toggleLike"
             :aria-label="isLiked ? $t('attraction.saved') : $t('attraction.save')"
           >
@@ -281,7 +322,9 @@ function formatCount(n) {
         </button>
         <button
           class="pd__action-btn"
-          :class="{ 'pd__action-btn--liked': isLiked }"
+          :class="{ 'pd__action-btn--liked': isLiked, 'pd__action-btn--disabled': likeSaving }"
+          type="button"
+          :disabled="likeSaving"
           @click="toggleLike"
         >
           <span class="pd__action-icon">
@@ -504,6 +547,15 @@ function formatCount(n) {
 .pd__icon-btn:active { transform: scale(0.92); }
 
 .pd__icon-btn--liked { background: rgba(254, 156, 0, 0.3); }
+
+.pd__icon-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pd__icon-btn:disabled:active {
+  transform: none;
+}
 
 .pd__dots {
   position: absolute;
