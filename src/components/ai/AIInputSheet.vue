@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useTripStore } from '@/stores/useTripStore';
 import GenerateLoading from './GenerateLoading.vue';
 import AiTicketModal from './input-sheet/AiTicketModal.vue';
