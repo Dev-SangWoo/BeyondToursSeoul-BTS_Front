@@ -84,7 +84,7 @@ const attractionsLoading = ref(false);
 
 async function loadAttractionsByDensity() {
   const mode = densityModes.value[courseDensityIndex.value];
-  attractions.value = await fetchAttractions({
+  return fetchAttractions({
     minScore: mode.scoreMin,
     maxScore: mode.scoreMax,
   });
@@ -123,7 +123,7 @@ onMounted(async () => {
 watch(courseDensityIndex, async () => {
   attractionsLoading.value = true;
   try {
-    await loadAttractionsByDensity();
+    attractions.value = await loadAttractionsByDensity();
   } catch (e) {
     console.error('[MapPage] 관광지 재조회 실패:', e);
     attractions.value = [];
@@ -133,7 +133,7 @@ watch(courseDensityIndex, async () => {
 });
 
 const filteredAttractions = computed(() => {
-  let list = attractions.value;
+  let list = attractions.value ?? [];
 
   if (activeCategory.value) {
     list = list.filter((a) => a.cat1Name === activeCategory.value);
