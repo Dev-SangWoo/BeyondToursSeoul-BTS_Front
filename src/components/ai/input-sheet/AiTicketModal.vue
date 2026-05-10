@@ -1,31 +1,49 @@
 <script setup>
-import { Plane } from 'lucide-vue-next'
+import { Plane, X } from 'lucide-vue-next';
 
 const ticketBoardingPass = new URL(
   '../../../../asset/image-Photoroom (2).png',
   import.meta.url,
-).href
+).href;
 
-const startDate = defineModel('startDate', { type: String, default: '' })
-const endDate = defineModel('endDate', { type: String, default: '' })
-const arrivalTime = defineModel('arrivalTime', { type: String, default: '' })
-const departureTime = defineModel('departureTime', { type: String, default: '' })
+const startDate = defineModel('startDate', { type: String, default: '' });
+const endDate = defineModel('endDate', { type: String, default: '' });
+const arrivalTime = defineModel('arrivalTime', { type: String, default: '' });
+const departureTime = defineModel('departureTime', {
+  type: String,
+  default: '',
+});
 
 defineProps({
   durationLabel: { type: String, default: '' },
   canProceedPrimary: { type: Boolean, default: false },
-})
+});
 
-const emit = defineEmits(['next', 'focus-start-date', 'blur-start-date', 'blur-arrival', 'blur-departure'])
+const emit = defineEmits([
+  'next',
+  'close',
+  'focus-start-date',
+  'blur-start-date',
+  'blur-arrival',
+  'blur-departure',
+]);
 
 function onNext() {
-  emit('next')
+  emit('next');
 }
 </script>
 
 <template>
   <div class="ticket-modal" @click.stop>
     <div class="ticket-modal__pass">
+      <button
+        type="button"
+        class="ticket-modal__close"
+        aria-label="닫기"
+        @click="emit('close')"
+      >
+        ×
+      </button>
       <img class="ticket-modal__img" :src="ticketBoardingPass" alt="" />
       <div class="ticket-modal__fields">
         <div class="ticket-modal__title-row">
@@ -38,10 +56,16 @@ function onNext() {
         <div class="ticket-modal__route-row">
           <div class="ticket-modal__route-strip" aria-hidden="true">
             <span class="ticket-modal__airport-code">ICN</span>
-            <Plane class="ticket-modal__route-plane" :size="11" :stroke-width="2.3" />
+            <Plane
+              class="ticket-modal__route-plane"
+              :size="11"
+              :stroke-width="2.3"
+            />
             <span class="ticket-modal__airport-code">GMP</span>
           </div>
-          <span class="ticket-modal__route-duration">· {{ durationLabel || '-' }}</span>
+          <span class="ticket-modal__route-duration"
+            >· {{ durationLabel || '-' }}</span
+          >
         </div>
         <div class="ticket-modal__grid">
           <label class="ticket-modal__field">
@@ -108,7 +132,11 @@ function onNext() {
         <div class="ticket-modal__tearline" aria-hidden="true"></div>
       </div>
       <aside class="ticket-modal__brand-panel" aria-hidden="true">
-        <Plane class="ticket-modal__brand-plane" :size="42" :stroke-width="2.1" />
+        <Plane
+          class="ticket-modal__brand-plane"
+          :size="42"
+          :stroke-width="2.1"
+        />
         <div class="ticket-modal__brand-copy">
           <span class="ticket-modal__brand-bts">BTS</span>
           <span class="ticket-modal__brand-sub">Beyond Tours Seoul</span>
@@ -133,20 +161,60 @@ function onNext() {
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  max-width: 60%;
+  width: min(92vw, 450px);
+  max-width: 100%;
   flex-shrink: 0;
 }
 
 .ticket-modal__pass {
   position: relative;
-  width: min(86vw, 450px);
-  max-width: 100%;
+  width: 100%;
+  max-width: 450px;
 }
 
 .ticket-modal__img {
   width: 100%;
   height: auto;
   display: block;
+}
+
+.ticket-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.ticket-modal__close::before,
+.ticket-modal__close::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: #767676;
+}
+
+.ticket-modal__close::before {
+  transform: rotate(45deg);
+}
+
+.ticket-modal__close::after {
+  transform: rotate(-45deg);
 }
 
 .ticket-modal__fields {
@@ -163,7 +231,6 @@ function onNext() {
 }
 
 .ticket-modal__title {
-  margin: 0;
   font-size: 11px;
   font-weight: 800;
   color: rgba(0, 0, 0, 0.6);
@@ -327,7 +394,8 @@ function onNext() {
 }
 
 .ticket-modal__next {
-  width: min(86vw, 440px);
+  width: 100%;
+  max-width: 440px;
   padding: 14px 20px;
   border: none;
   border-radius: 14px;
@@ -345,5 +413,118 @@ function onNext() {
   color: #aaa;
   box-shadow: none;
   cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .ticket-modal__fields {
+    left: 16%;
+    top: 18%;
+    width: 49%;
+    height: 64%;
+    gap: 4px;
+  }
+
+  .ticket-modal__grid {
+    gap: 6px 8px;
+  }
+
+  .ticket-modal__label {
+    font-size: 9px;
+  }
+
+  .ticket-modal__input {
+    padding: 5px 8px;
+    font-size: 11px;
+    min-height: 30px;
+  }
+}
+
+@media (min-width: 381px) and (max-width: 480px) {
+  .ticket-modal__pass {
+    width: min(98vw, 540px);
+  }
+
+  .ticket-modal__fields {
+    left: 17%;
+    top: 23.5%;
+    width: 47%;
+    height: 58%;
+    gap: 6px;
+  }
+
+  .ticket-modal__title {
+    font-size: 10px;
+  }
+
+  .ticket-modal__title-sub,
+  .ticket-modal__flight-no,
+  .ticket-modal__airport-code,
+  .ticket-modal__route-duration {
+    font-size: 7px;
+  }
+
+  .ticket-modal__grid {
+    gap: 4px 10px;
+  }
+
+  .ticket-modal__label {
+    font-size: 9px;
+  }
+
+  .ticket-modal__input {
+    padding: 6px 8px;
+    font-size: 11px;
+    min-height: 31px;
+  }
+
+  .ticket-modal__next {
+    width: min(98vw, 540px);
+  }
+
+  .ticket-modal__tearline {
+    position: relative;
+    top: -10px;
+    margin: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .ticket-modal__pass {
+    display: grid;
+    grid-template-columns: 1fr 96px;
+    align-items: stretch;
+    overflow: hidden;
+    border-radius: 28px;
+    background: linear-gradient(135deg, #f8f7fb 0%, #f3f1f8 100%);
+  }
+
+  .ticket-modal__img {
+    display: none;
+  }
+
+  .ticket-modal__fields {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 16px 14px 18px;
+    gap: 8px;
+  }
+
+  .ticket-modal__grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .ticket-modal__brand-panel {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 16px 10px;
+    background: linear-gradient(180deg, #ffd83d 0%, #f5c400 100%);
+  }
+
+  .ticket-modal__tearline {
+    display: none;
+  }
 }
 </style>
