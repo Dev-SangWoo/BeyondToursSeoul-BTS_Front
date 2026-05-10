@@ -1,5 +1,5 @@
 <script setup>
-import { Plane, X } from 'lucide-vue-next';
+import { Plane } from 'lucide-vue-next';
 
 const ticketBoardingPass = new URL(
   '../../../../asset/image-Photoroom (2).png',
@@ -69,7 +69,9 @@ function onNext() {
         </div>
         <div class="ticket-modal__grid">
           <label class="ticket-modal__field">
-            <span class="ticket-modal__label">{{ $t('ai.ticket.departDate') }}</span>
+            <span class="ticket-modal__label">{{
+              $t('ai.ticket.departDate')
+            }}</span>
             <input
               v-model="startDate"
               class="ticket-modal__input"
@@ -85,7 +87,9 @@ function onNext() {
             />
           </label>
           <label class="ticket-modal__field">
-            <span class="ticket-modal__label">{{ $t('ai.ticket.arrivalTime') }}</span>
+            <span class="ticket-modal__label">{{
+              $t('ai.ticket.arrivalTime')
+            }}</span>
             <input
               v-model="arrivalTime"
               class="ticket-modal__input"
@@ -100,7 +104,9 @@ function onNext() {
             />
           </label>
           <label class="ticket-modal__field">
-            <span class="ticket-modal__label">{{ $t('ai.ticket.returnDate') }}</span>
+            <span class="ticket-modal__label">{{
+              $t('ai.ticket.returnDate')
+            }}</span>
             <input
               v-model="endDate"
               class="ticket-modal__input"
@@ -114,7 +120,9 @@ function onNext() {
             />
           </label>
           <label class="ticket-modal__field">
-            <span class="ticket-modal__label">{{ $t('ai.ticket.departTime') }}</span>
+            <span class="ticket-modal__label">{{
+              $t('ai.ticket.departTime')
+            }}</span>
             <input
               v-model="departureTime"
               class="ticket-modal__input"
@@ -231,6 +239,7 @@ function onNext() {
 }
 
 .ticket-modal__title {
+  margin: 0;
   font-size: 11px;
   font-weight: 800;
   color: rgba(0, 0, 0, 0.6);
