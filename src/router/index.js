@@ -5,6 +5,7 @@ import ResultView   from '@/views/ResultView.vue'
 import MapPageView  from '@/views/MapPageView.vue'
 import SavedView    from '@/views/SavedView.vue'
 import ProfileView  from '@/views/ProfileView.vue'
+import AiOverlayView from '@/views/AiOverlayView.vue'
 import ProfileSetupView from '@/views/ProfileSetupView.vue'
 import AuthCallbackView from '@/views/AuthCallbackView.vue'
 import AttractionDetailView from '@/views/AttractionDetailView.vue'
@@ -18,7 +19,7 @@ const router = createRouter({
   routes: [
     { path: '/',         name: 'landing',  component: LandingView },
     { path: '/discover', name: 'discover', component: DiscoverView },
-    { path: '/ai',       name: 'ai',       component: DiscoverView },
+    { path: '/ai',       name: 'ai',       component: AiOverlayView },
     { path: '/result',   name: 'result',   component: ResultView },
     { path: '/map',      name: 'map',      component: MapPageView },
     { path: '/saved',    name: 'saved',    component: SavedView },
