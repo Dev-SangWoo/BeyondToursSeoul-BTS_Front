@@ -66,11 +66,36 @@ const showCongestionInfo = ref(false);
 const courseDensityIndex = ref(2);
 
 const densityModes = computed(() => [
-  { id: 'local0',      text: t('discover.densityMode.local0'),      scoreMin: 0,    scoreMax: 0 },
-  { id: 'local1-30',   text: t('discover.densityMode.local1-30'),   scoreMin: 0.01, scoreMax: 0.30 },
-  { id: 'local31-50',  text: t('discover.densityMode.local31-50'),  scoreMin: 0.31, scoreMax: 0.50 },
-  { id: 'local51-70',  text: t('discover.densityMode.local51-70'),  scoreMin: 0.51, scoreMax: 0.70 },
-  { id: 'local71-100', text: t('discover.densityMode.local71-100'), scoreMin: 0.71, scoreMax: 1.0 },
+  {
+    id: 'local0',
+    text: t('discover.densityMode.local0'),
+    scoreMin: 0,
+    scoreMax: 0,
+  },
+  {
+    id: 'local1-30',
+    text: t('discover.densityMode.local1-30'),
+    scoreMin: 0.01,
+    scoreMax: 0.3,
+  },
+  {
+    id: 'local31-50',
+    text: t('discover.densityMode.local31-50'),
+    scoreMin: 0.31,
+    scoreMax: 0.5,
+  },
+  {
+    id: 'local51-70',
+    text: t('discover.densityMode.local51-70'),
+    scoreMin: 0.51,
+    scoreMax: 0.7,
+  },
+  {
+    id: 'local71-100',
+    text: t('discover.densityMode.local71-100'),
+    scoreMin: 0.71,
+    scoreMax: 1.0,
+  },
 ]);
 
 const personaDensityIndexMap = {
@@ -84,7 +109,8 @@ const personaDensityIndexMap = {
 function applyInitialDensityFromPersona() {
   let pref = null;
   try {
-    pref = JSON.parse(localStorage.getItem('bts:auth:v1') || '{}')?.user?.localPreference;
+    pref = JSON.parse(localStorage.getItem('bts:auth:v1') || '{}')?.user
+      ?.localPreference;
   } catch {
     pref = null;
   }
@@ -94,34 +120,93 @@ function applyInitialDensityFromPersona() {
 
 // ── Categories ───────────────────────────────────────────────────────
 const categories = computed(() => [
-  { id: null,        icon: 'element-4',  color: '#fe9c00', label: t('discover.category.all') },
-  { id: '음식',      icon: 'cup',        color: '#f97316', label: t('discover.category.food') },
-  { id: '쇼핑',      icon: 'shop',       color: '#ec4899', label: t('discover.category.shopping') },
-  { id: '체험관광',  icon: 'people',     color: '#8b5cf6', label: t('discover.category.experience') },
-  { id: '자연관광',  icon: 'tree',       color: '#16a34a', label: t('discover.category.nature') },
-  { id: '문화관광',  icon: 'courthouse', color: '#a16207', label: t('discover.category.culture') },
-  { id: '역사관광',  icon: 'building',   color: '#78716c', label: t('discover.category.history') },
-  { id: '레저스포츠', icon: 'activity',  color: '#2563eb', label: t('discover.category.leisure') },
+  // {
+  //   id: null,
+  //   icon: 'element-4',
+  //   color: '#fe9c00',
+  //   label: t('discover.category.all'),
+  // },
+  {
+    id: '음식',
+    icon: 'cup',
+    color: '#f97316',
+    label: t('discover.category.food'),
+  },
+  {
+    id: '쇼핑',
+    icon: 'shop',
+    color: '#ec4899',
+    label: t('discover.category.shopping'),
+  },
+  {
+    id: '체험관광',
+    icon: 'people',
+    color: '#8b5cf6',
+    label: t('discover.category.experience'),
+  },
+  {
+    id: '자연관광',
+    icon: 'tree',
+    color: '#16a34a',
+    label: t('discover.category.nature'),
+  },
+  {
+    id: '문화관광',
+    icon: 'courthouse',
+    color: '#a16207',
+    label: t('discover.category.culture'),
+  },
+  {
+    id: '역사관광',
+    icon: 'building',
+    color: '#78716c',
+    label: t('discover.category.history'),
+  },
+  {
+    id: '레저스포츠',
+    icon: 'activity',
+    color: '#2563eb',
+    label: t('discover.category.leisure'),
+  },
 ]);
 
-const activeCategory = ref(null);
+const activeCategory = ref('음식');
+
+async function loadAttractionsByDensity() {
+  const mode = densityModes.value[courseDensityIndex.value];
+  return fetchAttractions({
+    category: activeCategory.value,
+    minScore: mode.scoreMin,
+    maxScore: mode.scoreMax,
+  });
+}
+
+async function loadAttractions(category) {
+  attractionsLoading.value = true;
+  const mode = densityModes.value[courseDensityIndex.value];
+  try {
+    attractions.value = await fetchAttractions({
+      category,
+      minScore: mode.scoreMin,
+      maxScore: mode.scoreMax,
+    });
+  } catch (error) {
+    console.error('[MapPage] 관광지 로드 실패:', error);
+    attractions.value = [];
+  } finally {
+    attractionsLoading.value = false;
+  }
+}
 
 function selectCategory(id) {
   activeCategory.value = id;
+  loadAttractions(id);
 }
 
 // ── Attractions ───────────────────────────────────────────────────────
 const attractions = ref([]);
 const lockers = ref([]);
 const attractionsLoading = ref(false);
-
-async function loadAttractionsByDensity() {
-  const mode = densityModes.value[courseDensityIndex.value];
-  return fetchAttractions({
-    minScore: mode.scoreMin,
-    maxScore: mode.scoreMax,
-  });
-}
 
 onMounted(async () => {
   applyInitialDensityFromPersona();
@@ -140,13 +225,7 @@ onMounted(async () => {
 });
 
 const filteredAttractions = computed(() => {
-  let list = attractions.value ?? [];
-
-  if (activeCategory.value) {
-    list = list.filter((a) => a.cat1Name === activeCategory.value);
-  }
-
-  return list;
+  return attractions.value ?? [];
 });
 
 // 관광지 + 물품보관소 + 혼잡도 마커 통합 computed
@@ -217,7 +296,9 @@ const lockerSheetId = computed(() => {
 });
 
 function getCongestionText(level) {
-  return t(`map.congestion.shortLabel.${level}`) || t('map.congestion.shortLabel.1');
+  return (
+    t(`map.congestion.shortLabel.${level}`) || t('map.congestion.shortLabel.1')
+  );
 }
 
 function getCongestionClass(level) {
@@ -279,8 +360,10 @@ function fetchCurrentLocation() {
     <!-- ── Header ─────────────────────────────────────────────── -->
     <header class="map-page__header">
       <h1 class="map-page__title">{{ $t('map.title') }}</h1>
-      <span v-if="attractionsLoading" class="map-page__loading-badge">{{ $t('map.loading') }}</span>
-      <span v-else class="map-page__count-badge">{{ $t('map.pinCount', { n: allMarkers.length }) }}</span>
+      <span v-if="attractionsLoading" class="map-page__loading-badge">{{
+        $t('map.loading')
+      }}</span>
+      <!-- <span v-else class="map-page__count-badge">{{ $t('map.pinCount', { n: allMarkers.length }) }}</span> -->
     </header>
 
     <!-- ── Map + Overlays ─────────────────────────────────────── -->
@@ -336,94 +419,121 @@ function fetchCurrentLocation() {
         </svg>
       </button>
 
-      <!-- 혼잡도 범례 (상단 부유형) -->
-      <div
-        class="map-page__congestion-legend"
-        @click="showCongestionInfo = true"
-      >
-        <div class="congestion-legend-item">
-          <span class="congestion-dot congestion-dot--1"></span>
-          <span class="congestion-label">{{ $t('map.congestion.shortLabel.1') }}</span>
-        </div>
-        <div class="congestion-legend-item">
-          <span class="congestion-dot congestion-dot--2"></span>
-          <span class="congestion-label">{{ $t('map.congestion.shortLabel.2') }}</span>
-        </div>
-        <div class="congestion-legend-item">
-          <span class="congestion-dot congestion-dot--3"></span>
-          <span class="congestion-label">{{ $t('map.congestion.shortLabel.3') }}</span>
-        </div>
-        <div class="congestion-legend-item">
-          <span class="congestion-dot congestion-dot--4"></span>
-          <span class="congestion-label">{{ $t('map.congestion.shortLabel.4') }}</span>
-        </div>
-        <div class="congestion-legend-right">
-          <div class="congestion-legend-info">
-            <IsIcon name="info-circle" :size="14" />
-          </div>
-          <div
-            class="congestion-toggle"
-            role="switch"
-            :aria-checked="mapStore.showCongestion"
-            @click.stop="mapStore.toggleCongestion"
-          >
-            <div
-              class="toggle-track"
-              :class="{ 'toggle-track--active': mapStore.showCongestion }"
-            >
-              <div class="toggle-thumb"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 핀 범례 -->
+      <!-- 핀 범례 (관광지, 혼잡도, 물품보관소 통합) -->
       <div class="map-page__legend">
-        <div class="map-page__legend-item map-page__legend-item--attraction">
-          <span
-            class="map-page__legend-dot"
-            :style="{ background: mapStore.showAttraction ? '#fe9c00' : '#b0bec5' }"
-          ></span>
-          <span
-            class="map-page__legend-label"
-            :class="{ 'map-page__legend-label--off': !mapStore.showAttraction }"
-          >{{ $t('map.legendAttraction') }}</span>
-          <div
-            class="attraction-toggle"
-            role="switch"
-            :aria-checked="mapStore.showAttraction"
-            style="pointer-events: auto"
-            @click.stop="mapStore.toggleAttraction"
-          >
-            <div
-              class="toggle-track"
-              :class="{ 'toggle-track--active': mapStore.showAttraction }"
+        <!-- 관광지 -->
+        <div
+          class="map-page__legend-item"
+          @click.stop="mapStore.toggleAttraction"
+        >
+          <div class="map-page__legend-left">
+            <span
+              class="map-page__legend-dot"
+              :style="{
+                background: mapStore.showAttraction ? '#fe9c00' : '#b0bec5',
+              }"
+            ></span>
+            <span
+              class="map-page__legend-label"
+              :class="{
+                'map-page__legend-label--off': !mapStore.showAttraction,
+              }"
             >
-              <div class="toggle-thumb"></div>
+              {{ $t('map.legendAttraction') }}
+            </span>
+          </div>
+          <div class="map-page__legend-right">
+            <div
+              class="toggle-wrap"
+              role="switch"
+              :aria-checked="mapStore.showAttraction"
+            >
+              <div
+                class="toggle-track toggle-track--attraction"
+                :class="{ 'toggle-track--active': mapStore.showAttraction }"
+              >
+                <div class="toggle-thumb"></div>
+              </div>
             </div>
           </div>
         </div>
-        <div class="map-page__legend-item map-page__legend-item--locker">
-          <span
-            class="map-page__legend-dot"
-            :style="{ background: mapStore.showLocker ? '#0d9488' : '#b0bec5' }"
-          ></span>
-          <span
-            class="map-page__legend-label"
-            :class="{ 'map-page__legend-label--off': !mapStore.showLocker }"
-          >{{ $t('map.legendLocker') }}</span>
-          <div
-            class="locker-toggle"
-            role="switch"
-            :aria-checked="mapStore.showLocker"
-            style="pointer-events: auto"
-            @click.stop="mapStore.toggleLocker"
-          >
-            <div
-              class="toggle-track"
-              :class="{ 'toggle-track--active': mapStore.showLocker }"
+
+        <!-- 혼잡도 -->
+        <div
+          class="map-page__legend-item"
+          @click.stop="mapStore.toggleCongestion"
+        >
+          <div class="map-page__legend-left">
+            <span
+              class="map-page__legend-dot"
+              :style="{
+                background: mapStore.showCongestion ? '#ef4444' : '#b0bec5',
+                border: mapStore.showCongestion ? 'none' : '1.5px solid #fff',
+                boxShadow: mapStore.showCongestion
+                  ? '0 0 4px rgba(239,68,68,0.8)'
+                  : '0 1px 4px rgba(0,0,0,0.2)',
+              }"
+            ></span>
+            <span
+              class="map-page__legend-label"
+              :class="{
+                'map-page__legend-label--off': !mapStore.showCongestion,
+              }"
             >
-              <div class="toggle-thumb"></div>
+              {{ $t('discover.crowd') }}
+            </span>
+            <button
+              class="info-btn"
+              @click.stop="showCongestionInfo = true"
+              :aria-label="$t('map.congestion.modalTitle')"
+            >
+              <IsIcon name="info-circle" :size="14" />
+            </button>
+          </div>
+          <div class="map-page__legend-right">
+            <div
+              class="toggle-wrap"
+              role="switch"
+              :aria-checked="mapStore.showCongestion"
+            >
+              <div
+                class="toggle-track toggle-track--congestion"
+                :class="{ 'toggle-track--active': mapStore.showCongestion }"
+              >
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 물품보관소 -->
+        <div class="map-page__legend-item" @click.stop="mapStore.toggleLocker">
+          <div class="map-page__legend-left">
+            <span
+              class="map-page__legend-dot"
+              :style="{
+                background: mapStore.showLocker ? '#0d9488' : '#b0bec5',
+              }"
+            ></span>
+            <span
+              class="map-page__legend-label"
+              :class="{ 'map-page__legend-label--off': !mapStore.showLocker }"
+            >
+              {{ $t('map.legendLocker') }}
+            </span>
+          </div>
+          <div class="map-page__legend-right">
+            <div
+              class="toggle-wrap"
+              role="switch"
+              :aria-checked="mapStore.showLocker"
+            >
+              <div
+                class="toggle-track toggle-track--locker"
+                :class="{ 'toggle-track--active': mapStore.showLocker }"
+              >
+                <div class="toggle-thumb"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -443,7 +553,9 @@ function fetchCurrentLocation() {
         >
           <div class="congestion-modal">
             <header class="congestion-modal__header">
-              <h3 class="congestion-modal__title">{{ $t('map.congestion.modalTitle') }}</h3>
+              <h3 class="congestion-modal__title">
+                {{ $t('map.congestion.modalTitle') }}
+              </h3>
               <button
                 class="congestion-modal__close"
                 @click="showCongestionInfo = false"
@@ -452,15 +564,27 @@ function fetchCurrentLocation() {
               </button>
             </header>
             <div class="congestion-modal__body">
-              <div v-for="level in [1, 2, 3, 4]" :key="level" class="congestion-info-row">
-                <span class="congestion-dot" :class="`congestion-dot--${level}`"></span>
+              <div
+                v-for="level in [1, 2, 3, 4]"
+                :key="level"
+                class="congestion-info-row"
+              >
+                <span
+                  class="congestion-dot"
+                  :class="`congestion-dot--${level}`"
+                ></span>
                 <div class="congestion-info-text">
-                  <p class="congestion-info-name">{{ $t(`map.congestion.shortLabel.${level}`) }}</p>
-                  <p class="congestion-info-desc">{{ $t(`map.congestion.levelDesc.${level}`) }}</p>
+                  <p class="congestion-info-name">
+                    {{ $t(`map.congestion.shortLabel.${level}`) }}
+                  </p>
+                  <p class="congestion-info-desc">
+                    {{ $t(`map.congestion.levelDesc.${level}`) }}
+                  </p>
                 </div>
               </div>
             </div>
             <p class="congestion-modal__footer">
+              {{ $t('map.congestion.dataSource') }}
               {{ $t('map.congestion.dataSource') }}
             </p>
           </div>
@@ -484,7 +608,11 @@ function fetchCurrentLocation() {
             <header class="zone-detail__header">
               <div class="zone-detail__title-row">
                 <h2 class="zone-detail__title">
-                  {{ $t('map.congestion.zoneRegion', { name: translateAreaName(selectedZone.area_name, locale) }) }}
+                  {{
+                    $t('map.congestion.zoneRegion', {
+                      name: translateAreaName(selectedZone.area_name, locale),
+                    })
+                  }}
                 </h2>
                 <span
                   class="congestion-badge"
@@ -494,11 +622,17 @@ function fetchCurrentLocation() {
                 </span>
               </div>
               <p class="zone-detail__time">
-                {{ $t('map.congestion.zoneTimeLabel', { time: selectedZone.population_time }) }}
+                {{
+                  $t('map.congestion.zoneTimeLabel', {
+                    time: selectedZone.population_time,
+                  })
+                }}
               </p>
             </header>
             <div class="zone-detail__body">
-              <h3 class="zone-detail__section-title">{{ $t('map.congestion.zoneAreaTitle') }}</h3>
+              <h3 class="zone-detail__section-title">
+                {{ $t('map.congestion.zoneAreaTitle') }}
+              </h3>
               <div class="zone-detail__tags">
                 <span
                   v-for="area in selectedZone.sub_areas"
@@ -791,10 +925,10 @@ function fetchCurrentLocation() {
   z-index: 20;
   background: rgba(255, 255, 255, 0.92);
   border-radius: 12px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
   backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.8);
@@ -804,8 +938,22 @@ function fetchCurrentLocation() {
 .map-page__legend-item {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.map-page__legend-left {
+  display: flex;
+  align-items: center;
   gap: 7px;
-  pointer-events: none;
+}
+
+.map-page__legend-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .map-page__legend-dot {
@@ -818,32 +966,78 @@ function fetchCurrentLocation() {
 }
 
 .map-page__legend-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #444;
   white-space: nowrap;
-  flex: 1;
 }
 
 .map-page__legend-label--off {
   color: #b0bec5;
 }
 
-.map-page__legend-item--attraction,
-.map-page__legend-item--locker {
-  pointer-events: auto;
-  cursor: pointer;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.attraction-toggle,
-.locker-toggle {
+.info-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0 0 2px;
+  color: #999;
   display: flex;
   align-items: center;
   cursor: pointer;
-  margin-left: 8px;
-  flex-shrink: 0;
+}
+.info-btn:hover {
+  color: #666;
+}
+
+.congestion-mini-colors {
+  display: flex;
+  gap: 3px;
+  transition: opacity 0.2s;
+}
+.congestion-mini-colors--off {
+  opacity: 0.3;
+}
+
+/* ── Toggles ─────────────────────────────────────────────────────────── */
+.toggle-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-track {
+  width: 28px;
+  height: 16px;
+  background: #e0e0e0;
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-track--attraction.toggle-track--active {
+  background: #fe9c00;
+}
+.toggle-track--congestion.toggle-track--active {
+  background: #ef4444;
+}
+.toggle-track--locker.toggle-track--active {
+  background: #0d9488;
+}
+
+.toggle-thumb {
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-track--active .toggle-thumb {
+  transform: translateX(12px);
 }
 
 .map-page__locate-btn:active {
@@ -975,40 +1169,11 @@ function fetchCurrentLocation() {
 }
 
 /* ── Congestion Legend ────────────────────────────────────────────────── */
-.map-page__congestion-legend {
-  position: absolute;
-  top: 58px;
-  left: 12px;
-  right: 12px;
-  z-index: 20;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(8px);
-  border-radius: 12px;
-  padding: 8px 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-
-.map-page__congestion-legend:active {
-  transform: scale(0.98);
-}
-
-.congestion-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
 .congestion-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 1.5px solid #fff;
+  border: 1px solid #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -1024,70 +1189,6 @@ function fetchCurrentLocation() {
 .congestion-dot--4 {
   background: #ef4444;
 } /* 매우 붐빔 */
-
-.congestion-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #444;
-}
-
-.congestion-legend-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-left: 1px solid #eee;
-  padding-left: 10px;
-  margin-left: 4px;
-}
-
-.congestion-legend-info {
-  color: #999;
-  display: flex;
-  align-items: center;
-}
-
-.congestion-toggle {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.toggle-track {
-  width: 28px;
-  height: 16px;
-  background: #e0e0e0;
-  border-radius: 10px;
-  position: relative;
-  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.toggle-track--active {
-  background: #fe9c00;
-}
-
-.attraction-toggle .toggle-track--active {
-  background: #fe9c00;
-}
-
-.locker-toggle .toggle-track--active {
-  background: #0d9488;
-}
-
-.toggle-thumb {
-  width: 12px;
-  height: 12px;
-  background: #fff;
-  border-radius: 50%;
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.toggle-track--active .toggle-thumb {
-  transform: translateX(12px);
-}
 
 /* ── Congestion Modal ─────────────────────────────────────────────────── */
 .congestion-modal-overlay {

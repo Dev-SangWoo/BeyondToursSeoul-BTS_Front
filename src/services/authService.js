@@ -1,3 +1,5 @@
+import { createAuthExpiredError } from "@/utils/authFlow"
+
 const isBrowser = typeof window !== 'undefined'
 
 function isLocalFrontendHost() {
@@ -79,6 +81,7 @@ export async function fetchMe(accessToken) {
     },
   })
   const data = await parseJson(res)
+  if (res.status === 401) throw createAuthExpiredError()
   if (!res.ok) throw new Error(data.message || '내 정보 조회에 실패했습니다.')
   return data
 }
@@ -93,6 +96,7 @@ export async function updateMyNickname(accessToken, nickname) {
     body: JSON.stringify({ nickname }),
   })
   const data = await parseJson(res)
+  if (res.status === 401) throw createAuthExpiredError()
   if (!res.ok) throw new Error(data.message || '닉네임 저장에 실패했습니다.')
   return data
 }
@@ -107,6 +111,7 @@ export async function updateMyProfile(accessToken, { nickname, localPreference, 
     body: JSON.stringify({ nickname, localPreference, preferredLanguage }),
   })
   const data = await parseJson(res)
+  if (res.status === 401) throw createAuthExpiredError()
   if (!res.ok) throw new Error(data.message || '프로필 저장에 실패했습니다.')
   return data
 }

@@ -1,13 +1,20 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { getGoogleLoginUrl } from '@/services/authService';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { SUPPORTED_LOCALES, setLocale, getCurrentLocale } from '@/i18n';
+import {
+  AUTH_EXPIRED_REASON,
+  AUTH_EXPIRED_MESSAGE,
+  resolvePostLoginRedirect,
+  storePostLoginRedirect,
+} from '@/utils/authFlow';
 
 const { t } = useI18n();
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const authMode = ref('login');
 const showLangDrop = ref(false);
@@ -15,6 +22,10 @@ const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 const loginError = ref('');
+
+if (route.query.reason === AUTH_EXPIRED_REASON) {
+  loginError.value = AUTH_EXPIRED_MESSAGE;
+}
 
 const currentLangLabel = computed(
   () =>
@@ -29,6 +40,8 @@ function selectLang(lang) {
 }
 
 function go() {
+  const redirectPath = resolvePostLoginRedirect(route);
+  storePostLoginRedirect(redirectPath);
   window.location.href = getGoogleLoginUrl();
 }
 
@@ -55,7 +68,8 @@ async function loginWithEmail() {
       await authStore.login(email.value.trim(), password.value);
     }
     await authStore.loadMe().catch(() => null);
-    router.push('/discover');
+    const nextPath = resolvePostLoginRedirect(route);
+    router.push(nextPath);
   } catch (e) {
     loginError.value = e.message || t('landing.validation.authFailed');
   }
@@ -313,7 +327,7 @@ async function loginWithEmail() {
             </button>
           </div>
 
-          <div class="landing__email-box">
+          <form class="landing__email-box" @submit.prevent="loginWithEmail">
             <input
               v-model="email"
               class="landing__input"
@@ -340,7 +354,7 @@ async function loginWithEmail() {
             />
             <button
               class="landing__btn landing__btn--email"
-              @click="loginWithEmail"
+              type="submit"
               :disabled="authStore.isLoading"
             >
               {{
@@ -354,7 +368,7 @@ async function loginWithEmail() {
               }}
             </button>
             <p v-if="loginError" class="landing__error">{{ loginError }}</p>
-          </div>
+          </form>
         </div>
       </div>
       <!-- /landing__bottom -->

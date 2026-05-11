@@ -22,8 +22,9 @@ export const useServerSavedEventsStore = defineStore('serverSavedEvents', () => 
     loading.value = true
     try {
       items.value = await fetchSavedEvents(accessToken)
-    } catch {
+    } catch (e) {
       items.value = []
+      throw e
     } finally {
       loading.value = false
     }

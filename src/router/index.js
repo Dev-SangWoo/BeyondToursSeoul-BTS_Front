@@ -13,6 +13,7 @@ import LockerDetailView from '@/views/LockerDetailView.vue'
 import EventDetailView from '@/views/EventDetailView.vue'
 import { clearAiSheetSession, isAiDetailPath } from '@/utils/aiSheetSession'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { buildLoginLocation } from '@/utils/authFlow'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -37,12 +38,17 @@ router.beforeEach(async (to, from) => {
   const requiresAuth = ['discover', 'ai', 'result', 'map', 'saved', 'profile', 'profile-setup'].includes(String(to.name || ''))
 
   if (requiresAuth && !authStore.isAuthenticated) {
-    return { name: 'landing' }
+    return buildLoginLocation(to.fullPath)
   }
   if (!authStore.isAuthenticated) return true
 
   if (!authStore.user) {
-    await authStore.loadMe().catch(() => null)
+    try {
+      await authStore.loadMe()
+    } catch {
+      authStore.clearSession()
+      return buildLoginLocation(to.fullPath, {expired: true})
+    }
   }
   const hasNickname = !!(authStore.user?.nickname && String(authStore.user.nickname).trim())
   const hasPersona = !!(authStore.user?.localPreference && String(authStore.user.localPreference).trim())

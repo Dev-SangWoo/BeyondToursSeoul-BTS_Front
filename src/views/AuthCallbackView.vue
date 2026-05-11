@@ -1,24 +1,29 @@
 <script setup>
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import { useAuthStore } from '@/stores/useAuthStore'
+import { onMounted, ref } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { useAuthStore } from '@/stores/useAuthStore';
+import {
+  resolvePostLoginRedirect,
+  consumePostLoginRedirect,
+} from '@/utils/authFlow';
 
-const { t } = useI18n()
-const router = useRouter()
-const authStore = useAuthStore()
-const status = ref('')
+const { t } = useI18n();
+const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
+const status = ref('');
 
 onMounted(() => {
-  status.value = t('auth.checking')
-})
+  status.value = t('auth.checking');
+});
 
 function readFromUrl() {
-  const url = new URL(window.location.href)
-  const query = url.searchParams
-  const hash = new URLSearchParams(url.hash.replace(/^#/, ''))
+  const url = new URL(window.location.href);
+  const query = url.searchParams;
+  const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
 
-  const pick = (key) => query.get(key) || hash.get(key) || ''
+  const pick = (key) => query.get(key) || hash.get(key) || '';
 
   return {
     accessToken: pick('accessToken') || pick('access_token'),
@@ -27,32 +32,38 @@ function readFromUrl() {
     expiresIn: Number(pick('expiresIn') || pick('expires_in') || 0),
     email: pick('email'),
     userId: pick('userId') || pick('user_id'),
-  }
+  };
 }
 
 onMounted(async () => {
   try {
-    const payload = readFromUrl()
+    const payload = readFromUrl();
     if (!payload.accessToken) {
-      status.value = t('auth.tokenNotFound')
-      setTimeout(() => router.replace('/'), 1200)
-      return
+      status.value = t('auth.tokenNotFound');
+      setTimeout(() => router.replace('/'), 1200);
+      return;
     }
 
-    authStore.setSession(payload)
-    const me = await authStore.loadMe().catch(() => null)
-    const hasNickname = !!(me?.nickname && String(me.nickname).trim())
-    const hasPersona = !!(me?.localPreference && String(me.localPreference).trim())
-    const onboardingDone = hasNickname && hasPersona
+    authStore.setSession(payload);
+    const me = await authStore.loadMe().catch(() => null);
+    const hasNickname = !!(me?.nickname && String(me.nickname).trim());
+    const hasPersona = !!(
+      me?.localPreference && String(me.localPreference).trim()
+    );
+    const onboardingDone = hasNickname && hasPersona;
     status.value = onboardingDone
       ? '로그인 완료! 홈으로 이동합니다.'
-      : '첫 로그인 확인! 닉네임과 페르소나를 설정해 주세요.'
-    setTimeout(() => router.replace(onboardingDone ? '/discover' : '/profile/setup'), 500)
+      : '첫 로그인 확인! 닉네임과 페르소나를 설정해 주세요.';
+    const savedRedirect = consumePostLoginRedirect();
+    const nextPath = onboardingDone
+      ? savedRedirect || resolvePostLoginRedirect(route)
+      : '/profile/setup';
+    setTimeout(() => router.replace(nextPath), 500);
   } catch {
-    status.value = t('auth.error')
-    setTimeout(() => router.replace('/'), 1200)
+    status.value = t('auth.error');
+    setTimeout(() => router.replace('/'), 1200);
   }
-})
+});
 </script>
 
 <template>
@@ -74,4 +85,3 @@ onMounted(async () => {
   font-weight: 700;
 }
 </style>
-

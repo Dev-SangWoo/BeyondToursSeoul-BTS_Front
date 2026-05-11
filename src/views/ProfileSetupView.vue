@@ -1,11 +1,13 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { personaOptions } from '@/components/ai/input-sheet/aiInputFlowConstants'
+import { isAuthExpiredError } from '@/utils/authFlow'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const nickname = ref((authStore.user?.nickname || '').trim())
 const selectedPersona = ref(authStore.user?.localPreference || 'balanced')
 const selectedLanguage = ref(authStore.user?.preferredLanguage || '한국어')
@@ -32,6 +34,10 @@ async function submit() {
     })
     router.replace('/discover')
   } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
     error.value = e?.message || '닉네임 저장에 실패했습니다.'
   } finally {
     saving.value = false

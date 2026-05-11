@@ -25,8 +25,9 @@ export const useServerSavedAttractionsStore = defineStore('serverSavedAttraction
     loading.value = true
     try {
       items.value = await fetchSavedAttractions(accessToken)
-    } catch {
+    } catch (e) {
       items.value = []
+      throw e
     } finally {
       loading.value = false
     }
