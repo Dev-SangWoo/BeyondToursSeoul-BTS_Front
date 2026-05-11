@@ -131,8 +131,26 @@ const categories = computed(() => [
 
 const activeCategory = ref('음식');
 
+async function loadAttractions(category) {
+  attractionsLoading.value = true;
+  const mode = densityModes.value[courseDensityIndex.value];
+  try {
+    attractions.value = await fetchAttractions({
+      category,
+      minScore: mode.scoreMin,
+      maxScore: mode.scoreMax,
+    });
+  } catch (error) {
+    console.error('[MapPage] 관광지 로드 실패:', error);
+    attractions.value = [];
+  } finally {
+    attractionsLoading.value = false;
+  }
+}
+
 function selectCategory(id) {
   activeCategory.value = id;
+  loadAttractions(id);
 }
 
 // ── Attractions ───────────────────────────────────────────────────────
@@ -140,20 +158,17 @@ const attractions = ref([]);
 const lockers = ref([]);
 const attractionsLoading = ref(false);
 
-async function loadAttractionsByDensity() {
-  const mode = densityModes.value[courseDensityIndex.value];
-  return fetchAttractions({
-    minScore: mode.scoreMin,
-    maxScore: mode.scoreMax,
-  });
-}
-
 onMounted(async () => {
   applyInitialDensityFromPersona();
   attractionsLoading.value = true;
+  const mode = densityModes.value[courseDensityIndex.value];
   try {
     const [attrData, lockerData, congData] = await Promise.allSettled([
-      loadAttractionsByDensity(),
+      fetchAttractions({
+        category: activeCategory.value,
+        minScore: mode.scoreMin,
+        maxScore: mode.scoreMax,
+      }),
       fetchLockers(),
       fetchCongestions(),
     ]);
@@ -179,13 +194,7 @@ onMounted(async () => {
 });
 
 const filteredAttractions = computed(() => {
-  let list = attractions.value ?? [];
-
-  if (activeCategory.value) {
-    list = list.filter((a) => a.cat1Name === activeCategory.value);
-  }
-
-  return list;
+  return attractions.value ?? [];
 });
 
 // 관광지 + 물품보관소 + 혼잡도 마커 통합 computed
