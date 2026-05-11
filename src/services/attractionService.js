@@ -16,16 +16,21 @@ function toTourLang(lang) {
 }
 
 /**
- * @param {{ lang?: string, minScore?: number, maxScore?: number }} [opts]
+ * @param {{ category?: string, lang?: string, minScore?: number, maxScore?: number }} [opts]
  * @returns {Promise<Array>}
  */
 export async function fetchAttractions(opts = {}) {
   const lang = toTourLang(opts.lang ?? getCurrentLocale());
   const params = new URLSearchParams({ lang });
+  if (opts.category) params.set('category', opts.category);
   if (typeof opts.minScore === 'number')
     params.set('minScore', String(opts.minScore));
   if (typeof opts.maxScore === 'number')
     params.set('maxScore', String(opts.maxScore));
+
+  // 캐시 방지를 위한 타임스탬프 추가
+  params.set('_t', String(Date.now()));
+
   const res = await fetch(
     `${BASE_URL}/api/v1/attractions?${params.toString()}`,
   );
