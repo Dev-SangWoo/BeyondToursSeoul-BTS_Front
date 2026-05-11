@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { IsIcon } from '@ratoufa/iconsax-vue';
 import { useMapStore } from '@/stores/useMapStore';
 import { fetchAttractions, fetchLockers } from '@/services/attractionService';
@@ -49,14 +48,6 @@ function applyInitialDensityFromPersona() {
   }
   if (!pref || !(pref in personaDensityIndexMap)) return;
   courseDensityIndex.value = personaDensityIndexMap[pref];
-}
-
-function changeCourseDensity(delta) {
-  const last = densityModes.value.length - 1;
-  courseDensityIndex.value = Math.max(
-    0,
-    Math.min(last, courseDensityIndex.value + delta),
-  );
 }
 
 // ── Categories ───────────────────────────────────────────────────────
@@ -118,18 +109,6 @@ onMounted(async () => {
     attractionsLoading.value = false;
   }
   fetchCurrentLocation();
-});
-
-watch(courseDensityIndex, async () => {
-  attractionsLoading.value = true;
-  try {
-    attractions.value = await loadAttractionsByDensity();
-  } catch (e) {
-    console.error('[MapPage] 관광지 재조회 실패:', e);
-    attractions.value = [];
-  } finally {
-    attractionsLoading.value = false;
-  }
 });
 
 const filteredAttractions = computed(() => {
@@ -278,44 +257,6 @@ function fetchCurrentLocation() {
       <span v-if="attractionsLoading" class="map-page__loading-badge">{{ $t('map.loading') }}</span>
       <span v-else class="map-page__count-badge">{{ $t('map.pinCount', { n: allMarkers.length }) }}</span>
     </header>
-
-    <!-- ── Density Selector ────────────────────────────────────── -->
-    <div class="map-density-bar">
-      <p class="map-density-bar__label">{{ $t('discover.travelStyle') }}</p>
-      <div class="map-density-bar__control">
-        <button
-          class="map-density-bar__arrow"
-          :disabled="courseDensityIndex === 0"
-          :aria-label="$t('discover.prevPage')"
-          @click="changeCourseDensity(-1)"
-        >
-          <ChevronLeft :size="16" :stroke-width="2.5" />
-        </button>
-        <div class="map-density-bar__track">
-          <button
-            v-for="(mode, i) in densityModes"
-            :key="mode.id"
-            class="map-density-bar__pip"
-            :class="{
-              'map-density-bar__pip--active': courseDensityIndex === i,
-            }"
-            :aria-label="mode.text"
-            @click="courseDensityIndex = i"
-          />
-        </div>
-        <button
-          class="map-density-bar__arrow"
-          :disabled="courseDensityIndex === densityModes.length - 1"
-          :aria-label="$t('discover.nextPage')"
-          @click="changeCourseDensity(1)"
-        >
-          <ChevronRight :size="16" :stroke-width="2.5" />
-        </button>
-      </div>
-      <p class="map-density-bar__text">
-        {{ densityModes[courseDensityIndex].text }}
-      </p>
-    </div>
 
     <!-- ── Map + Overlays ─────────────────────────────────────── -->
     <div class="map-page__map">

@@ -365,12 +365,6 @@ function openSavedPlan(planId) {
   router.push({ name: 'result', query: { planId: sid } });
 }
 
-function changeCourseDensity(delta) {
-  const last = densityModes.value.length - 1;
-  const next = Math.max(0, Math.min(last, courseDensityIndex.value + delta));
-  courseDensityIndex.value = next;
-}
-
 function onCourseTrackScroll(e) {
   const el = e.target;
   const cards = Array.from(el.querySelectorAll('.discover-course-card'));
@@ -405,16 +399,6 @@ function scrollToCourse(index) {
   el.scrollTo({ left: unit * index, behavior: 'smooth' });
   activeCourseIndex.value = index;
 }
-
-watch(courseDensityIndex, () => {
-  activeCourseIndex.value = 0;
-  courseTrackRef.value?.scrollTo({ left: 0, behavior: 'auto' });
-  if (attractionPage.value === 1) {
-    void loadAttractions();
-  } else {
-    attractionPage.value = 1;
-  }
-});
 
 const PAGE_SIZE = 10;
 const attractions = ref([]);
@@ -626,46 +610,6 @@ watch(
           <p class="discover__greeting-sub">{{ $t('discover.greeting') }}</p>
         </div>
       </div>
-    </div>
-
-    <!-- ── Density Selector ──────────────────────────────────────────── -->
-    <div class="discover__density-bar">
-      <p class="discover__density-bar-label">
-        {{ $t('discover.travelStyle') }}
-      </p>
-      <div class="discover__density-bar-control">
-        <button
-          class="discover__density-arrow"
-          :disabled="courseDensityIndex === 0"
-          :aria-label="$t('discover.prevPage')"
-          @click="changeCourseDensity(-1)"
-        >
-          <ChevronLeft :size="16" :stroke-width="2.5" />
-        </button>
-        <div class="discover__density-bar-track">
-          <button
-            v-for="(mode, i) in densityModes"
-            :key="mode.id"
-            class="discover__density-pip"
-            :class="{
-              'discover__density-pip--active': courseDensityIndex === i,
-            }"
-            :aria-label="mode.text"
-            @click="courseDensityIndex = i"
-          />
-        </div>
-        <button
-          class="discover__density-arrow"
-          :disabled="courseDensityIndex === densityModes.length - 1"
-          :aria-label="$t('discover.nextPage')"
-          @click="changeCourseDensity(1)"
-        >
-          <ChevronRight :size="16" :stroke-width="2.5" />
-        </button>
-      </div>
-      <p class="discover__density-bar-text">
-        {{ densityModes[courseDensityIndex].text }}
-      </p>
     </div>
 
     <!-- ── My saved itineraries (서버 user_saved_plans) ─────────────────── -->
