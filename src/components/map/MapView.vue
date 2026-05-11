@@ -23,13 +23,19 @@ function loadNaverMapScript() {
       // 스크립트 태그는 있지만 아직 로드 중인 경우에만 이벤트 대기
       // 이미 완료됐으나 naver.maps가 없으면 auth 실패 → reject
       if (existing.dataset.loaded === 'true') {
-        window.naver?.maps?.Map ? resolve() : reject(new Error('Naver Maps 인증 실패'));
+        window.naver?.maps?.Map
+          ? resolve()
+          : reject(new Error('Naver Maps 인증 실패'));
         return;
       }
-      existing.addEventListener('load', () => {
-        existing.dataset.loaded = 'true';
-        resolve();
-      }, { once: true });
+      existing.addEventListener(
+        'load',
+        () => {
+          existing.dataset.loaded = 'true';
+          resolve();
+        },
+        { once: true },
+      );
       existing.addEventListener('error', reject, { once: true });
       return;
     }
@@ -145,57 +151,43 @@ function buildMarkerIcon(
         ? `onclick="event.stopPropagation(); window.__naverPinClick && window.__naverPinClick('${escapeForOnclickSingleQuoted(id)}')" `
         : '';
 
-    const borderStyle = selected
-      ? '2px solid #fff'
-      : '1.5px solid rgba(255,255,255,0.3)';
-    const shadowStyle = selected
-      ? `0 2px 12px rgba(254,156,0,0.5), 0 4px 16px rgba(0,0,0,0.15)`
-      : `0 2px 8px ${color}55, 0 1px 4px rgba(0,0,0,0.18)`;
-    const scaleExtra = selected ? 'scale(1.08)' : '';
-    const dotSize = selected ? 18 : 14;
+    const scaleExtra = selected ? 'scale(1.15)' : 'scale(1)';
+    const zoneSize = 80;
 
     return {
       content: `
         <div style="position:relative; width:0; height:0;">
+          <!-- 배틀그라운드 레드존 스타일 영역 -->
           <div style="
             position:absolute; left:0; top:0;
-            transform: translate(-50%,-50%);
-            width:50px; height:50px;
+            transform: translate(-50%,-50%) ${scaleExtra};
+            width:${zoneSize}px; height:${zoneSize}px;
             border-radius:50%;
-            background: ${color};
-            opacity:0;
-            animation: cong-wave 2.4s ease-out infinite;
+            background: ${color}44;
+            border: 1.5px solid ${color}CC;
+            box-shadow: 0 0 12px ${color}66, inset 0 0 8px ${color}44;
+            transition: transform 0.2s ease;
             pointer-events:none;
+            animation: redzone-breathe 2s ease-in-out infinite alternate;
           "></div>
-          <div style="
-            position:absolute; left:0; top:0;
-            transform: translate(-50%,-50%);
-            width:50px; height:50px;
-            border-radius:50%;
-            background: ${color};
-            opacity:0;
-            animation: cong-wave 2.4s ease-out infinite 1.2s;
-            pointer-events:none;
-          "></div>
+          <!-- 클릭용 투명 영역 -->
           <div
             ${onclickAttr}
             style="
               position:absolute; left:0; top:0;
               transform: translate(-50%,-50%) ${scaleExtra};
-              width:${dotSize}px; height:${dotSize}px;
+              width:${zoneSize}px; height:${zoneSize}px;
               border-radius:50%;
-              background:${color};
-              border:2.5px solid #fff;
-              box-shadow: 0 0 8px ${color}88, 0 2px 4px rgba(0,0,0,0.2);
+              background: transparent;
               cursor:pointer;
               pointer-events:auto;
               z-index:2;
             "
           ></div>
           <style>
-            @keyframes cong-wave {
-              0%   { transform:translate(-50%,-50%) scale(0.3); opacity:0.35; }
-              100% { transform:translate(-50%,-50%) scale(1); opacity:0; }
+            @keyframes redzone-breathe {
+              0%   { opacity: 0.4; }
+              100% { opacity: 1; }
             }
           </style>
         </div>`,
@@ -330,7 +322,9 @@ onMounted(async () => {
     mapStore.selectMarker(id);
   };
   window.navermap_authFailure = () => {
-    console.error('[NaverMap] 인증 실패: NCP 콘솔에서 localhost:5173 도메인을 등록하세요.');
+    console.error(
+      '[NaverMap] 인증 실패: NCP 콘솔에서 localhost:5173 도메인을 등록하세요.',
+    );
   };
 
   try {
