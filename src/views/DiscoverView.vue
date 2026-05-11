@@ -23,10 +23,11 @@ import {
   fetchTourCourses,
   toggleTourCourseSave,
 } from '@/services/tourCourseService';
+import { getApiLangCode } from '@/i18n';
 import earthImage from '../../asset/earth.png';
 import airplaneImage from '../../asset/airplane.png';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
@@ -181,7 +182,7 @@ async function loadTourCourses() {
   tourCoursesLoading.value = true;
   try {
     tourCourses.value = await fetchTourCourses(
-      'KOR',
+      getApiLangCode(),
       authStore.accessToken || null,
     );
   } catch (e) {
@@ -255,6 +256,10 @@ watch(
     loadTourCourses();
   },
 );
+
+watch(locale, () => {
+  void loadTourCourses();
+});
 
 function openSavedPlan(planId) {
   const sid = planId != null ? String(planId).trim() : '';

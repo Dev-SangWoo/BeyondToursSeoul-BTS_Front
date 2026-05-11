@@ -4,6 +4,14 @@ import { useRouter } from 'vue-router'
 import { Bell, Globe, Settings, UserRound } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { personaOptions } from '@/components/ai/input-sheet/aiInputFlowConstants'
+import { setLocale } from '@/i18n'
+
+const LABEL_TO_LOCALE = {
+  '한국어': 'ko',
+  'English': 'en',
+  '日本語': 'ja',
+  '中文': 'zh',
+}
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -59,6 +67,7 @@ async function saveLanguage(next) {
   try {
     await authStore.saveProfile({ preferredLanguage: next })
     language.value = next
+    setLocale(LABEL_TO_LOCALE[next] ?? 'ko')
     closeModal()
   } catch {
     /* ignore */
