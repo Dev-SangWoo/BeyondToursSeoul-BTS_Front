@@ -17,8 +17,12 @@ const itineraryDays = computed(() =>
 
 watch(
   () => props.structured,
-  () => {
-    emit('update:selectedDayIndex', 0)
+  (next) => {
+    const days = next?.days
+    const maxIndex = Array.isArray(days) ? Math.max(0, days.length - 1) : 0
+    if (props.selectedDayIndex > maxIndex) {
+      emit('update:selectedDayIndex', maxIndex)
+    }
   },
 )
 

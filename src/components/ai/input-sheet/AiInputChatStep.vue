@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import { MessageCircle, Sparkles } from 'lucide-vue-next'
 import { useMapStore } from '@/stores/useMapStore'
 import MapView from '@/components/map/MapView.vue'
@@ -9,10 +10,11 @@ import { renderMarkdownHtml } from '@/utils/renderMarkdown'
 import {
   flattenStructuredSlots,
   buildMapMarkersFromStructured,
-  meanCenter,
   SEOUL_CENTER,
 } from '@/utils/structuredItinerary'
 import { normalizeStructured } from '@/utils/structuredNormalize'
+import { structuredToItineraryDays } from '@/utils/structuredToItinerary'
+import { fetchNearestLockers } from '@/services/attractionService'
 import AiChatPlanStrip from './AiChatPlanStrip.vue'
 
 const { t } = useI18n()
@@ -24,6 +26,7 @@ const props = defineProps({
   canSubmitGenerate: { type: Boolean, default: false },
   preserveMapOnExit: { type: Boolean, default: false },
   localRatio: { type: Number, default: 50 },
+  initialSelectedDayIndex: { type: Number, default: 0 },
 })
 
 const emit = defineEmits([
@@ -33,9 +36,12 @@ const emit = defineEmits([
   'thread-snapshot',
   'bootstrap-complete',
   'before-navigate-detail',
+  'selected-day-index-change',
 ])
 
 const mapStore = useMapStore()
+const router = useRouter()
+const route = useRoute()
 
 const thread = ref([])
 const chatInput = ref('')
@@ -46,8 +52,10 @@ const mapExpanded = ref(false)
 const selectedDayIndex = ref(0)
 const allDayMarkers = ref([])
 const allDayPolyline = ref([])
+const allDayLockerHintMarkers = ref([])
 const threadRef = ref(null)
 const bootstrapping = ref(false)
+const suppressMarkerNavigate = ref(false)
 
 let mapSnapshot = null
 
@@ -104,6 +112,7 @@ function seedThread() {
 }
 
 onMounted(() => {
+  selectedDayIndex.value = Math.max(0, Number(props.initialSelectedDayIndex) || 0)
   seedThread()
   mapSnapshot = {
     markers: [...mapStore.markers],
@@ -139,19 +148,26 @@ async function applyStructuredToMap(structured) {
   try {
     const flat = flattenStructuredSlots(structured)
     const { markers, polyline } = await buildMapMarkersFromStructured(flat)
-    allDayMarkers.value = markers
+    const lockerHintMarkers = await buildLockerHintMarkers(structured)
+    allDayLockerHintMarkers.value = lockerHintMarkers
+    allDayMarkers.value = [...markers, ...lockerHintMarkers]
     allDayPolyline.value = polyline
     const day = selectedDayIndex.value
-    const dayMarkers = markers.filter((m) => m.dayIndex === day)
-    const dayPolyline = dayMarkers
-      .filter((m) => m.lat != null && m.lng != null)
-      .map((m) => ({ lat: m.lat, lng: m.lng }))
+    const dayMarkers = [...markers, ...lockerHintMarkers].filter((m) => m.dayIndex === day)
+    const dayChain = dayMarkers.filter((m) => m.lat != null && m.lng != null)
+    const dayPolyline = []
+    for (let i = 0; i < dayChain.length - 1; i += 1) {
+      const start = dayChain[i]
+      const end = dayChain[i + 1]
+      dayPolyline.push({
+        start: { lat: start.lat, lng: start.lng },
+        end: { lat: end.lat, lng: end.lng },
+        dashed: start.type === 'locker' || end.type === 'locker',
+      })
+    }
     mapStore.setMarkers(dayMarkers)
     mapStore.setPolyline(dayPolyline)
-    if (dayMarkers.length) {
-      const c = meanCenter(dayMarkers)
-      mapStore.setCenter(c.lat, c.lng)
-    } else {
+    if (!dayMarkers.length) {
       mapStore.setCenter(SEOUL_CENTER.lat, SEOUL_CENTER.lng)
     }
   } finally {
@@ -179,18 +195,24 @@ watch(
 )
 
 watch(selectedDayIndex, () => {
+  emit('selected-day-index-change', selectedDayIndex.value)
   if (!allDayMarkers.value.length) return
   const day = selectedDayIndex.value
   const dayMarkers = allDayMarkers.value.filter((m) => m.dayIndex === day)
-  const dayPolyline = dayMarkers
-    .filter((m) => m.lat != null && m.lng != null)
-    .map((m) => ({ lat: m.lat, lng: m.lng }))
+  const dayChain = dayMarkers.filter((m) => m.lat != null && m.lng != null)
+  const dayPolyline = []
+  for (let i = 0; i < dayChain.length - 1; i += 1) {
+    const start = dayChain[i]
+    const end = dayChain[i + 1]
+    dayPolyline.push({
+      start: { lat: start.lat, lng: start.lng },
+      end: { lat: end.lat, lng: end.lng },
+      dashed: start.type === 'locker' || end.type === 'locker',
+    })
+  }
   mapStore.setMarkers(dayMarkers)
   mapStore.setPolyline(dayPolyline)
-  if (dayMarkers.length) {
-    const c = meanCenter(dayMarkers)
-    mapStore.setCenter(c.lat, c.lng)
-  }
+  if (!dayMarkers.length) mapStore.setCenter(SEOUL_CENTER.lat, SEOUL_CENTER.lng)
 })
 
 function resolveAssistantText(structured) {
@@ -203,6 +225,67 @@ function resolveAssistantText(structured) {
     .filter(Boolean)
   const preview = [...new Set(places)].slice(0, 3).join(', ')
   return `${dayCount}일 여행 일정을 준비했어요.${preview ? ` (${preview} 등)` : ''}`
+}
+
+function pickFirstAnchor(items) {
+  if (!Array.isArray(items) || !items.length) return null
+  return items.find((it) => !it.isLocker && it.lat != null && it.lng != null) || null
+}
+
+function pickLastAnchor(items) {
+  if (!Array.isArray(items) || !items.length) return null
+  for (let i = items.length - 1; i >= 0; i -= 1) {
+    const it = items[i]
+    if (!it?.isLocker && it.lat != null && it.lng != null) return it
+  }
+  return null
+}
+
+async function buildLockerHintMarkers(structured) {
+  const days = structuredToItineraryDays(structured)
+  if (!days.length) return []
+
+  const out = []
+  for (let dayIndex = 0; dayIndex < days.length; dayIndex += 1) {
+    const items = Array.isArray(days[dayIndex]?.items) ? days[dayIndex].items : []
+    const first = pickFirstAnchor(items)
+    const last = pickLastAnchor(items)
+    const anchors = []
+    if (first) anchors.push({ kind: 'start', ref: first })
+    if (last && last !== first) anchors.push({ kind: 'end', ref: last })
+    for (let ai = 0; ai < anchors.length; ai += 1) {
+      const anchor = anchors[ai]
+      try {
+        const list = await fetchNearestLockers(anchor.ref.lat, anchor.ref.lng, { limit: 1, lang: 'KOR' })
+        const locker = Array.isArray(list) ? list[0] : null
+        const lat = Number(locker?.latitude)
+        const lng = Number(locker?.longitude)
+        if (!locker || !Number.isFinite(lat) || !Number.isFinite(lng)) continue
+        const lid = String(locker.id ?? '').trim()
+        if (!lid) continue
+        out.push({
+          id: `ai-locker-hint-${dayIndex}-${anchor.kind}-${lid}`,
+          lat,
+          lng,
+          label: String(locker.stationName || locker.lockerName || '물품보관함'),
+          placeName: String(locker.stationName || locker.lockerName || '물품보관함'),
+          slotLabel: '물품보관함',
+          order: 999,
+          orderShort: 'L',
+          type: 'locker',
+          crowdLevel: 'low',
+          dayIndex,
+          placeTone: null,
+          isLocker: true,
+          sourceType: 'locker',
+          sourceId: lid,
+        })
+      } catch {
+        // nearest locker 실패 시 무시
+      }
+    }
+  }
+  return out
 }
 
 async function sendChatWithText(t, options = {}) {
@@ -246,6 +329,7 @@ function toggleMapExpanded() {
 }
 
 function focusMarkerFromTimeline(payload) {
+  suppressMarkerNavigate.value = true
   const dayIndex = Math.max(0, (payload?.day ?? 1) - 1)
   const item = payload?.item
   if (!item) return
@@ -266,7 +350,41 @@ function focusMarkerFromTimeline(payload) {
   if (target.lat != null && target.lng != null) {
     mapStore.setCenter(target.lat, target.lng)
   }
+  setTimeout(() => {
+    suppressMarkerNavigate.value = false
+  }, 0)
 }
+
+function routeForMarker(marker) {
+  const st = String(marker?.sourceType || '').toLowerCase()
+  const sid = String(marker?.sourceId || '').trim()
+  if (!sid) return null
+  if (st.includes('locker')) return { name: 'locker-detail', params: { id: sid } }
+  if (st.includes('event')) return { name: 'event-detail', params: { id: sid } }
+  if (st.includes('attraction')) return { name: 'attraction-detail', params: { id: sid } }
+  return null
+}
+
+watch(
+  () => mapStore.selectedMarkerId,
+  async (id) => {
+    if (!id || suppressMarkerNavigate.value) return
+    const marker = allDayMarkers.value.find((m) => m.id === id)
+    const target = routeForMarker(marker)
+    if (!target) return
+    const returnTo =
+      typeof route.query?.returnTo === 'string' && route.query.returnTo.trim()
+        ? route.query.returnTo.trim()
+        : '/discover'
+    emit('before-navigate-detail')
+    await router.push({
+      ...target,
+      query: {
+        returnTo,
+      },
+    })
+  },
+)
 
 </script>
 

@@ -1,6 +1,11 @@
 import { getCurrentLocale, getApiLangCode } from '@/i18n';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const NEAREST_LOCKER_TTL_MS = 30_000;
+const NEAREST_LOCKER_BACKOFF_MS = 15_000;
+const nearestLockerCache = new Map();
+const nearestLockerPending = new Map();
+let nearestLockerBackoffUntil = 0;
 
 function toTourLang(lang) {
   const value = String(lang || '')
@@ -103,17 +108,60 @@ export async function fetchLockerById(id) {
  * @returns {Promise<Array<{ id: number, lockerId: string, lockerName: string, stationName?: string, detailLocation?: string, latitude: number, longitude: number, distanceMeters: number }>>}
  */
 export async function fetchNearestLockers(lat, lng, opts = {}) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
+
   const limit = opts.limit ?? 1;
-  const lang = opts.lang ?? 'KOR';
+  const lang = toTourLang(opts.lang ?? 'KOR');
+  const cacheKey = [
+    latitude.toFixed(5),
+    longitude.toFixed(5),
+    String(limit),
+    lang,
+  ].join(':');
+  const now = Date.now();
+
+  if (nearestLockerBackoffUntil > now) return [];
+
+  const cached = nearestLockerCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) return cached.data;
+
+  const pending = nearestLockerPending.get(cacheKey);
+  if (pending) return pending;
+
   const params = new URLSearchParams({
-    latitude: String(lat),
-    longitude: String(lng),
+    latitude: String(latitude),
+    longitude: String(longitude),
     limit: String(limit),
     lang,
   });
-  const res = await fetch(
-    `${BASE_URL}/api/v1/lockers/nearest?${params.toString()}`,
-  );
-  if (!res.ok) throw new Error(`가까운 물품보관소 조회 실패: ${res.status}`);
-  return res.json();
+  const request = (async () => {
+    const res = await fetch(
+      `${BASE_URL}/api/v1/lockers/nearest?${params.toString()}`,
+    );
+
+    if (!res.ok) {
+      if (res.status >= 500) {
+        nearestLockerBackoffUntil = Date.now() + NEAREST_LOCKER_BACKOFF_MS;
+        return [];
+      }
+      throw new Error(`가까운 물품보관소 조회 실패: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : [];
+    nearestLockerCache.set(cacheKey, {
+      data: list,
+      expiresAt: Date.now() + NEAREST_LOCKER_TTL_MS,
+    });
+    return list;
+  })();
+
+  nearestLockerPending.set(cacheKey, request);
+  try {
+    return await request;
+  } finally {
+    nearestLockerPending.delete(cacheKey);
+  }
 }

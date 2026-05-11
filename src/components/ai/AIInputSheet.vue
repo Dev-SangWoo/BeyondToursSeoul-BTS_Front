@@ -44,6 +44,7 @@ const specialRequest = ref('');
 const showTopGuide = ref(false);
 const chatStructured = ref(null);
 const chatThread = ref([]);
+const chatSelectedDayIndex = ref(0);
 const preserveChatMapOnExit = ref(false);
 const generatingInitialCourse = ref(false);
 
@@ -301,6 +302,7 @@ function buildDraftState() {
     specialRequest: specialRequest.value,
     chatStructured: chatStructured.value,
     chatThread: chatThread.value,
+  chatSelectedDayIndex: chatSelectedDayIndex.value,
     preserveChatMapOnExit: preserveChatMapOnExit.value,
     startDate: startDate.value,
     endDate: endDate.value,
@@ -358,6 +360,9 @@ function restoreDraftState() {
         ? d.chatStructured
         : null;
     chatThread.value = Array.isArray(d.chatThread) ? d.chatThread : [];
+    chatSelectedDayIndex.value = Number.isFinite(Number(d.chatSelectedDayIndex))
+      ? Math.max(0, Number(d.chatSelectedDayIndex))
+      : 0;
     preserveChatMapOnExit.value = !!d.preserveChatMapOnExit;
     startDate.value =
       typeof d.startDate === 'string' ? d.startDate : startDate.value;
@@ -466,6 +471,7 @@ onMounted(() => {
               :summary-text="chatSummaryMessage"
               :initial-structured="chatStructured"
               :initial-thread="chatThread"
+              :initial-selected-day-index="chatSelectedDayIndex"
               :can-submit-generate="canSubmitGenerate"
               :preserve-map-on-exit="preserveChatMapOnExit"
               :local-ratio="density"
@@ -473,6 +479,7 @@ onMounted(() => {
               @generate="generate"
               @structured-change="chatStructured = $event"
               @thread-snapshot="chatThread = $event"
+              @selected-day-index-change="chatSelectedDayIndex = $event"
               @bootstrap-complete="generatingInitialCourse = false"
               @before-navigate-detail="prepareDraftForDetailReturn"
             />

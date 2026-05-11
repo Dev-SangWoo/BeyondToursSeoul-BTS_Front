@@ -10,7 +10,6 @@ import { fetchSavedPlanDetail, saveStructuredPlan } from '@/services/savedPlansS
 import {
   flattenStructuredSlots,
   buildMapMarkersFromStructured,
-  meanCenter,
   SEOUL_CENTER,
 } from '@/utils/structuredItinerary'
 
@@ -60,15 +59,20 @@ async function syncMarkersFromStructured() {
 function applyDayToMap(dayNum) {
   const dayIndex = dayNum - 1
   const dayMarkers = allMarkers.value.filter((m) => m.dayIndex === dayIndex)
-  const dayPolyline = dayMarkers
-    .filter((m) => m.lat != null && m.lng != null)
-    .map((m) => ({ lat: m.lat, lng: m.lng }))
+  const chain = dayMarkers.filter((m) => m.lat != null && m.lng != null)
+  const dayPolyline = []
+  for (let i = 0; i < chain.length - 1; i += 1) {
+    const start = chain[i]
+    const end = chain[i + 1]
+    dayPolyline.push({
+      start: { lat: start.lat, lng: start.lng },
+      end: { lat: end.lat, lng: end.lng },
+      dashed: start.type === 'locker' || end.type === 'locker',
+    })
+  }
   mapStore.setMarkers(dayMarkers)
   mapStore.setPolyline(dayPolyline)
-  if (dayMarkers.length) {
-    const c = meanCenter(dayMarkers)
-    mapStore.setCenter(c.lat, c.lng)
-  } else {
+  if (!dayMarkers.length) {
     mapStore.setCenter(SEOUL_CENTER.lat, SEOUL_CENTER.lng)
   }
 }
