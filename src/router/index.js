@@ -31,7 +31,7 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
   const authStore = useAuthStore()
   const requiresAuth = ['discover', 'ai', 'result', 'map', 'saved', 'profile', 'profile-setup'].includes(String(to.name || ''))
 
@@ -51,6 +51,20 @@ router.beforeEach(async (to) => {
   }
   if (onboardingDone && to.name === 'profile-setup') {
     return { name: 'discover' }
+  }
+  if (to.name === 'ai') {
+    const hasReturnTo = typeof to.query?.returnTo === 'string' && to.query.returnTo.trim() !== ''
+    if (!hasReturnTo && from.name !== 'ai') {
+      const returnTo = from?.fullPath && from.fullPath !== '/ai' ? from.fullPath : '/discover'
+      return {
+        name: 'ai',
+        query: {
+          ...to.query,
+          returnTo,
+        },
+        replace: true,
+      }
+    }
   }
   return true
 })

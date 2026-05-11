@@ -470,7 +470,15 @@ function onCourseGenerated() {
 function closeAISheet() {
   showAISheet.value = false;
   clearAiSheetSession();
-  if (route.path === '/ai') router.replace('/discover');
+  if (route.path === '/ai') {
+    const returnTo =
+      typeof route.query?.returnTo === 'string' &&
+      route.query.returnTo.trim() &&
+      route.query.returnTo !== '/ai'
+        ? route.query.returnTo
+        : '/discover';
+    router.replace(returnTo);
+  }
 }
 
 watch(
