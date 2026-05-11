@@ -516,7 +516,7 @@ watch(
 
     <!-- ── My saved itineraries (서버 user_saved_plans) ─────────────────── -->
     <section
-      v-if="authStore.isAuthenticated"
+      v-if="authStore.isAuthenticated && (savedPlansLoading || savedPlansError || savedPlansRemote.length)"
       class="discover__section discover__saved-plans"
     >
       <div class="discover__saved-plans-heading">

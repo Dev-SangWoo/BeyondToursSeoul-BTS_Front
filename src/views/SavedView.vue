@@ -6,7 +6,7 @@ import { CalendarDays, Heart, MapPin, Sparkles } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useServerSavedAttractionsStore } from '@/stores/useServerSavedAttractionsStore'
 import { useServerSavedEventsStore } from '@/stores/useServerSavedEventsStore'
-import { fetchSavedPlans } from '@/services/savedPlansService'
+import { deleteSavedPlan, fetchSavedPlans } from '@/services/savedPlansService'
 import { fetchSavedTourCourses } from '@/services/tourCourseService'
 import { getApiLangCode } from '@/i18n'
 
@@ -29,6 +29,7 @@ const tabs = computed(() => [
 const savedPlansRemote = ref([])
 const savedPlansLoading = ref(false)
 const savedPlansError = ref(null)
+const deletingPlanId = ref(null)
 
 const savedTourCourses = ref([])
 const savedTourCoursesLoading = ref(false)
@@ -127,6 +128,21 @@ function openSavedPlan(planId) {
   if (!sid) return
   router.push({ name: 'result', query: { planId: sid } })
 }
+
+async function removeSavedPlan(planId) {
+  if (!authStore.accessToken || deletingPlanId.value != null) return
+  const sid = planId != null ? String(planId).trim() : ''
+  if (!sid) return
+  deletingPlanId.value = sid
+  try {
+    await deleteSavedPlan(sid, authStore.accessToken)
+    savedPlansRemote.value = savedPlansRemote.value.filter((p) => String(p.id) !== sid)
+  } catch (e) {
+    window.alert?.(e?.message || t('saved.deletePlanFailed'))
+  } finally {
+    deletingPlanId.value = null
+  }
+}
 </script>
 
 <template>
@@ -201,9 +217,14 @@ function openSavedPlan(planId) {
               <CalendarDays :size="14" :stroke-width="2.2" />
               <span>{{ $t('saved.savedAtPrefix') }} {{ formatSavedPlanDate(p.savedAt) }}</span>
             </p>
-            <button type="button" class="saved-card__cta" @click="openSavedPlan(p.id)">
-              {{ $t('saved.viewPlan') }}
-            </button>
+            <div class="saved-card__cta-row">
+              <button type="button" class="saved-card__cta saved-card__cta--secondary" @click="removeSavedPlan(p.id)" :disabled="deletingPlanId === String(p.id)">
+                {{ deletingPlanId === String(p.id) ? $t('saved.deletingPlan') : $t('saved.deletePlan') }}
+              </button>
+              <button type="button" class="saved-card__cta" @click="openSavedPlan(p.id)">
+                {{ $t('saved.viewPlan') }}
+              </button>
+            </div>
           </article>
         </template>
         <article v-else class="saved-card saved-card--empty">
@@ -529,6 +550,22 @@ function openSavedPlan(planId) {
 
 .saved-card__cta:active {
   opacity: 0.92;
+}
+
+.saved-card__cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.saved-card__cta-row {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.saved-card__cta-row .saved-card__cta {
+  margin-top: 0;
 }
 
 .saved-card--attract {
