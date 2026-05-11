@@ -20,6 +20,7 @@ import {
 import { fetchEventById } from '@/services/eventService'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useServerSavedEventsStore } from '@/stores/useServerSavedEventsStore'
+import { isAuthExpiredError } from '@/utils/authFlow'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -66,6 +67,10 @@ watch(
         isLiked.value = serverEvents.isSaved(sid)
       }
     } catch (e) {
+      if (isAuthExpiredError(e)) {
+        await authStore.handleAuthExpired(router, route)
+        return
+      }
       error.value = e.message || t('event.loadError')
     } finally {
       loading.value = false
@@ -80,8 +85,15 @@ watch(
     const sid = resolvedId.value != null ? String(resolvedId.value).trim() : ''
     if (!sid || !eventDetail.value) return
     if (token) {
-      await serverEvents.refresh(token)
-      isLiked.value = serverEvents.isSaved(sid)
+      try {
+        await serverEvents.refresh(token)
+        isLiked.value = serverEvents.isSaved(sid)
+      } catch (e) {
+        if (isAuthExpiredError(e)) {
+          await authStore.handleAuthExpired(router, route)
+          return
+        }
+      }
     } else {
       isLiked.value = false
     }
@@ -184,6 +196,10 @@ async function toggleLike() {
     const saved = await serverEvents.toggle(sid, authStore.accessToken)
     isLiked.value = saved
   } catch (e) {
+    if (isAuthExpiredError(e)) {
+        await authStore.handleAuthExpired(router, route)
+        return
+    }
     window.alert?.(e?.message || '행사 저장 처리에 실패했습니다.')
   } finally {
     likeSaving.value = false

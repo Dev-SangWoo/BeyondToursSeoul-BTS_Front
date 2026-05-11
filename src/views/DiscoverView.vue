@@ -26,6 +26,7 @@ import {
 import { getApiLangCode } from '@/i18n';
 import earthImage from '../../asset/earth.png';
 import airplaneImage from '../../asset/airplane.png';
+import { isAuthExpiredError } from '@/utils/authFlow';
 
 const { t, locale } = useI18n();
 const router = useRouter();
@@ -186,6 +187,10 @@ async function loadTourCourses() {
       authStore.accessToken || null,
     );
   } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
     tourCourses.value = [];
     tourCoursesError.value = e?.message || String(e);
   } finally {
@@ -207,6 +212,10 @@ async function toggleSaveCourse(course) {
     const row = tourCourses.value.find((c) => c.id === cid);
     if (row) row.isSaved = saved;
   } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
     window.alert?.(e?.message || t('discover.alert.saveFailed'));
   } finally {
     savingTourCourseId.value = null;
@@ -242,6 +251,10 @@ async function loadSavedPlansRemote() {
   try {
     savedPlansRemote.value = await fetchSavedPlans(authStore.accessToken);
   } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
     savedPlansRemote.value = [];
     savedPlansError.value = e?.message || String(e);
   } finally {

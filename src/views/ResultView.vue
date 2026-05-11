@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import MapView from '@/components/map/MapView.vue'
 import ItineraryTimeline from '@/components/itinerary/ItineraryTimeline.vue'
 import { fetchSavedPlanDetail, saveStructuredPlan } from '@/services/savedPlansService'
+import { isAuthExpiredError } from '@/utils/authFlow'
 import {
   flattenStructuredSlots,
   buildMapMarkersFromStructured,
@@ -105,6 +106,10 @@ async function loadPlanFromRoute() {
     })
     selectedDay.value = 1
   } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
     planLoadError.value = e.message || '일정을 불러오지 못했습니다.'
   } finally {
     loadingPlan.value = false
@@ -162,6 +167,10 @@ async function saveCourse() {
     await router.replace({ name: 'result', query: { planId: String(summary.id) } })
     window.alert?.('일정을 저장했어요. 디스커버 「내가 만든 일정」·저장함에서 볼 수 있어요.')
   } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
     window.alert?.(e.message || '저장에 실패했습니다.')
   } finally {
     savingCourse.value = false
