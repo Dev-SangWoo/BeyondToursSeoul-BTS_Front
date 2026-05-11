@@ -1,3 +1,5 @@
+import { createAuthExpiredError } from "@/utils/authFlow"
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 function authHeaders(accessToken) {
@@ -44,7 +46,7 @@ export async function fetchSavedPlans(accessToken) {
   const res = await fetch(`${BASE_URL}/api/v1/me/saved/plans`, {
     headers: authHeaders(accessToken),
   })
-  if (res.status === 401) throw new Error('로그인이 만료되었습니다.')
+  if (res.status === 401) throw createAuthExpiredError()
   if (!res.ok) throw new Error(`저장 일정 목록 조회 실패: ${res.status}`)
   return res.json()
 }
@@ -59,7 +61,7 @@ export async function fetchSavedPlanDetail(planId, accessToken) {
   const res = await fetch(`${BASE_URL}/api/v1/me/saved/plans/${planId}`, {
     headers: authHeaders(accessToken),
   })
-  if (res.status === 401) throw new Error('로그인이 만료되었습니다.')
+  if (res.status === 401) throw createAuthExpiredError()
   if (res.status === 404) throw new Error('저장된 일정을 찾을 수 없습니다.')
   if (!res.ok) throw new Error(`일정 상세 조회 실패: ${res.status}`)
   return res.json()
@@ -83,7 +85,7 @@ export async function saveStructuredPlan(accessToken, body) {
       structured: plain,
     }),
   })
-  if (res.status === 401) throw new Error('로그인이 만료되었습니다.')
+  if (res.status === 401) throw createAuthExpiredError()
   if (!res.ok) {
     let msg = `일정 저장 실패: ${res.status}`
     try {

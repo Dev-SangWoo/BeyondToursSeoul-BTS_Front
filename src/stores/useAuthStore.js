@@ -1,19 +1,26 @@
-import { computed, ref } from 'vue'
-import { defineStore } from 'pinia'
-import { fetchMe, loginWithEmail, signupWithEmail, updateMyNickname, updateMyProfile } from '@/services/authService'
+import { computed, ref } from 'vue';
+import { defineStore } from 'pinia';
+import {
+  fetchMe,
+  loginWithEmail,
+  signupWithEmail,
+  updateMyNickname,
+  updateMyProfile,
+} from '@/services/authService';
+import { buildLoginLocation } from '@/utils/authFlow';
 
-const STORAGE_KEY = 'bts:auth:v1'
+const STORAGE_KEY = 'bts:auth:v1';
 
 export const useAuthStore = defineStore('auth', () => {
-  const accessToken = ref('')
-  const refreshToken = ref('')
-  const tokenType = ref('Bearer')
-  const expiresIn = ref(0)
-  const user = ref(null)
-  const isLoading = ref(false)
-  const error = ref('')
+  const accessToken = ref('');
+  const refreshToken = ref('');
+  const tokenType = ref('Bearer');
+  const expiresIn = ref(0);
+  const user = ref(null);
+  const isLoading = ref(false);
+  const error = ref('');
 
-  const isAuthenticated = computed(() => Boolean(accessToken.value))
+  const isAuthenticated = computed(() => Boolean(accessToken.value));
 
   function persist() {
     localStorage.setItem(
@@ -25,106 +32,129 @@ export const useAuthStore = defineStore('auth', () => {
         expiresIn: expiresIn.value,
         user: user.value,
       }),
-    )
+    );
   }
 
   function hydrate() {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
     try {
-      const parsed = JSON.parse(raw)
-      accessToken.value = parsed.accessToken || ''
-      refreshToken.value = parsed.refreshToken || ''
-      tokenType.value = parsed.tokenType || 'Bearer'
-      expiresIn.value = Number(parsed.expiresIn || 0)
-      user.value = parsed.user || null
+      const parsed = JSON.parse(raw);
+      accessToken.value = parsed.accessToken || '';
+      refreshToken.value = parsed.refreshToken || '';
+      tokenType.value = parsed.tokenType || 'Bearer';
+      expiresIn.value = Number(parsed.expiresIn || 0);
+      user.value = parsed.user || null;
     } catch {
-      clearSession()
+      clearSession();
     }
   }
 
   function setSession(payload) {
-    accessToken.value = payload.accessToken || ''
-    refreshToken.value = payload.refreshToken || ''
-    tokenType.value = payload.tokenType || 'Bearer'
-    expiresIn.value = Number(payload.expiresIn || 0)
+    accessToken.value = payload.accessToken || '';
+    refreshToken.value = payload.refreshToken || '';
+    tokenType.value = payload.tokenType || 'Bearer';
+    expiresIn.value = Number(payload.expiresIn || 0);
 
-    const nextUserId = payload.userId || user.value?.userId || ''
-    const nextEmail = payload.email || user.value?.email || ''
-    user.value = nextUserId || nextEmail
-      ? {
-          ...(user.value || {}),
-          userId: nextUserId,
-          email: nextEmail,
-        }
-      : user.value
+    const nextUserId = payload.userId || user.value?.userId || '';
+    const nextEmail = payload.email || user.value?.email || '';
+    user.value =
+      nextUserId || nextEmail
+        ? {
+            ...(user.value || {}),
+            userId: nextUserId,
+            email: nextEmail,
+          }
+        : user.value;
 
-    persist()
+    persist();
   }
 
   function clearSession() {
-    accessToken.value = ''
-    refreshToken.value = ''
-    tokenType.value = 'Bearer'
-    expiresIn.value = 0
-    user.value = null
-    error.value = ''
-    localStorage.removeItem(STORAGE_KEY)
+    accessToken.value = '';
+    refreshToken.value = '';
+    tokenType.value = 'Bearer';
+    expiresIn.value = 0;
+    user.value = null;
+    error.value = '';
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  async function tryRestoreSession() {
+    // 아직 refresh token API가 확실하지 않아서
+    // 지금 단계에서는 복구 불가로 처리
+    return false;
+  }
+
+  async function handleAuthExpired(router, route) {
+    const restored = await tryRestoreSession();
+    if (restored) return true;
+
+    clearSession();
+
+    await router.replace(
+      buildLoginLocation(route?.fullPath || '/discover', { expired: true }),
+    );
+    return false;
   }
 
   async function login(email, password) {
-    isLoading.value = true
-    error.value = ''
+    isLoading.value = true;
+    error.value = '';
     try {
-      const data = await loginWithEmail({ email, password })
-      setSession(data)
-      return data
+      const data = await loginWithEmail({ email, password });
+      setSession(data);
+      return data;
     } catch (e) {
-      error.value = e.message || '로그인 실패'
-      throw e
+      error.value = e.message || '로그인 실패';
+      throw e;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
 
   async function signup(email, password) {
-    isLoading.value = true
-    error.value = ''
+    isLoading.value = true;
+    error.value = '';
     try {
-      const data = await signupWithEmail({ email, password })
+      const data = await signupWithEmail({ email, password });
       // 백엔드가 가입 직후 토큰을 반환하면 바로 세션 저장
-      if (data?.accessToken) setSession(data)
-      return data
+      if (data?.accessToken) setSession(data);
+      return data;
     } catch (e) {
-      error.value = e.message || '회원가입 실패'
-      throw e
+      error.value = e.message || '회원가입 실패';
+      throw e;
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
 
   async function loadMe() {
-    if (!accessToken.value) return null
-    const me = await fetchMe(accessToken.value)
-    user.value = me
-    persist()
-    return me
+    if (!accessToken.value) return null;
+    const me = await fetchMe(accessToken.value);
+    user.value = me;
+    persist();
+    return me;
   }
 
   async function saveNickname(nickname) {
-    if (!accessToken.value) throw new Error('로그인이 필요합니다.')
-    const me = await updateMyNickname(accessToken.value, nickname)
-    user.value = me
-    persist()
-    return me
+    if (!accessToken.value) throw new Error('로그인이 필요합니다.');
+    const me = await updateMyNickname(accessToken.value, nickname);
+    user.value = me;
+    persist();
+    return me;
   }
 
   async function saveProfile({ nickname, localPreference, preferredLanguage }) {
-    if (!accessToken.value) throw new Error('로그인이 필요합니다.')
-    const me = await updateMyProfile(accessToken.value, { nickname, localPreference, preferredLanguage })
-    user.value = me
-    persist()
-    return me
+    if (!accessToken.value) throw new Error('로그인이 필요합니다.');
+    const me = await updateMyProfile(accessToken.value, {
+      nickname,
+      localPreference,
+      preferredLanguage,
+    });
+    user.value = me;
+    persist();
+    return me;
   }
 
   return {
@@ -139,11 +169,12 @@ export const useAuthStore = defineStore('auth', () => {
     hydrate,
     setSession,
     clearSession,
+    tryRestoreSession,
+    handleAuthExpired,
     login,
     signup,
     loadMe,
     saveNickname,
     saveProfile,
-  }
-})
-
+  };
+});

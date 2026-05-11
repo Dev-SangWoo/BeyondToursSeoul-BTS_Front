@@ -1,11 +1,12 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Bell, Globe, Settings, UserRound } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { personaOptions } from '@/components/ai/input-sheet/aiInputFlowConstants'
 import { setLocale } from '@/i18n'
+import { isAuthExpiredError } from '@/utils/authFlow'
 
 const LABEL_TO_LOCALE = {
   '한국어': 'ko',
@@ -17,6 +18,7 @@ const LABEL_TO_LOCALE = {
 const { t } = useI18n()
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const ALARM_KEY = 'bts:settings:alarm'
 const languageOptions = ['한국어', 'English', '日本語', '中文']
@@ -41,14 +43,16 @@ const currentPersonaLabel = computed(() => {
   return persona ? t(persona.labelKey) : t('ai.persona.balanced')
 })
 
-onMounted(() => {
-  authStore
-    .loadMe()
-    .then(() => {
-      language.value = authStore.user?.preferredLanguage || '한국어'
-      selectedPersona.value = authStore.user?.localPreference || 'balanced'
-    })
-    .catch(() => null)
+onMounted(async () => {
+  try {
+    await authStore.loadMe()
+    language.value = authStore.user?.preferredLanguage || '한국어'
+    selectedPersona.value = authStore.user?.localPreference || 'balanced'
+  } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+    }
+  }
 })
 
 function openModal(type) {
@@ -72,8 +76,11 @@ async function saveLanguage(next) {
     language.value = next
     setLocale(LABEL_TO_LOCALE[next] ?? 'ko')
     closeModal()
-  } catch {
-    /* ignore */
+  } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
   }
 }
 
@@ -91,6 +98,10 @@ async function savePersona() {
     await authStore.saveProfile({ localPreference: selectedPersona.value })
     personaMessage.value = t('profile.personaSaved')
   } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
     personaMessage.value = e?.message || t('profile.personaSaveFailed')
   } finally {
     personaSaving.value = false

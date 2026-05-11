@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CalendarDays, Heart, MapPin, Sparkles } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -9,12 +9,14 @@ import { useServerSavedEventsStore } from '@/stores/useServerSavedEventsStore'
 import { fetchSavedPlans } from '@/services/savedPlansService'
 import { fetchSavedTourCourses } from '@/services/tourCourseService'
 import { getApiLangCode } from '@/i18n'
+import { isAuthExpiredError } from '@/utils/authFlow'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
 const serverAttractions = useServerSavedAttractionsStore()
 const serverEvents = useServerSavedEventsStore()
 const router = useRouter()
+const route = useRoute()
 
 /** 서버 저장 AI 일정 */
 const activeTab = ref('plan')
@@ -53,6 +55,10 @@ async function loadSavedTourCourses() {
   try {
     savedTourCourses.value = await fetchSavedTourCourses(getApiLangCode(), authStore.accessToken)
   } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
     savedTourCourses.value = []
     savedTourCoursesError.value = e?.message || String(e)
   } finally {
@@ -81,6 +87,10 @@ async function loadSavedPlansRemote() {
   try {
     savedPlansRemote.value = await fetchSavedPlans(authStore.accessToken)
   } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
     savedPlansRemote.value = []
     savedPlansError.value = e?.message || String(e)
   } finally {
@@ -88,32 +98,54 @@ async function loadSavedPlansRemote() {
   }
 }
 
+async function refreshSavedAttractions() {
+  try {
+    await serverAttractions.refresh(authStore.accessToken)
+  } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
+  }
+}
+
+async function refreshSavedEvents() {
+  try {
+    await serverEvents.refresh(authStore.accessToken)
+  } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
+  }
+}
+
 watch(
   () => authStore.accessToken,
   () => {
     void loadSavedPlansRemote()
-    void serverAttractions.refresh(authStore.accessToken)
-    void serverEvents.refresh(authStore.accessToken)
+    void refreshSavedAttractions()
+    void refreshSavedEvents()
     void loadSavedTourCourses()
   },
 )
 
 watch(activeTab, (tab) => {
   if (tab === 'place' && authStore.accessToken) {
-    void serverAttractions.refresh(authStore.accessToken)
+    void refreshSavedAttractions()
   }
   if (tab === 'home_course' && authStore.accessToken) {
     void loadSavedTourCourses()
   }
   if (tab === 'event' && authStore.accessToken) {
-    void serverEvents.refresh(authStore.accessToken)
+    void refreshSavedEvents()
   }
 })
 
 onMounted(() => {
   void loadSavedPlansRemote()
-  void serverAttractions.refresh(authStore.accessToken)
-  void serverEvents.refresh(authStore.accessToken)
+  void refreshSavedAttractions()
+  void refreshSavedEvents()
   void loadSavedTourCourses()
 })
 

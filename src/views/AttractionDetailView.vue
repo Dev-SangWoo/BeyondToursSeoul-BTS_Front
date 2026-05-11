@@ -18,6 +18,7 @@ import {
   ChevronRight,
 } from 'lucide-vue-next'
 import { fetchAttractionById } from '@/services/attractionService'
+import { isAuthExpiredError } from '@/utils/authFlow'
 
 const { t } = useI18n()
 
@@ -59,6 +60,10 @@ watch(
         isLiked.value = serverAttractions.isSaved(id)
       }
     } catch (e) {
+      if (isAuthExpiredError(e)) {
+        await authStore.handleAuthExpired(router, route)
+        return
+      }
       error.value = e.message
     } finally {
       loading.value = false
@@ -73,8 +78,15 @@ watch(
     const id = resolvedId.value
     if (!id || !attraction.value) return
     if (token) {
-      await serverAttractions.refresh(token)
-      isLiked.value = serverAttractions.isSaved(id)
+      try {
+        await serverAttractions.refresh(token)
+        isLiked.value = serverAttractions.isSaved(id)
+      } catch (e) {
+        if (isAuthExpiredError(e)) {
+          await authStore.handleAuthExpired(router, route)
+          return
+        }
+      }
     } else {
       isLiked.value = false
     }
@@ -142,6 +154,10 @@ async function toggleLike() {
     const saved = await serverAttractions.toggle(id, authStore.accessToken)
     isLiked.value = saved
   } catch (e) {
+    if (isAuthExpiredError(e)) {
+        await authStore.handleAuthExpired(router, route)
+        return
+    }
     window.alert?.(e?.message || '저장 처리에 실패했습니다.')
   } finally {
     likeSaving.value = false

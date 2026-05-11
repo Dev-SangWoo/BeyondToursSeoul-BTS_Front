@@ -1,3 +1,5 @@
+import { createAuthExpiredError } from "@/utils/authFlow"
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 function authHeaders(accessToken) {
@@ -17,7 +19,7 @@ export async function fetchSavedAttractions(accessToken) {
   const res = await fetch(`${BASE_URL}/api/v1/me/saved/attractions`, {
     headers: authHeaders(accessToken),
   })
-  if (res.status === 401) throw new Error('로그인이 만료되었습니다.')
+  if (res.status === 401) throw createAuthExpiredError()
   if (!res.ok) throw new Error(`저장 관광지 목록 조회 실패: ${res.status}`)
   return res.json()
 }
@@ -34,7 +36,7 @@ export async function toggleSavedAttraction(attractionId, accessToken) {
     method: 'POST',
     headers: authHeaders(accessToken),
   })
-  if (res.status === 401) throw new Error('로그인이 만료되었습니다.')
+  if (res.status === 401) throw createAuthExpiredError()
   if (!res.ok) {
     let msg = `저장 처리 실패: ${res.status}`
     try {
