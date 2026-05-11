@@ -15,11 +15,14 @@ import AttractionDetailView from '@/views/AttractionDetailView.vue';
 import EventDetailView from '@/views/EventDetailView.vue';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { clearAiSheetSession } from '@/utils/aiSheetSession';
-import { fetchAttractions } from '@/services/attractionService';
+import { fetchAttractionsPage } from '@/services/attractionService';
 import { fetchEvents } from '@/services/eventService';
 import HotPlacesRanking from '@/components/discover/HotPlacesRanking.vue';
 import { fetchSavedPlans } from '@/services/savedPlansService';
-import { fetchTourCourses, toggleTourCourseSave } from '@/services/tourCourseService'
+import {
+  fetchTourCourses,
+  toggleTourCourseSave,
+} from '@/services/tourCourseService';
 import earthImage from '../../asset/earth.png';
 import airplaneImage from '../../asset/airplane.png';
 
@@ -35,25 +38,89 @@ const courseDensityIndex = ref(2);
 const courseTrackRef = ref(null);
 const activeCourseIndex = ref(0);
 
-
 const categories = computed(() => [
-  { id: null,          icon: 'element-4',        color: '#fe9c00', label: t('discover.category.all') },
-  { id: '음식',         icon: 'cup',             color: '#f97316', label: t('discover.category.food') },
-  { id: '쇼핑',         icon: 'shop',            color: '#ec4899', label: t('discover.category.shopping') },
-  { id: '체험관광',      icon: 'people',          color: '#8b5cf6', label: t('discover.category.experience') },
-  { id: '자연관광',      icon: 'tree',            color: '#16a34a', label: t('discover.category.nature') },
-  { id: '문화관광',      icon: 'courthouse',      color: '#a16207', label: t('discover.category.culture') },
-  { id: '역사관광',      icon: 'building',        color: '#78716c', label: t('discover.category.history') },
-  { id: '레저스포츠',    icon: 'activity',        color: '#2563eb', label: t('discover.category.leisure') },
-])
+  {
+    id: null,
+    icon: 'element-4',
+    color: '#fe9c00',
+    label: t('discover.category.all'),
+  },
+  {
+    id: '음식',
+    icon: 'cup',
+    color: '#f97316',
+    label: t('discover.category.food'),
+  },
+  {
+    id: '쇼핑',
+    icon: 'shop',
+    color: '#ec4899',
+    label: t('discover.category.shopping'),
+  },
+  {
+    id: '체험관광',
+    icon: 'people',
+    color: '#8b5cf6',
+    label: t('discover.category.experience'),
+  },
+  {
+    id: '자연관광',
+    icon: 'tree',
+    color: '#16a34a',
+    label: t('discover.category.nature'),
+  },
+  {
+    id: '문화관광',
+    icon: 'courthouse',
+    color: '#a16207',
+    label: t('discover.category.culture'),
+  },
+  {
+    id: '역사관광',
+    icon: 'building',
+    color: '#78716c',
+    label: t('discover.category.history'),
+  },
+  {
+    id: '레저스포츠',
+    icon: 'activity',
+    color: '#2563eb',
+    label: t('discover.category.leisure'),
+  },
+]);
 
 const densityModes = computed(() => [
-  { id: 'local0',      text: t('discover.densityMode.local0'),      scoreMin: 0,    scoreMax: 0 },
-  { id: 'local1-30',   text: t('discover.densityMode.local1-30'),   scoreMin: 0.01, scoreMax: 0.30 },
-  { id: 'local31-50',  text: t('discover.densityMode.local31-50'),  scoreMin: 0.31, scoreMax: 0.50 },
-  { id: 'local51-70',  text: t('discover.densityMode.local51-70'),  scoreMin: 0.51, scoreMax: 0.70 },
-  { id: 'local71-100', text: t('discover.densityMode.local71-100'), scoreMin: 0.71, scoreMax: 1.0 },
-])
+  {
+    id: 'local0',
+    text: t('discover.densityMode.local0'),
+    scoreMin: 0,
+    scoreMax: 0,
+  },
+  {
+    id: 'local1-30',
+    text: t('discover.densityMode.local1-30'),
+    scoreMin: 0.01,
+    scoreMax: 0.3,
+  },
+  {
+    id: 'local31-50',
+    text: t('discover.densityMode.local31-50'),
+    scoreMin: 0.31,
+    scoreMax: 0.5,
+  },
+  {
+    id: 'local51-70',
+    text: t('discover.densityMode.local51-70'),
+    scoreMin: 0.51,
+    scoreMax: 0.7,
+  },
+  {
+    id: 'local71-100',
+    text: t('discover.densityMode.local71-100'),
+    scoreMin: 0.71,
+    scoreMax: 1.0,
+  },
+]);
 
 const personaDensityIndexMap = {
   main100: 0,
@@ -61,12 +128,12 @@ const personaDensityIndexMap = {
   balanced: 2,
   local70: 3,
   local100: 4,
-}
+};
 
 function applyInitialDensityFromPersona() {
-  const pref = authStore.user?.localPreference
-  if (!pref || !(pref in personaDensityIndexMap)) return
-  courseDensityIndex.value = personaDensityIndexMap[pref]
+  const pref = authStore.user?.localPreference;
+  if (!pref || !(pref in personaDensityIndexMap)) return;
+  courseDensityIndex.value = personaDensityIndexMap[pref];
 }
 
 const densityCourseMap = {
@@ -185,62 +252,66 @@ const coursePhotos = [
   'https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1200&q=80',
   'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=80',
 ];
-const tourCourses = ref([])
-const tourCoursesLoading = ref(false)
-const tourCoursesError = ref(null)
-const savingTourCourseId = ref(null)
+const tourCourses = ref([]);
+const tourCoursesLoading = ref(false);
+const tourCoursesError = ref(null);
+const savingTourCourseId = ref(null);
 
 function hashtagTags(hashtags) {
-  if (hashtags == null || String(hashtags).trim() === '') return []
+  if (hashtags == null || String(hashtags).trim() === '') return [];
   return String(hashtags)
     .split(/[#\s]+/)
     .map((s) => s.trim())
     .filter(Boolean)
-    .slice(0, 12)
+    .slice(0, 12);
 }
 
 function courseCardBackground(course, index) {
-  const grad = coursePhotoGradients[index % coursePhotoGradients.length]
-  const img = (course.featuredImage && String(course.featuredImage).trim())
-    ? String(course.featuredImage).trim()
-    : coursePhotos[index % coursePhotos.length]
-  return `${grad}, url(${img})`
+  const grad = coursePhotoGradients[index % coursePhotoGradients.length];
+  const img =
+    course.featuredImage && String(course.featuredImage).trim()
+      ? String(course.featuredImage).trim()
+      : coursePhotos[index % coursePhotos.length];
+  return `${grad}, url(${img})`;
 }
 
 function isTourCourseSaved(course) {
-  return course.isSaved === true
+  return course.isSaved === true;
 }
 
 async function loadTourCourses() {
-  tourCoursesError.value = null
-  tourCoursesLoading.value = true
+  tourCoursesError.value = null;
+  tourCoursesLoading.value = true;
   try {
-    tourCourses.value = await fetchTourCourses('KOR', authStore.accessToken || null)
+    tourCourses.value = await fetchTourCourses(
+      'KOR',
+      authStore.accessToken || null,
+    );
   } catch (e) {
-    tourCourses.value = []
-    tourCoursesError.value = e?.message || String(e)
+    tourCourses.value = [];
+    tourCoursesError.value = e?.message || String(e);
   } finally {
-    tourCoursesLoading.value = false
+    tourCoursesLoading.value = false;
   }
 }
 
 async function toggleSaveCourse(course) {
   if (!authStore.accessToken) {
-    window.alert?.('로그인 후 찜할 수 있습니다.')
-    router.push({ name: 'landing' })
-    return
+    window.alert?.('로그인 후 찜할 수 있습니다.');
+    router.push({ name: 'landing' });
+    return;
   }
-  const cid = course?.id
-  if (cid == null || savingTourCourseId.value != null) return
-  savingTourCourseId.value = cid
+  const cid = course?.id;
+  if (cid == null || savingTourCourseId.value != null) return;
+  savingTourCourseId.value = cid;
   try {
-    const saved = await toggleTourCourseSave(cid, authStore.accessToken)
-    const row = tourCourses.value.find((c) => c.id === cid)
-    if (row) row.isSaved = saved
+    const saved = await toggleTourCourseSave(cid, authStore.accessToken);
+    const row = tourCourses.value.find((c) => c.id === cid);
+    if (row) row.isSaved = saved;
   } catch (e) {
-    window.alert?.(e?.message || '저장에 실패했습니다.')
+    window.alert?.(e?.message || '저장에 실패했습니다.');
   } finally {
-    savingTourCourseId.value = null
+    savingTourCourseId.value = null;
   }
 }
 
@@ -283,8 +354,8 @@ async function loadSavedPlansRemote() {
 watch(
   () => authStore.accessToken,
   () => {
-    loadSavedPlansRemote()
-    loadTourCourses()
+    loadSavedPlansRemote();
+    loadTourCourses();
   },
 );
 
@@ -295,9 +366,9 @@ function openSavedPlan(planId) {
 }
 
 function changeCourseDensity(delta) {
-  const last = densityModes.value.length - 1
-  const next = Math.max(0, Math.min(last, courseDensityIndex.value + delta))
-  courseDensityIndex.value = next
+  const last = densityModes.value.length - 1;
+  const next = Math.max(0, Math.min(last, courseDensityIndex.value + delta));
+  courseDensityIndex.value = next;
 }
 
 function onCourseTrackScroll(e) {
@@ -338,26 +409,38 @@ function scrollToCourse(index) {
 watch(courseDensityIndex, () => {
   activeCourseIndex.value = 0;
   courseTrackRef.value?.scrollTo({ left: 0, behavior: 'auto' });
-  attractionPage.value = 1;
-  void loadAttractions();
+  if (attractionPage.value === 1) {
+    void loadAttractions();
+  } else {
+    attractionPage.value = 1;
+  }
 });
 
+const PAGE_SIZE = 10;
 const attractions = ref([]);
 const attractionsLoading = ref(false);
 const attractionsError = ref(null);
+const totalAttractionPages = ref(1);
+const attractionPage = ref(1);
 
 async function loadAttractions() {
   attractionsLoading.value = true;
   attractionsError.value = null;
   const mode = densityModes.value[courseDensityIndex.value];
   try {
-    attractions.value = await fetchAttractions({
+    const response = await fetchAttractionsPage({
+      category: activeCategory.value,
       minScore: mode.scoreMin,
       maxScore: mode.scoreMax,
+      page: attractionPage.value - 1,
+      size: PAGE_SIZE,
     });
+    attractions.value = response.content || [];
+    totalAttractionPages.value = response.totalPages || 1;
   } catch (e) {
     attractionsError.value = e.message;
     attractions.value = [];
+    totalAttractionPages.value = 1;
   } finally {
     attractionsLoading.value = false;
   }
@@ -370,31 +453,9 @@ onMounted(async () => {
   void loadTourCourses();
 });
 
-const filteredAttractions = computed(() => {
-  let list = attractions.value
-
-  if (activeCategory.value) {
-    list = list.filter((a) => a.cat1Name === activeCategory.value);
-  }
-
-  return list;
-});
-
-const PAGE_SIZE = 10;
-const attractionPage = ref(1);
-
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(filteredAttractions.value.length / PAGE_SIZE)),
-);
-
-const pagedAttractions = computed(() => {
-  const start = (attractionPage.value - 1) * PAGE_SIZE;
-  return filteredAttractions.value.slice(start, start + PAGE_SIZE);
-});
-
 // 1 ... 4 5 6 ... 12 형태로 표시할 페이지 번호 배열 (숫자 or '...')
 const pageItems = computed(() => {
-  const total = totalPages.value;
+  const total = totalAttractionPages.value;
   const cur = attractionPage.value;
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
@@ -416,8 +477,16 @@ const pageItems = computed(() => {
 
 function selectCategory(id) {
   activeCategory.value = id;
-  attractionPage.value = 1;
+  if (attractionPage.value === 1) {
+    void loadAttractions();
+  } else {
+    attractionPage.value = 1;
+  }
 }
+
+watch(attractionPage, () => {
+  void loadAttractions();
+});
 
 const homeListTab = ref('attractions');
 const events = ref([]);
@@ -561,7 +630,9 @@ watch(
 
     <!-- ── Density Selector ──────────────────────────────────────────── -->
     <div class="discover__density-bar">
-      <p class="discover__density-bar-label">{{ $t('discover.travelStyle') }}</p>
+      <p class="discover__density-bar-label">
+        {{ $t('discover.travelStyle') }}
+      </p>
       <div class="discover__density-bar-control">
         <button
           class="discover__density-arrow"
@@ -661,8 +732,13 @@ watch(
       <p class="discover__section-sub">
         서버에 등록된 공식 추천 코스입니다. 하트는 로그인 시 계정에 저장됩니다.
       </p>
-      <div v-if="tourCoursesLoading" class="discover__tour-courses-msg">코스 불러오는 중…</div>
-      <p v-else-if="tourCoursesError" class="discover__tour-courses-msg discover__tour-courses-msg--error">
+      <div v-if="tourCoursesLoading" class="discover__tour-courses-msg">
+        코스 불러오는 중…
+      </div>
+      <p
+        v-else-if="tourCoursesError"
+        class="discover__tour-courses-msg discover__tour-courses-msg--error"
+      >
         {{ tourCoursesError }}
       </p>
       <p v-else-if="!tourCourses.length" class="discover__tour-courses-msg">
@@ -683,7 +759,10 @@ watch(
             <div class="discover-course-card__photo-overlay"></div>
             <button
               class="discover-course-card__save-btn"
-              :class="{ 'discover-course-card__save-btn--active': isTourCourseSaved(course) }"
+              :class="{
+                'discover-course-card__save-btn--active':
+                  isTourCourseSaved(course),
+              }"
               type="button"
               :disabled="savingTourCourseId === course.id"
               :aria-label="isTourCourseSaved(course) ? '저장 해제' : '저장하기'"
@@ -692,8 +771,13 @@ watch(
               <Heart :size="14" :stroke-width="2.3" />
             </button>
             <p class="discover-course-card__title">{{ course.title }}</p>
-            <p v-if="course.hashtags" class="discover-course-card__route">{{ course.hashtags }}</p>
-            <div v-if="hashtagTags(course.hashtags).length" class="discover-course-card__tags">
+            <p v-if="course.hashtags" class="discover-course-card__route">
+              {{ course.hashtags }}
+            </p>
+            <div
+              v-if="hashtagTags(course.hashtags).length"
+              class="discover-course-card__tags"
+            >
               <span
                 v-for="tag in hashtagTags(course.hashtags)"
                 :key="tag"
@@ -724,9 +808,17 @@ watch(
     <section class="discover__section discover__section--last">
       <div class="discover__list-heading">
         <h3 class="discover__section-title">
-          {{ homeListTab === 'attractions' ? $t('discover.themeRecommend') : $t('discover.festival') }}
+          {{
+            homeListTab === 'attractions'
+              ? $t('discover.themeRecommend')
+              : $t('discover.festival')
+          }}
         </h3>
-        <div class="discover__home-tabs" role="tablist" :aria-label="$t('discover.listType')">
+        <div
+          class="discover__home-tabs"
+          role="tablist"
+          :aria-label="$t('discover.listType')"
+        >
           <button
             type="button"
             role="tab"
@@ -785,13 +877,16 @@ watch(
             {{ attractionsError }}
           </p>
 
-          <p v-else-if="filteredAttractions.length === 0" class="discover__attractions-empty">
+          <p
+            v-else-if="attractions.length === 0"
+            class="discover__attractions-empty"
+          >
             {{ $t('discover.noAttractions') }}
           </p>
 
           <template v-else>
             <button
-              v-for="attraction in pagedAttractions"
+              v-for="attraction in attractions"
               :key="attraction.id"
               type="button"
               class="attraction-card"
@@ -837,7 +932,7 @@ watch(
               />
             </button>
 
-            <div v-if="totalPages > 1" class="discover__pagination">
+            <div v-if="totalAttractionPages > 1" class="discover__pagination">
               <button
                 type="button"
                 class="discover__pg-arrow"
@@ -871,7 +966,7 @@ watch(
               <button
                 type="button"
                 class="discover__pg-arrow"
-                :disabled="attractionPage === totalPages"
+                :disabled="attractionPage === totalAttractionPages"
                 :aria-label="$t('discover.nextPage')"
                 @click="attractionPage++"
               >
@@ -891,7 +986,10 @@ watch(
             {{ eventsError }}
           </p>
 
-          <p v-else-if="events.length === 0" class="discover__attractions-empty">
+          <p
+            v-else-if="events.length === 0"
+            class="discover__attractions-empty"
+          >
             {{ $t('discover.noEvents') }}
           </p>
 
@@ -1002,7 +1100,11 @@ watch(
         <span>{{ $t('nav.map') }}</span>
       </button>
 
-      <button class="nav-btn nav-btn--center" :aria-label="$t('nav.aiCourse')" @click="showAISheet = true">
+      <button
+        class="nav-btn nav-btn--center"
+        :aria-label="$t('nav.aiCourse')"
+        @click="showAISheet = true"
+      >
         <span class="nav-btn__icon-wrap">
           <IsIcon
             name="magic-star"
@@ -1694,7 +1796,6 @@ watch(
   padding: 4px 8px;
   backdrop-filter: blur(2px);
 }
-
 
 /* ─── Category row ───────────────────────────────────────────────────────── */
 .discover__category-row {
