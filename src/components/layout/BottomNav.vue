@@ -14,6 +14,14 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
+const activePath = computed(() => {
+  if (route.path !== '/ai') return route.path
+  const returnTo =
+    typeof route.query?.returnTo === 'string' ? route.query.returnTo.trim() : ''
+  if (!returnTo || returnTo === '/ai') return '/discover'
+  return returnTo.split('?')[0] || '/discover'
+})
+
 const navItems = computed(() => [
   { path: '/discover', icon: Home, label: t('nav.home') },
   { path: '/map', icon: Map, label: t('nav.map') },
@@ -33,7 +41,7 @@ function navigate(path) {
       v-for="item in navItems"
       :key="item.path"
       class="bottom-nav__item"
-      :class="{ 'bottom-nav__item--active': route.path === item.path, 'bottom-nav__item--fab': item.fab }"
+      :class="{ 'bottom-nav__item--active': activePath === item.path, 'bottom-nav__item--fab': item.fab }"
       @click="navigate(item.path)"
       :aria-label="item.label"
     >

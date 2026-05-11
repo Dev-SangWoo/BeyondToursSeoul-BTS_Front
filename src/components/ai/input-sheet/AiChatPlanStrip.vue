@@ -1,8 +1,11 @@
 <script setup>
 import { watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ItineraryTimeline from '@/components/itinerary/ItineraryTimeline.vue'
 import { structuredToItineraryDays } from '@/utils/structuredToItinerary'
+import { getApiLangCode } from '@/i18n'
 
+const { t, locale } = useI18n()
 const props = defineProps({
   structured: { type: Object, default: null },
   selectedDayIndex: { type: Number, default: 0 },
@@ -10,15 +13,20 @@ const props = defineProps({
 
 const emit = defineEmits(['update:selectedDayIndex', 'focus-item', 'before-navigate-detail'])
 
-const itineraryDays = computed(() =>
-  props.structured ? structuredToItineraryDays(props.structured) : [],
-)
+const itineraryDays = computed(() => {
+  void locale.value
+  return props.structured ? structuredToItineraryDays(props.structured) : []
+})
 
 
 watch(
   () => props.structured,
-  () => {
-    emit('update:selectedDayIndex', 0)
+  (next) => {
+    const days = next?.days
+    const maxIndex = Array.isArray(days) ? Math.max(0, days.length - 1) : 0
+    if (props.selectedDayIndex > maxIndex) {
+      emit('update:selectedDayIndex', maxIndex)
+    }
   },
 )
 
@@ -45,12 +53,13 @@ function onBeforeNavigateDetail() {
           :source-days="itineraryDays"
           :model-value="selectedDayIndex + 1"
           :horizontal="true"
+          :locker-lang="getApiLangCode()"
           @update:model-value="onTimelineDay"
           @focus-item="onFocusItem"
           @before-navigate-detail="onBeforeNavigateDetail"
         />
         <div v-else class="plan-strip__empty-state">
-          <p class="plan-strip__empty-title">일정을 불러오는 중…</p>
+          <p class="plan-strip__empty-title">{{ t('ai.chat.planStripLoading') }}</p>
         </div>
       </div>
 
@@ -59,8 +68,8 @@ function onBeforeNavigateDetail() {
     <template v-else>
       <div class="plan-strip__timeline-wrap">
         <div class="plan-strip__empty-state">
-          <p class="plan-strip__empty-title">일정을 생성 중입니다…</p>
-          <p class="plan-strip__empty-desc">AI가 코스를 준비하고 있어요. 잠시만 기다려 주세요.</p>
+          <p class="plan-strip__empty-title">{{ t('ai.chat.planStripGenerating') }}</p>
+          <p class="plan-strip__empty-desc">{{ t('ai.chat.planStripGeneratingDesc') }}</p>
         </div>
       </div>
     </template>

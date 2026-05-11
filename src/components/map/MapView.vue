@@ -7,7 +7,7 @@ const mapRef = ref(null);
 
 let mapInstance = null;
 let naverMarkers = [];
-let naverPolyline = null;
+let naverPolylines = [];
 let currentLocationMarker = null;
 
 // ── Naver Maps 스크립트 동적 로드 ─────────────────────────────
@@ -98,10 +98,13 @@ function syncCurrentLocation(loc) {
 }
 
 // ── 마커 색상 헬퍼 ─────────────────────────────────────────────
-function markerColor(type, crowdLevel, congestionLevel) {
+function markerColor(type, crowdLevel, congestionLevel, placeTone = null) {
   if (type === 'start') return '#22c55e';
   if (type === 'end') return '#ef4444';
   if (type === 'locker') return '#0d9488';
+  if (placeTone === 'local') return '#0f766e';
+  if (placeTone === 'blend') return '#6d28d9';
+  if (placeTone === 'tourist') return '#c2410c';
   if (type === 'congestion' || type === 'congestion-cluster') {
     if (congestionLevel === 4) return '#ef4444'; // 매우 붐빔
     if (congestionLevel === 3) return '#f97316'; // 붐빔
@@ -135,6 +138,8 @@ function buildMarkerIcon(
   congestionLevel = null,
   count = 1,
   areaName = '',
+  orderText = '',
+  placeTone = null,
 ) {
   const isCongestion = type === 'congestion';
   const isCluster = type === 'congestion-cluster';
@@ -195,8 +200,9 @@ function buildMarkerIcon(
     };
   }
 
-  const color = markerColor(type, crowdLevel);
-  const size = selected ? 22 : 14;
+  const color = markerColor(type, crowdLevel, congestionLevel, placeTone);
+  const hasOrder = String(orderText || '').trim() !== '';
+  const size = hasOrder ? (selected ? 42 : 38) : (selected ? 22 : 14);
   const border = selected ? '3px solid #fff' : '2px solid #fff';
   const shadow = selected
     ? '0 3px 10px rgba(0,0,0,.35), 0 0 0 4px rgba(254,156,0,0.3)'
@@ -217,8 +223,8 @@ function buildMarkerIcon(
           align-items:center;
           justify-content:center;
           cursor:pointer;
-          width:30px;
-          height:30px;
+          width:48px;
+          height:48px;
         "
       >
         <div style="
@@ -228,9 +234,15 @@ function buildMarkerIcon(
           border:${border};
           box-shadow:${shadow};
           pointer-events:none;
-        "></div>
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size:${hasOrder ? '16px' : '13px'};
+          font-weight:800;
+          color:#fff;
+        ">${hasOrder ? (type === 'locker' ? '🧳' : String(orderText)) : ''}</div>
       </div>`,
-    anchor: new window.naver.maps.Point(15, 15),
+    anchor: new window.naver.maps.Point(hasOrder ? 24 : 15, hasOrder ? 24 : 15),
   };
 }
 
@@ -264,6 +276,8 @@ function syncMarkers(markers) {
         marker.congestionLevel,
         marker.count,
         marker.areaName,
+        marker.orderShort,
+        marker.placeTone,
       ),
       // 혼잡도 마커마다 고유 zIndex 부여 (5 + idx):
       // 모두 zIndex:5로 동일하면 DOM 추가 순서에 따라 위아래가 결정되어
@@ -290,6 +304,8 @@ function syncSelectedMarker(selectedId) {
         marker.congestionLevel,
         marker.count,
         marker.areaName,
+        marker.orderShort,
+        marker.placeTone,
       ),
     );
     nm.setZIndex(isSelected ? 100 : isCongestion ? 5 : 10);
@@ -298,14 +314,38 @@ function syncSelectedMarker(selectedId) {
 
 // ── 폴리라인 동기화 ────────────────────────────────────────────
 function syncPolyline(points) {
-  if (naverPolyline) {
-    naverPolyline.setMap(null);
-    naverPolyline = null;
+  naverPolylines.forEach((line) => line.setMap(null));
+  naverPolylines = [];
+  if (!Array.isArray(points) || !points.length) return;
+
+  const isSegmentMode = points[0] && points[0].start && points[0].end;
+  if (isSegmentMode) {
+    points.forEach((seg) => {
+      const s = seg?.start;
+      const e = seg?.end;
+      if (!s || !e) return;
+      if (s.lat == null || s.lng == null || e.lat == null || e.lng == null) return;
+      const line = new window.naver.maps.Polyline({
+        map: mapInstance,
+        path: [
+          new window.naver.maps.LatLng(s.lat, s.lng),
+          new window.naver.maps.LatLng(e.lat, e.lng),
+        ],
+        strokeColor: '#FE9C00',
+        strokeWeight: 4,
+        strokeOpacity: 0.9,
+        strokeLineCap: 'round',
+        strokeLineJoin: 'round',
+        strokeStyle: seg.dashed ? 'shortdash' : 'solid',
+      });
+      naverPolylines.push(line);
+    });
+    return;
   }
+
   const latLngPoints = points.filter((p) => p.lat != null && p.lng != null);
   if (latLngPoints.length < 2) return;
-
-  naverPolyline = new window.naver.maps.Polyline({
+  const line = new window.naver.maps.Polyline({
     map: mapInstance,
     path: latLngPoints.map((p) => new window.naver.maps.LatLng(p.lat, p.lng)),
     strokeColor: '#FE9C00',
@@ -314,6 +354,22 @@ function syncPolyline(points) {
     strokeLineCap: 'round',
     strokeLineJoin: 'round',
   });
+  naverPolylines.push(line);
+}
+
+function fitBoundsForItinerary(markers) {
+  if (!mapInstance || !Array.isArray(markers) || !markers.length) return;
+  if (!markers.some((m) => m.order != null)) return;
+  const withCoords = markers.filter((m) => m.lat != null && m.lng != null);
+  if (!withCoords.length) return;
+  if (withCoords.length === 1) {
+    mapInstance.setCenter(new window.naver.maps.LatLng(withCoords[0].lat, withCoords[0].lng));
+    mapInstance.setZoom(15, true);
+    return;
+  }
+  const bounds = new window.naver.maps.LatLngBounds();
+  withCoords.forEach((m) => bounds.extend(new window.naver.maps.LatLng(m.lat, m.lng)));
+  mapInstance.fitBounds(bounds);
 }
 
 // ── 지도 초기화 ────────────────────────────────────────────────
@@ -348,6 +404,7 @@ onMounted(async () => {
     syncMarkers(mapStore.markers);
     syncPolyline(mapStore.polyline);
     syncCurrentLocation(mapStore.currentLocation);
+    fitBoundsForItinerary(mapStore.markers);
   } catch (e) {
     console.warn('[NaverMap] 초기화 실패:', e?.message ?? e);
   }
@@ -355,7 +412,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   naverMarkers.forEach(({ nm }) => nm.setMap(null));
-  if (naverPolyline) naverPolyline.setMap(null);
+  naverPolylines.forEach((line) => line.setMap(null));
   if (currentLocationMarker) currentLocationMarker.setMap(null);
   mapInstance = null;
   delete window.__naverPinClick;
@@ -366,7 +423,9 @@ onUnmounted(() => {
 watch(
   () => mapStore.markers,
   (markers) => {
-    if (mapInstance) syncMarkers(markers);
+    if (!mapInstance) return;
+    syncMarkers(markers);
+    fitBoundsForItinerary(markers);
   },
   { deep: true },
 );

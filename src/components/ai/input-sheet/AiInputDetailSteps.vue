@@ -232,10 +232,12 @@ function goPrevPage() {
           @click="selectedPersonaId = item.id"
         >
           <div class="sheet__persona-head">
-            <strong>{{ item.label }}</strong>
-            <span class="sheet__persona-badge">로컬 {{ item.localDensity }}%</span>
+            <strong>{{ $t(item.labelKey) }}</strong>
+            <span class="sheet__persona-badge">{{
+              $t('ai.persona.localBadge', { n: item.localDensity })
+            }}</span>
           </div>
-          <p>{{ item.description }}</p>
+          <p>{{ $t(item.descriptionKey) }}</p>
         </button>
       </div>
     </section>

@@ -22,6 +22,25 @@ function toNumberOrNull(value) {
   return Number.isFinite(n) ? n : null
 }
 
+function firstImageCandidate(value) {
+  if (!value) return ''
+  if (typeof value === 'string') return value.trim()
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      const found = firstImageCandidate(value[i])
+      if (found) return found
+    }
+    return ''
+  }
+  if (typeof value === 'object') {
+    const o = /** @type {Record<string, unknown>} */ (value)
+    return String(
+      o.url ?? o.imageUrl ?? o.image_url ?? o.thumbnail ?? o.firstImage ?? o.firstimage ?? '',
+    ).trim()
+  }
+  return ''
+}
+
 /**
  * 한 문자열에 "1일차 ... 2일차 ..." 가 같이 붙어 있는 경우 나눔
  */
@@ -70,6 +89,20 @@ function normalizeSlotEntry(raw) {
   const addr = String(o.address ?? o.addr ?? o.locationDetail ?? '').trim()
   if (!pn && addr) pn = addr
   if (!pn) return null
+  const imageUrl = String(
+    o.thumbnail
+    ?? o.imageUrl
+    ?? o.image_url
+    ?? o.firstImage
+    ?? o.firstimage
+    ?? o.image
+    ?? o.photo
+    ?? o.photoUrl
+    ?? firstImageCandidate(o.images)
+    ?? firstImageCandidate(o.photos)
+    ?? firstImageCandidate(o.media)
+    ?? '',
+  ).trim()
   return {
     placeName: pn,
     address: addr,
@@ -82,6 +115,7 @@ function normalizeSlotEntry(raw) {
     lng: toNumberOrNull(o.lng ?? o.longitude ?? o.x),
     category: String(o.category ?? o.cat ?? '').trim(),
     localScore: toNumberOrNull(o.localScore ?? o.ls),
+    imageUrl,
   }
 }
 

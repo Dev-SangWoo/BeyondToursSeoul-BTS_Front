@@ -5,6 +5,7 @@ import ResultView   from '@/views/ResultView.vue'
 import MapPageView  from '@/views/MapPageView.vue'
 import SavedView    from '@/views/SavedView.vue'
 import ProfileView  from '@/views/ProfileView.vue'
+import AiOverlayView from '@/views/AiOverlayView.vue'
 import ProfileSetupView from '@/views/ProfileSetupView.vue'
 import AuthCallbackView from '@/views/AuthCallbackView.vue'
 import AttractionDetailView from '@/views/AttractionDetailView.vue'
@@ -19,7 +20,7 @@ const router = createRouter({
   routes: [
     { path: '/',         name: 'landing',  component: LandingView },
     { path: '/discover', name: 'discover', component: DiscoverView },
-    { path: '/ai',       name: 'ai',       component: DiscoverView },
+    { path: '/ai',       name: 'ai',       component: AiOverlayView },
     { path: '/result',   name: 'result',   component: ResultView },
     { path: '/map',      name: 'map',      component: MapPageView },
     { path: '/saved',    name: 'saved',    component: SavedView },
@@ -32,7 +33,7 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
   const authStore = useAuthStore()
   const requiresAuth = ['discover', 'ai', 'result', 'map', 'saved', 'profile', 'profile-setup'].includes(String(to.name || ''))
 
@@ -57,6 +58,20 @@ router.beforeEach(async (to) => {
   }
   if (onboardingDone && to.name === 'profile-setup') {
     return { name: 'discover' }
+  }
+  if (to.name === 'ai') {
+    const hasReturnTo = typeof to.query?.returnTo === 'string' && to.query.returnTo.trim() !== ''
+    if (!hasReturnTo && from.name !== 'ai') {
+      const returnTo = from?.fullPath && from.fullPath !== '/ai' ? from.fullPath : '/discover'
+      return {
+        name: 'ai',
+        query: {
+          ...to.query,
+          returnTo,
+        },
+        replace: true,
+      }
+    }
   }
   return true
 })

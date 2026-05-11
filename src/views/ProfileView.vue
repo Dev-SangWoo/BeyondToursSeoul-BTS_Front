@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { Bell, Globe, Settings, UserRound } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { personaOptions } from '@/components/ai/input-sheet/aiInputFlowConstants'
-import { setLocale } from '@/i18n'
+import { getCurrentLocale, setLocale } from '@/i18n'
 import { isAuthExpiredError } from '@/utils/authFlow'
 
 const LABEL_TO_LOCALE = {
@@ -13,6 +13,14 @@ const LABEL_TO_LOCALE = {
   'English': 'en',
   '日本語': 'ja',
   '中文': 'zh',
+  '中文(简体)': 'zh',
+}
+
+const LOCALE_TO_LABEL = {
+  ko: '한국어',
+  en: 'English',
+  ja: '日本語',
+  zh: '中文',
 }
 
 const { t } = useI18n()
@@ -23,7 +31,7 @@ const route = useRoute()
 const ALARM_KEY = 'bts:settings:alarm'
 const languageOptions = ['한국어', 'English', '日本語', '中文']
 
-const language = ref('한국어')
+const language = ref(LOCALE_TO_LABEL[getCurrentLocale()] ?? '한국어')
 const alarmEnabled = ref(localStorage.getItem(ALARM_KEY) !== 'off')
 
 const modalType = ref('')
@@ -46,7 +54,14 @@ const currentPersonaLabel = computed(() => {
 onMounted(async () => {
   try {
     await authStore.loadMe()
-    language.value = authStore.user?.preferredLanguage || '한국어'
+    const preferredLabel = authStore.user?.preferredLanguage
+    const nextLabel = preferredLabel
+      ? languageOptions.includes(preferredLabel)
+        ? preferredLabel
+        : (LOCALE_TO_LABEL[LABEL_TO_LOCALE[preferredLabel]] ?? language.value)
+      : language.value
+    language.value = nextLabel
+    setLocale(LABEL_TO_LOCALE[nextLabel] ?? 'ko')
     selectedPersona.value = authStore.user?.localPreference || 'balanced'
   } catch (e) {
     if (isAuthExpiredError(e)) {
@@ -69,19 +84,22 @@ function closeModal() {
 }
 
 async function saveLanguage(next) {
-  if (!authStore.isAuthenticated) return
   if (!languageOptions.includes(next)) return
-  try {
-    await authStore.saveProfile({ preferredLanguage: next })
-    language.value = next
-    setLocale(LABEL_TO_LOCALE[next] ?? 'ko')
-    closeModal()
-  } catch (e) {
-    if (isAuthExpiredError(e)) {
-      await authStore.handleAuthExpired(router, route)
-      return
+  language.value = next
+  setLocale(LABEL_TO_LOCALE[next] ?? 'ko')
+
+  if (authStore.isAuthenticated) {
+    try {
+      await authStore.saveProfile({ preferredLanguage: next })
+    } catch (e) {
+      if (isAuthExpiredError(e)) {
+        await authStore.handleAuthExpired(router, route)
+        return
+      }
+      /* ignore other server save failure, local locale already applied */
     }
   }
+  closeModal()
 }
 
 function saveAlarm(next) {

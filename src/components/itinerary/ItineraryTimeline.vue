@@ -1,9 +1,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import ItineraryItem from './ItineraryItem.vue'
 import { fetchNearestLockers } from '@/services/attractionService'
 
+const { t } = useI18n()
 const props = defineProps({
   sourceDays: { type: Array, default: undefined },
   modelValue: { type: Number, default: undefined },
@@ -46,6 +48,7 @@ const activeDay = computed({
 })
 
 const lockerHintStart = ref(null)
+const lockerHintLastStart = ref(null)
 const lockerHintEnd = ref(null)
 
 function formatStraightDistance(m) {
@@ -69,6 +72,7 @@ function pickLastDayAnchor(items) {
 
 async function reloadNearestLockers() {
   lockerHintStart.value = null
+  lockerHintLastStart.value = null
   lockerHintEnd.value = null
   const days = displayDays.value
   if (!days.length) return
@@ -76,6 +80,7 @@ async function reloadNearestLockers() {
   const d1 = days[0]
   const dLast = days[days.length - 1]
   const anchorMorning = pickBreakfastAnchor(d1?.items)
+  const anchorLastMorning = pickBreakfastAnchor(dLast?.items)
   const anchorLast = pickLastDayAnchor(dLast?.items)
   const sameSlot =
     days.length === 1
@@ -92,7 +97,25 @@ async function reloadNearestLockers() {
       const locker = list?.[0]
       if (locker) {
         lockerHintStart.value = {
-          label: sameSlot ? '아침·마지막 코스 근처 물품보관함' : '1일차 아침 코스 근처 물품보관함',
+          label: sameSlot ? t('itinerary.lockerHints.nearMorningAndLast') : t('itinerary.lockerHints.nearDay1Breakfast'),
+          locker,
+        }
+      }
+    }
+    if (
+      days.length > 1
+      && anchorLastMorning?.lat != null
+      && anchorLastMorning?.lng != null
+      && anchorLastMorning !== anchorMorning
+    ) {
+      const list = await fetchNearestLockers(anchorLastMorning.lat, anchorLastMorning.lng, {
+        limit: 1,
+        lang: props.lockerLang,
+      })
+      const locker = list?.[0]
+      if (locker) {
+        lockerHintLastStart.value = {
+          label: t('itinerary.lockerHints.nearLastDayFirst'),
           locker,
         }
       }
@@ -105,7 +128,7 @@ async function reloadNearestLockers() {
       const locker = list?.[0]
       if (locker) {
         lockerHintEnd.value = {
-          label: '마지막 날 마지막 코스 근처 물품보관함',
+          label: t('itinerary.lockerHints.nearLastDayLast'),
           locker,
         }
       }
@@ -164,6 +187,14 @@ const currentDayTimelineSegments = computed(() => {
     if (isActiveFirst && lockerHintStart.value && i === bIdx) {
       out.push({ kind: 'lockerSuggest', hint: lockerHintStart.value, hintKey: 'start' })
     }
+    if (isActiveLast && lockerHintLastStart.value && i === bIdx) {
+      const skipDupStart =
+        lockerHintStart.value
+        && lockerHintLastStart.value.locker?.id === lockerHintStart.value.locker?.id
+      if (!skipDupStart) {
+        out.push({ kind: 'lockerSuggest', hint: lockerHintLastStart.value, hintKey: 'last-start' })
+      }
+    }
     if (isActiveLast && lockerHintEnd.value && i === lIdx) {
       const skipDup =
         isActiveFirst
@@ -206,11 +237,43 @@ function routeForItem(item) {
 async function openSourceDetail(item) {
   const target = routeForItem(item)
   if (!target) return
-  if (route.path !== '/ai') {
-    await router.replace('/ai')
-  }
+  const returnTo =
+    route.path === '/ai'
+      ? (
+          typeof route.query?.returnTo === 'string' && route.query.returnTo.trim()
+            ? route.query.returnTo.trim()
+            : '/discover'
+        )
+      : route.fullPath
   emit('before-navigate-detail')
-  await router.push(target)
+  await router.push({
+    ...target,
+    query: {
+      returnTo,
+    },
+  })
+}
+
+async function openLockerSuggestion(lockerId) {
+  if (lockerId == null) return
+  const sid = String(lockerId).trim()
+  if (!sid) return
+  const returnTo =
+    route.path === '/ai'
+      ? (
+          typeof route.query?.returnTo === 'string' && route.query.returnTo.trim()
+            ? route.query.returnTo.trim()
+            : '/discover'
+        )
+      : route.fullPath
+  emit('before-navigate-detail')
+  await router.push({
+    name: 'locker-detail',
+    params: { id: sid },
+    query: {
+      returnTo,
+    },
+  })
 }
 
 const slotTypeIcon = {
@@ -252,6 +315,9 @@ const slotTypeIcon = {
               :class="{
                 'itinerary-timeline__hnode--active': selectedItem === seg.item,
                 'itinerary-timeline__hnode--locker': seg.item.isLocker,
+                'itinerary-timeline__hnode--tone-local': seg.item.toneKind === 'local',
+                'itinerary-timeline__hnode--tone-blend': seg.item.toneKind === 'blend',
+                'itinerary-timeline__hnode--tone-tourist': seg.item.toneKind === 'tourist',
               }"
               @click="openDetail(seg.item)"
             >
@@ -264,7 +330,7 @@ const slotTypeIcon = {
                 <span
                   v-if="seg.item.isLocker"
                   class="itinerary-timeline__hnode-locker"
-                >🧳 물품보관함</span>
+                >🧳 {{ t('itinerary.lockerUi.title') }}</span>
                 <span
                   v-if="seg.item.toneLabel"
                   class="itinerary-timeline__hnode-tone"
@@ -277,22 +343,23 @@ const slotTypeIcon = {
                 <p v-if="seg.item.desc" class="itinerary-timeline__hnode-desc">{{ seg.item.desc }}</p>
               </div>
             </button>
-            <router-link
+            <button
               v-else
               class="itinerary-timeline__hnode itinerary-timeline__hnode--locker-suggest"
-              :to="{ name: 'locker-detail', params: { id: String(seg.hint.locker.id) } }"
+              type="button"
+              @click="openLockerSuggestion(seg.hint.locker.id)"
             >
               <span class="itinerary-timeline__hnode-dot itinerary-timeline__hnode-dot--locker-suggest">🧳</span>
-              <span class="itinerary-timeline__hnode-time">보관함</span>
+              <span class="itinerary-timeline__hnode-time">{{ t('itinerary.labels.locker') }}</span>
               <div class="itinerary-timeline__hnode-text">
                 <span class="itinerary-timeline__hnode-name itinerary-timeline__hnode-name--locker-suggest">
                   {{ seg.hint.locker.stationName || seg.hint.locker.lockerName }}
                 </span>
                 <span class="itinerary-timeline__hnode-locker-suggest-meta">
-                  약 {{ formatStraightDistance(seg.hint.locker.distanceMeters) }}
+                  {{ t('itinerary.lockerUi.approxDistance', { distance: formatStraightDistance(seg.hint.locker.distanceMeters) }) }}
                 </span>
               </div>
-            </router-link>
+            </button>
           </template>
         </div>
       </div>
@@ -309,7 +376,7 @@ const slotTypeIcon = {
             <span
               v-if="selectedItem.isLocker"
               class="itinerary-timeline__detail-locker-badge"
-            >🧳 물품보관함</span>
+            >🧳 {{ t('itinerary.lockerUi.title') }}</span>
             <span
               v-if="selectedItem.crowdTag"
               class="itinerary-timeline__detail-crowd"
@@ -357,10 +424,11 @@ const slotTypeIcon = {
                 :is-last="seg.slotIndex === currentDayData().items.length - 1"
               />
             </div>
-            <router-link
+            <button
               v-else
               class="itinerary-timeline__locker-inline"
-              :to="{ name: 'locker-detail', params: { id: String(seg.hint.locker.id) } }"
+              type="button"
+              @click="openLockerSuggestion(seg.hint.locker.id)"
             >
               <div class="itinerary-timeline__locker-inline-rail">
                 <span class="itinerary-timeline__locker-inline-line" aria-hidden="true" />
@@ -372,11 +440,11 @@ const slotTypeIcon = {
                   {{ seg.hint.locker.stationName || seg.hint.locker.lockerName }}
                 </span>
                 <span class="itinerary-timeline__locker-inline-meta">
-                  직선 거리 약 {{ formatStraightDistance(seg.hint.locker.distanceMeters) }} · 상세 보기
+                  {{ t('itinerary.lockerUi.inlineMeta', { distance: formatStraightDistance(seg.hint.locker.distanceMeters) }) }}
                 </span>
               </div>
               <span class="itinerary-timeline__locker-inline-chev" aria-hidden="true">›</span>
-            </router-link>
+            </button>
           </template>
         </template>
         <div v-else class="itinerary-timeline__empty">
@@ -434,6 +502,12 @@ const slotTypeIcon = {
   color: inherit;
   border-radius: 12px;
   transition: opacity 0.15s;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
 }
 .itinerary-timeline__locker-inline:hover {
   opacity: 0.92;
@@ -501,6 +575,9 @@ const slotTypeIcon = {
   flex: 0 0 104px;
   text-decoration: none;
   color: inherit;
+  border: none;
+  background: transparent;
+  font-family: inherit;
 }
 .itinerary-timeline__hnode-dot--locker-suggest {
   border-color: #14b8a6 !important;
@@ -588,21 +665,57 @@ const slotTypeIcon = {
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  border: 2px solid #fe9c00;
+  border: 2px solid #c2410c;
   background: #fff;
-  color: #fe9c00;
+  color: #c2410c;
   font-size: 13px;
   font-weight: 800;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(254, 156, 0, 0.18);
+  box-shadow: 0 2px 8px rgba(194, 65, 12, 0.18);
 }
 
 .itinerary-timeline__hnode--active .itinerary-timeline__hnode-dot {
-  background: #fe9c00;
+  background: #c2410c;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(254, 156, 0, 0.35);
+  box-shadow: 0 4px 12px rgba(194, 65, 12, 0.35);
+}
+
+.itinerary-timeline__hnode--tone-local .itinerary-timeline__hnode-dot {
+  border-color: #0f766e;
+  color: #0f766e;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.2);
+}
+
+.itinerary-timeline__hnode--tone-local.itinerary-timeline__hnode--active .itinerary-timeline__hnode-dot {
+  background: #0f766e;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.35);
+}
+
+.itinerary-timeline__hnode--tone-blend .itinerary-timeline__hnode-dot {
+  border-color: #6d28d9;
+  color: #6d28d9;
+  box-shadow: 0 2px 8px rgba(109, 40, 217, 0.2);
+}
+
+.itinerary-timeline__hnode--tone-blend.itinerary-timeline__hnode--active .itinerary-timeline__hnode-dot {
+  background: #6d28d9;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(109, 40, 217, 0.35);
+}
+
+.itinerary-timeline__hnode--tone-tourist .itinerary-timeline__hnode-dot {
+  border-color: #c2410c;
+  color: #c2410c;
+  box-shadow: 0 2px 8px rgba(194, 65, 12, 0.2);
+}
+
+.itinerary-timeline__hnode--tone-tourist.itinerary-timeline__hnode--active .itinerary-timeline__hnode-dot {
+  background: #c2410c;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(194, 65, 12, 0.35);
 }
 
 .itinerary-timeline__hnode-time {

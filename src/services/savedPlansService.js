@@ -99,3 +99,19 @@ export async function saveStructuredPlan(accessToken, body) {
   }
   return res.json()
 }
+
+/**
+ * @param {string|number} planId
+ * @param {string} accessToken
+ * @returns {Promise<void>}
+ */
+export async function deleteSavedPlan(planId, accessToken) {
+  if (!accessToken) throw new Error('로그인이 필요합니다.')
+  const res = await fetch(`${BASE_URL}/api/v1/me/saved/plans/${planId}`, {
+    method: 'DELETE',
+    headers: authHeaders(accessToken),
+  })
+  if (res.status === 401) throw new Error('로그인이 만료되었습니다.')
+  if (res.status === 404) throw new Error('저장된 일정을 찾을 수 없습니다.')
+  if (!res.ok) throw new Error(`일정 삭제 실패: ${res.status}`)
+}

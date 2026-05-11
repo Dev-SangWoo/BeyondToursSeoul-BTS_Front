@@ -10,7 +10,6 @@ import {
   Sparkles,
 } from 'lucide-vue-next';
 import { IsIcon } from '@ratoufa/iconsax-vue';
-import AIInputSheet from '@/components/ai/AIInputSheet.vue';
 import AttractionDetailView from '@/views/AttractionDetailView.vue';
 import EventDetailView from '@/views/EventDetailView.vue';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -32,7 +31,6 @@ const { t, locale } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
-const showAISheet = ref(false);
 const selectedAttractionId = ref(null);
 const selectedEventId = ref(null);
 const activeCategory = ref(null);
@@ -475,24 +473,15 @@ function closeDetailSheet() {
   selectedEventId.value = null;
 }
 
-function onCourseGenerated() {
-  showAISheet.value = false;
-  router.push('/result');
-}
-
-function closeAISheet() {
-  showAISheet.value = false;
+function openAiOverlay() {
   clearAiSheetSession();
-  if (route.path === '/ai') router.replace('/discover');
+  router.push({
+    name: 'ai',
+    query: {
+      returnTo: route.fullPath,
+    },
+  });
 }
-
-watch(
-  () => route.path,
-  (path) => {
-    if (path === '/ai') showAISheet.value = true;
-  },
-  { immediate: true },
-);
 </script>
 
 <template>
@@ -529,7 +518,7 @@ watch(
 
     <!-- ── My saved itineraries (서버 user_saved_plans) ─────────────────── -->
     <section
-      v-if="authStore.isAuthenticated"
+      v-if="authStore.isAuthenticated && (savedPlansLoading || savedPlansError || savedPlansRemote.length)"
       class="discover__section discover__saved-plans"
     >
       <div class="discover__saved-plans-heading">
@@ -962,7 +951,7 @@ watch(
       <button
         class="nav-btn nav-btn--center"
         :aria-label="$t('nav.aiCourse')"
-        @click="showAISheet = true"
+        @click="openAiOverlay"
       >
         <span class="nav-btn__icon-wrap">
           <IsIcon
@@ -999,13 +988,6 @@ watch(
         <span>{{ $t('nav.my') }}</span>
       </button>
     </nav>
-
-    <!-- ── AI Sheet ───────────────────────────────────────────────────── -->
-    <AIInputSheet
-      v-if="showAISheet"
-      @close="closeAISheet"
-      @generated="onCourseGenerated"
-    />
 
     <!-- ── Detail Overlay (관광지 / 행사) ────────────────────────────── -->
     <Transition name="discover-page">

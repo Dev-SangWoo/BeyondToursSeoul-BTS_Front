@@ -10,6 +10,47 @@ import MapView from '@/components/map/MapView.vue';
 import AttractionDetailView from '@/views/AttractionDetailView.vue';
 import LockerDetailView from '@/views/LockerDetailView.vue';
 
+let mapBootstrapCache = null;
+let mapBootstrapPending = null;
+
+async function getMapBootstrapData(loadAttractionsByDensityFn) {
+  if (mapBootstrapCache) return mapBootstrapCache;
+  if (mapBootstrapPending) return mapBootstrapPending;
+
+  mapBootstrapPending = (async () => {
+    const [attrData, lockerData, congData] = await Promise.allSettled([
+      loadAttractionsByDensityFn(),
+      fetchLockers(),
+      fetchCongestions(),
+    ]);
+
+    const next = {
+      attractions: attrData.status === 'fulfilled' ? attrData.value : [],
+      lockers: lockerData.status === 'fulfilled' ? lockerData.value : [],
+      congestions: congData.status === 'fulfilled' ? congData.value : [],
+    };
+
+    if (attrData.status === 'rejected') {
+      console.error('[MapPage] 관광지 로드 실패:', attrData.reason);
+    }
+    if (lockerData.status === 'rejected') {
+      console.error('[MapPage] 물품보관소 로드 실패:', lockerData.reason);
+    }
+    if (congData.status === 'rejected') {
+      console.error('[MapPage] 혼잡도 로드 실패:', congData.reason);
+    }
+
+    mapBootstrapCache = next;
+    return next;
+  })();
+
+  try {
+    return await mapBootstrapPending;
+  } finally {
+    mapBootstrapPending = null;
+  }
+}
+
 const { t, locale } = useI18n();
 const mapStore = useMapStore();
 
@@ -131,6 +172,15 @@ const categories = computed(() => [
 
 const activeCategory = ref('음식');
 
+async function loadAttractionsByDensity() {
+  const mode = densityModes.value[courseDensityIndex.value];
+  return fetchAttractions({
+    category: activeCategory.value,
+    minScore: mode.scoreMin,
+    maxScore: mode.scoreMax,
+  });
+}
+
 async function loadAttractions(category) {
   attractionsLoading.value = true;
   const mode = densityModes.value[courseDensityIndex.value];
@@ -161,36 +211,17 @@ const attractionsLoading = ref(false);
 onMounted(async () => {
   applyInitialDensityFromPersona();
   attractionsLoading.value = true;
-  const mode = densityModes.value[courseDensityIndex.value];
   try {
-    const [attrData, lockerData, congData] = await Promise.allSettled([
-      fetchAttractions({
-        category: activeCategory.value,
-        minScore: mode.scoreMin,
-        maxScore: mode.scoreMax,
-      }),
-      fetchLockers(),
-      fetchCongestions(),
-    ]);
-    if (attrData.status === 'fulfilled') {
-      attractions.value = attrData.value;
-    } else {
-      console.error('[MapPage] 관광지 로드 실패:', attrData.reason);
-    }
-    if (lockerData.status === 'fulfilled') {
-      lockers.value = lockerData.value;
-    } else {
-      console.error('[MapPage] 물품보관소 로드 실패:', lockerData.reason);
-    }
-    if (congData.status === 'fulfilled') {
-      congestions.value = congData.value;
-    } else {
-      console.error('[MapPage] 혼잡도 로드 실패:', congData.reason);
-    }
+    const boot = await getMapBootstrapData(loadAttractionsByDensity);
+    attractions.value = boot.attractions;
+    lockers.value = boot.lockers;
+    congestions.value = boot.congestions;
   } finally {
     attractionsLoading.value = false;
   }
-  fetchCurrentLocation();
+  if (!mapStore.currentLocation) {
+    fetchCurrentLocation();
+  }
 });
 
 const filteredAttractions = computed(() => {

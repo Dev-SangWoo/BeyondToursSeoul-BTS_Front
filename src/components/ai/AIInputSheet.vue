@@ -12,6 +12,7 @@ import {
   interestOptions,
   mobilityOptions,
   simOptions,
+  relationshipOptions,
 } from './input-sheet/aiInputFlowConstants';
 import {
   AI_SHEET_DRAFT_KEY,
@@ -44,6 +45,7 @@ const specialRequest = ref('');
 const showTopGuide = ref(false);
 const chatStructured = ref(null);
 const chatThread = ref([]);
+const chatSelectedDayIndex = ref(0);
 const preserveChatMapOnExit = ref(false);
 const generatingInitialCourse = ref(false);
 
@@ -61,8 +63,13 @@ const density = ref(50);
 const selectedInterestLabels = computed(() =>
   interestOptions
     .filter((item) => interests.value.includes(item.id))
-    .map((item) => item.label),
+    .map((item) => t(item.labelKey)),
 );
+
+const relationshipLabel = computed(() => {
+  const opt = relationshipOptions.find((o) => o.id === relationship.value);
+  return opt ? t(opt.labelKey) : relationship.value;
+});
 const selectedMobilityLabel = computed(
   () => {
     const found = mobilityOptions.find((item) => item.id === mobilityMode.value)
@@ -133,22 +140,6 @@ const canSubmitGenerate = computed(
   () => flowStage.value === 'chat' && canGenerate.value,
 );
 
-const chatSummaryMessage = computed(() => {
-  const extra = specialRequest.value.trim();
-  const lines = [
-    '[여행 코스 요청]',
-    `기간: ${startDate.value} ~ ${endDate.value} (${durationLabel.value || '-'})`,
-    `비행: 도착 ${arrivalTime.value} · 출발 ${departureTime.value}`,
-    `동행: ${relationship.value} · ${partySize.value}명`,
-    `이동: ${selectedMobilityLabel.value}`,
-    `유심: ${selectedSimLabel.value}`,
-    `스타일: 로컬 ${density.value}% · 관광지 ${100 - density.value}%`,
-    `테마: ${selectedInterestLabels.value.join(', ') || '-'}`,
-  ];
-  if (extra) lines.push(`추가 요청: ${extra}`);
-  return lines.join('\n');
-});
-
 const canProceedPrimary = computed(() => {
   const d0 = startDate.value.trim();
   const d1 = endDate.value.trim();
@@ -168,7 +159,37 @@ const durationLabel = computed(() => {
   const to = new Date(endDate.value);
   const nights = Math.ceil((to - from) / 86400000);
   const days = nights + 1;
-  return `${nights}박 ${days}일`;
+  return t('ai.courseRequest.durationNightsDays', { nights, days });
+});
+
+const chatSummaryMessage = computed(() => {
+  const extra = specialRequest.value.trim();
+  const themes = selectedInterestLabels.value.join(', ') || '-';
+  const lines = [
+    t('ai.courseRequest.header'),
+    t('ai.courseRequest.dates', {
+      start: startDate.value,
+      end: endDate.value,
+      duration: durationLabel.value || '-',
+    }),
+    t('ai.courseRequest.flight', {
+      arrival: arrivalTime.value,
+      departure: departureTime.value,
+    }),
+    t('ai.courseRequest.party', {
+      relationship: relationshipLabel.value,
+      partySize: partySize.value,
+    }),
+    t('ai.courseRequest.mobility', { mobility: selectedMobilityLabel.value }),
+    t('ai.courseRequest.sim', { sim: selectedSimLabel.value }),
+    t('ai.courseRequest.style', {
+      localPct: density.value,
+      mainPct: 100 - density.value,
+    }),
+    t('ai.courseRequest.themes', { themes }),
+  ];
+  if (extra) lines.push(t('ai.courseRequest.extra', { text: extra }));
+  return lines.join('\n');
 });
 
 async function proceedToDetail() {
@@ -301,6 +322,7 @@ function buildDraftState() {
     specialRequest: specialRequest.value,
     chatStructured: chatStructured.value,
     chatThread: chatThread.value,
+  chatSelectedDayIndex: chatSelectedDayIndex.value,
     preserveChatMapOnExit: preserveChatMapOnExit.value,
     startDate: startDate.value,
     endDate: endDate.value,
@@ -358,6 +380,9 @@ function restoreDraftState() {
         ? d.chatStructured
         : null;
     chatThread.value = Array.isArray(d.chatThread) ? d.chatThread : [];
+    chatSelectedDayIndex.value = Number.isFinite(Number(d.chatSelectedDayIndex))
+      ? Math.max(0, Number(d.chatSelectedDayIndex))
+      : 0;
     preserveChatMapOnExit.value = !!d.preserveChatMapOnExit;
     startDate.value =
       typeof d.startDate === 'string' ? d.startDate : startDate.value;
@@ -466,6 +491,7 @@ onMounted(() => {
               :summary-text="chatSummaryMessage"
               :initial-structured="chatStructured"
               :initial-thread="chatThread"
+              :initial-selected-day-index="chatSelectedDayIndex"
               :can-submit-generate="canSubmitGenerate"
               :preserve-map-on-exit="preserveChatMapOnExit"
               :local-ratio="density"
@@ -473,6 +499,7 @@ onMounted(() => {
               @generate="generate"
               @structured-change="chatStructured = $event"
               @thread-snapshot="chatThread = $event"
+              @selected-day-index-change="chatSelectedDayIndex = $event"
               @bootstrap-complete="generatingInitialCourse = false"
               @before-navigate-detail="prepareDraftForDetailReturn"
             />

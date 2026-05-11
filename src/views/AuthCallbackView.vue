@@ -52,8 +52,8 @@ onMounted(async () => {
     );
     const onboardingDone = hasNickname && hasPersona;
     status.value = onboardingDone
-      ? '로그인 완료! 홈으로 이동합니다.'
-      : '첫 로그인 확인! 닉네임과 페르소나를 설정해 주세요.';
+      ? t('auth.loginComplete')
+      : t('auth.firstLoginSetup');
     const savedRedirect = consumePostLoginRedirect();
     const nextPath = onboardingDone
       ? savedRedirect || resolvePostLoginRedirect(route)

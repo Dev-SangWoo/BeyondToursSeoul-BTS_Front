@@ -1,8 +1,10 @@
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { requestAiChat, toChatHistoryPayload } from '@/services/aiChatService'
 import { renderMarkdownHtml } from '@/utils/renderMarkdown'
 
+const { locale } = useI18n()
 const input = ref('')
 const isLoading = ref(false)
 const error = ref('')
@@ -41,7 +43,8 @@ async function sendMessage() {
 
   isLoading.value = true
   try {
-    const data = await requestAiChat(trimmed, 'ko', history)
+    const lang = String(locale.value || 'ko').trim().slice(0, 5) || 'ko'
+    const data = await requestAiChat(trimmed, lang, history)
     messages.value.push({
       id: `a-${Date.now()}`,
       role: 'assistant',

@@ -25,6 +25,8 @@ export function flattenStructuredSlots(structured) {
         address: slot?.address != null ? String(slot.address) : '',
         reason: slot?.reason != null ? String(slot.reason) : '',
         type: slot?.type,
+        sourceType: slot?.sourceType,
+        sourceId: slot?.sourceId,
         slotLabel: slot?.label != null ? String(slot.label) : '',
         lat: Number.isFinite(Number(slot?.lat)) ? Number(slot.lat) : null,
         lng: Number.isFinite(Number(slot?.lng)) ? Number(slot.lng) : null,
@@ -124,6 +126,9 @@ export async function buildMapMarkersFromStructured(flat) {
     const labelSource = item.placeName || item.address || `장소 ${i + 1}`
     const label = labelSource.length > 14 ? `${labelSource.slice(0, 14)}…` : labelSource
     const tone = slotToneFromSlot(item)
+    const sourceType = String(item?.sourceType || item?.type || '').toLowerCase()
+    const category = String(item?.category || '').toLowerCase()
+    const isLocker = sourceType.includes('locker') || category.includes('locker')
     markers.push({
       id: `day-${item.dayIndex}-slot-${item.slotIndex}-${i}`,
       lat: lat ?? fb.lat,
@@ -134,10 +139,13 @@ export async function buildMapMarkersFromStructured(flat) {
       order: currentOrder,
       orderShort: String(currentOrder),
       orderLabel: `${item.slotLabel || item.type || '코스'} ${currentOrder}`,
-      type: 'default',
+      type: isLocker ? 'locker' : 'default',
       crowdLevel: 'low',
       dayIndex: item.dayIndex,
-      placeTone: tone.kind,
+      placeTone: isLocker ? null : tone.kind,
+      isLocker,
+      sourceType: String(item?.sourceType || '').trim(),
+      sourceId: String(item?.sourceId || '').trim(),
     })
   }
 

@@ -8,10 +8,10 @@ import MapView from '@/components/map/MapView.vue'
 import ItineraryTimeline from '@/components/itinerary/ItineraryTimeline.vue'
 import { fetchSavedPlanDetail, saveStructuredPlan } from '@/services/savedPlansService'
 import { isAuthExpiredError } from '@/utils/authFlow'
+import { getApiLangCode } from '@/i18n'
 import {
   flattenStructuredSlots,
   buildMapMarkersFromStructured,
-  meanCenter,
   SEOUL_CENTER,
 } from '@/utils/structuredItinerary'
 
@@ -32,6 +32,17 @@ const canSaveStructuredPlan = computed(() => !!tripStore.aiStructured)
 const selectedDay = ref(1)
 const allMarkers = ref([])
 const allPolyline = ref([])
+
+function parseDayQuery(raw) {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return null
+  return Math.max(1, Math.trunc(n))
+}
+
+function clampDay(day) {
+  const max = Math.max(1, sourceDays.value?.length || 1)
+  return Math.min(Math.max(1, Math.trunc(Number(day) || 1)), max)
+}
 
 const resultTitle = computed(() => {
   const meta = tripStore.savedPlanMeta
@@ -61,15 +72,20 @@ async function syncMarkersFromStructured() {
 function applyDayToMap(dayNum) {
   const dayIndex = dayNum - 1
   const dayMarkers = allMarkers.value.filter((m) => m.dayIndex === dayIndex)
-  const dayPolyline = dayMarkers
-    .filter((m) => m.lat != null && m.lng != null)
-    .map((m) => ({ lat: m.lat, lng: m.lng }))
+  const chain = dayMarkers.filter((m) => m.lat != null && m.lng != null)
+  const dayPolyline = []
+  for (let i = 0; i < chain.length - 1; i += 1) {
+    const start = chain[i]
+    const end = chain[i + 1]
+    dayPolyline.push({
+      start: { lat: start.lat, lng: start.lng },
+      end: { lat: end.lat, lng: end.lng },
+      dashed: start.type === 'locker' || end.type === 'locker',
+    })
+  }
   mapStore.setMarkers(dayMarkers)
   mapStore.setPolyline(dayPolyline)
-  if (dayMarkers.length) {
-    const c = meanCenter(dayMarkers)
-    mapStore.setCenter(c.lat, c.lng)
-  } else {
+  if (!dayMarkers.length) {
     mapStore.setCenter(SEOUL_CENTER.lat, SEOUL_CENTER.lng)
   }
 }
@@ -104,7 +120,8 @@ async function loadPlanFromRoute() {
       planId: detail.id,
       title: detail.title,
     })
-    selectedDay.value = 1
+    const fromQuery = parseDayQuery(route.query.day)
+    selectedDay.value = clampDay(fromQuery ?? 1)
   } catch (e) {
     if (isAuthExpiredError(e)) {
       await authStore.handleAuthExpired(router, route)
@@ -118,7 +135,28 @@ async function loadPlanFromRoute() {
 
 watch(selectedDay, (day) => {
   if (allMarkers.value.length) applyDayToMap(day)
+  const normalized = String(clampDay(day))
+  if (String(route.query.day || '') === normalized) return
+  const nextQuery = {
+    ...route.query,
+    day: normalized,
+  }
+  void router.replace({
+    name: 'result',
+    query: nextQuery,
+  })
 })
+
+watch(
+  () => route.query.day,
+  (raw) => {
+    const parsed = parseDayQuery(raw)
+    if (parsed == null) return
+    const next = clampDay(parsed)
+    if (selectedDay.value !== next) selectedDay.value = next
+  },
+  { immediate: true },
+)
 
 watch(
   () => [route.query.planId, authStore.accessToken],
@@ -133,6 +171,16 @@ watch(
   () => tripStore.aiStructured,
   async () => {
     await syncMarkersFromStructured()
+  },
+  { deep: true },
+)
+
+watch(
+  sourceDays,
+  (days) => {
+    if (!days?.length) return
+    const next = clampDay(selectedDay.value)
+    if (selectedDay.value !== next) selectedDay.value = next
   },
   { deep: true },
 )
@@ -213,6 +261,7 @@ function generateAnother() {
       <ItineraryTimeline
         :source-days="sourceDays"
         :model-value="selectedDay"
+        :locker-lang="getApiLangCode()"
         @update:model-value="selectedDay = $event"
       />
     </div>
