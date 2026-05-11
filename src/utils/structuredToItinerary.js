@@ -1,3 +1,4 @@
+import { i18n } from '@/i18n'
 import { sortSlotsForTimeline, getPhaseShortLabel } from '@/utils/slotTimeline'
 import { slotToneFromSlot } from '@/utils/slotPlaceTone'
 
@@ -54,7 +55,7 @@ export function structuredToItineraryDays(structured) {
     const mapped = days.map((day, i) => {
       const slots = Array.isArray(day.slots) ? day.slots : []
       const ordered = sortSlotsForTimeline(slots)
-      let items = ordered.map(({ slot }) => {
+      let items = ordered.map(({ slot }, idx) => {
         const tone = slotToneFromSlot(slot)
         const sourceType = String(slot?.sourceType || slot?.source_type || '').trim().toLowerCase()
         const category = String(slot?.category || slot?.cat || '').trim().toLowerCase()
@@ -63,8 +64,9 @@ export function structuredToItineraryDays(structured) {
         const lng = Number(slot?.lng)
         const imageUrl = pickSlotImage(slot)
         return {
-          time: isLocker ? '보관함' : getPhaseShortLabel(slot),
-          name: String(slot?.placeName || slot?.address || '장소').trim() || '장소',
+          time: isLocker ? i18n.global.t('itinerary.labels.locker') : getPhaseShortLabel(slot, idx),
+          name: String(slot?.placeName || slot?.address || i18n.global.t('itinerary.labels.place')).trim()
+            || i18n.global.t('itinerary.labels.place'),
           crowdTag: '',
           crowdLevel: 'low',
           address: String(slot?.address || '').trim(),
@@ -88,7 +90,7 @@ export function structuredToItineraryDays(structured) {
         if (line) {
           items = [
             {
-              time: '안내',
+              time: i18n.global.t('itinerary.labels.notice'),
               name: line.length > 200 ? `${line.slice(0, 197)}…` : line,
               crowdTag: '',
               crowdLevel: 'low',
@@ -116,10 +118,10 @@ export function structuredToItineraryDays(structured) {
     return lines.map((line, i) => ({
       day: i + 1,
       date: '',
-      label: `${i + 1}일차 요약`,
+      label: i18n.global.t('itinerary.labels.daySummary', { n: i + 1 }),
       items: [
         {
-          time: '코스',
+          time: i18n.global.t('itinerary.labels.course'),
           name: line.length > 120 ? `${line.slice(0, 117)}…` : line,
           crowdTag: '',
           crowdLevel: 'low',
@@ -141,10 +143,10 @@ export function structuredToItineraryDays(structured) {
       {
         day: 1,
         date: '',
-        label: '요약',
+        label: i18n.global.t('itinerary.labels.summary'),
         items: [
           {
-            time: '안내',
+            time: i18n.global.t('itinerary.labels.notice'),
             name: t.length > 200 ? `${t.slice(0, 197)}…` : t,
             crowdTag: '',
             crowdLevel: 'low',

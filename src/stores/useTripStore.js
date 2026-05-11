@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { generateCourse } from '@/services/tripService'
 import { structuredToItineraryDays } from '@/utils/structuredToItinerary'
+import { i18n } from '@/i18n'
 
 export const useTripStore = defineStore('trip', () => {
   const tripInput = ref({
@@ -11,8 +12,17 @@ export const useTripStore = defineStore('trip', () => {
     travelType: '커플',
   })
 
-  const itinerary = ref([])
+  /** AI structured 외 레거시 generateCourse() 결과 */
+  const legacyItinerary = ref([])
   const aiStructured = ref(null)
+
+  const itinerary = computed(() => {
+    void i18n.global.locale.value
+    if (aiStructured.value) {
+      return structuredToItineraryDays(aiStructured.value)
+    }
+    return legacyItinerary.value
+  })
   /** 서버 저장 일정 연동 시 { planId, title } 또는 null(AI 새 일정 등) */
   const savedPlanMeta = ref(null)
   const weatherMode = ref('normal') // 'normal' | 'rainy'
@@ -33,7 +43,9 @@ export const useTripStore = defineStore('trip', () => {
    */
   function setAiStructured(structured, fromSavedPlan = null) {
     aiStructured.value = structured || null
-    itinerary.value = structured ? structuredToItineraryDays(structured) : []
+    if (!structured) {
+      legacyItinerary.value = []
+    }
     if (fromSavedPlan && fromSavedPlan.planId != null) {
       savedPlanMeta.value = {
         planId: fromSavedPlan.planId,
@@ -53,7 +65,7 @@ export const useTripStore = defineStore('trip', () => {
     error.value = null
     try {
       const result = await generateCourse(tripInput.value)
-      itinerary.value = result
+      legacyItinerary.value = result
       aiStructured.value = null
       savedPlanMeta.value = null
     } catch (e) {
@@ -67,7 +79,7 @@ export const useTripStore = defineStore('trip', () => {
   const generateCourseAction = generate
 
   function reset() {
-    itinerary.value = []
+    legacyItinerary.value = []
     aiStructured.value = null
     savedPlanMeta.value = null
     error.value = null

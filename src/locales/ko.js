@@ -21,6 +21,7 @@ export default {
     checking: '로그인 정보를 확인 중입니다...',
     tokenNotFound: '토큰을 찾지 못했습니다. 로그인 화면으로 이동합니다.',
     loginComplete: '로그인 완료! 홈으로 이동합니다.',
+    firstLoginSetup: '첫 로그인 확인! 닉네임과 페르소나를 설정해 주세요.',
     error: '로그인 처리 중 오류가 발생했습니다.',
   },
   nav: {
@@ -168,6 +169,18 @@ export default {
     anotherCourse: '↺ 다른 코스 보기',
   },
   ai: {
+    courseRequest: {
+      header: '[여행 코스 요청]',
+      dates: '기간: {start} ~ {end} ({duration})',
+      flight: '비행: 도착 {arrival} · 출발 {departure}',
+      party: '동행: {relationship} · {partySize}명',
+      mobility: '이동: {mobility}',
+      sim: '유심: {sim}',
+      style: '스타일: 로컬 {localPct}% · 관광지 {mainPct}%',
+      themes: '테마: {themes}',
+      extra: '추가 요청: {text}',
+      durationNightsDays: '{nights}박 {days}일',
+    },
     sheet: {
       title: 'AI 여행 코스 짜기',
       subtitle: '여행 정보와 취향을 알려주시면 맞춤 코스를 생성해요',
@@ -222,6 +235,13 @@ export default {
       generateCourseConfirm: '이 코스로 확정',
       noResponse: '응답을 받지 못했습니다.',
       requestError: '요청 중 오류가 났어요.',
+      bootloadingTitle: 'AI가 코스를 생성하고 있어요',
+      bootloadingSub: '여행 조건을 바탕으로 최적 코스를 계산 중입니다.',
+      planStripLoading: '일정을 불러오는 중…',
+      planStripGenerating: '일정을 생성 중입니다…',
+      planStripGeneratingDesc: 'AI가 코스를 준비하고 있어요. 잠시만 기다려 주세요.',
+      assistantPreview: '{n}일 여행 일정을 준비했어요.',
+      assistantPreviewSuffix: ' ({preview} 등)',
     },
     loading: {
       text: 'AI가 핀 지수를 분석하여\n동선을 짜는 중입니다...',
@@ -257,6 +277,7 @@ export default {
       sim: 'USIM 추천',
     },
     persona: {
+      localBadge: '로컬 {n}%',
       main100: '명소 올인',
       main100Desc: '유명 관광지 완전 위주',
       main70: '명소 중심 + 로컬 한 스푼',
@@ -267,6 +288,42 @@ export default {
       local70Desc: '로컬 핀 중심, 관광지 가미',
       local100: '로컬 딥다이브',
       local100Desc: '완전 로컬 핀 위주',
+    },
+  },
+  itinerary: {
+    phases: {
+      breakfast: '아침',
+      morning_course: '오전 코스',
+      lunch: '점심',
+      afternoon_course: '오후 코스',
+      dinner: '저녁',
+      night_course: '밤 코스',
+      fallback: '일정',
+    },
+    labels: {
+      locker: '보관함',
+      place: '장소',
+      notice: '안내',
+      course: '코스',
+      summary: '요약',
+      daySummary: '{n}일차 요약',
+      lockerTagShort: '보관함',
+    },
+    lockerHints: {
+      nearDay1Breakfast: '1일차 아침 코스 근처 물품보관함',
+      nearMorningAndLast: '아침·마지막 코스 근처 물품보관함',
+      nearLastDayFirst: '마지막 날 첫 코스 근처 물품보관함',
+      nearLastDayLast: '마지막 날 마지막 코스 근처 물품보관함',
+    },
+    tone: {
+      local: '로컬',
+      tourist: '유명',
+      blend: '유명·로컬',
+    },
+    lockerUi: {
+      title: '물품보관함',
+      approxDistance: '약 {distance}',
+      inlineMeta: '직선 거리 약 {distance} · 상세 보기',
     },
   },
   attraction: {

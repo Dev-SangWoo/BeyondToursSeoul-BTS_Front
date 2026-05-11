@@ -2,6 +2,7 @@
 import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import { getApiLangCode } from '@/i18n'
 import { MessageCircle, Sparkles } from 'lucide-vue-next'
 import { useMapStore } from '@/stores/useMapStore'
 import MapView from '@/components/map/MapView.vue'
@@ -17,7 +18,7 @@ import { structuredToItineraryDays } from '@/utils/structuredToItinerary'
 import { fetchNearestLockers } from '@/services/attractionService'
 import AiChatPlanStrip from './AiChatPlanStrip.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const props = defineProps({
   summaryText: { type: String, default: '' },
@@ -60,9 +61,6 @@ const suppressMarkerNavigate = ref(false)
 let mapSnapshot = null
 
 const introAssistant = computed(() => t('ai.chat.introAssistant'))
-
-/** 채팅 단계 진입 시 자동 전송 — 수동으로 같은 문구를 입력하지 않아도 첫 일정 응답을 받습니다. */
-const INITIAL_COURSE_MESSAGE = '코스 생성'
 
 function hasUsableStructured(structured) {
   if (!structured || typeof structured !== 'object') return false
@@ -121,7 +119,7 @@ onMounted(() => {
   }
   if (!lastStructured.value) {
     bootstrapping.value = true
-    void nextTick().then(() => sendChatWithText(INITIAL_COURSE_MESSAGE, { bootstrap: true }))
+    void nextTick().then(() => sendChatWithText(t('ai.detail.generateCourse'), { bootstrap: true }))
   } else {
     emit('bootstrap-complete')
   }
@@ -217,14 +215,16 @@ watch(selectedDayIndex, () => {
 
 function resolveAssistantText(structured) {
   const days = Array.isArray(structured?.days) ? structured.days : []
-  if (!days.length) return '응답을 받지 못했습니다.'
+  if (!days.length) return t('ai.chat.noResponse')
   const dayCount = days.length
   const places = days
     .flatMap((d) => (Array.isArray(d?.slots) ? d.slots : []))
     .map((s) => s?.placeName)
     .filter(Boolean)
   const preview = [...new Set(places)].slice(0, 3).join(', ')
-  return `${dayCount}일 여행 일정을 준비했어요.${preview ? ` (${preview} 등)` : ''}`
+  return preview
+    ? `${t('ai.chat.assistantPreview', { n: dayCount })}${t('ai.chat.assistantPreviewSuffix', { preview })}`
+    : t('ai.chat.assistantPreview', { n: dayCount })
 }
 
 function pickFirstAnchor(items) {
@@ -256,7 +256,10 @@ async function buildLockerHintMarkers(structured) {
     for (let ai = 0; ai < anchors.length; ai += 1) {
       const anchor = anchors[ai]
       try {
-        const list = await fetchNearestLockers(anchor.ref.lat, anchor.ref.lng, { limit: 1, lang: 'KOR' })
+        const list = await fetchNearestLockers(anchor.ref.lat, anchor.ref.lng, {
+          limit: 1,
+          lang: getApiLangCode(),
+        })
         const locker = Array.isArray(list) ? list[0] : null
         const lat = Number(locker?.latitude)
         const lng = Number(locker?.longitude)
@@ -267,9 +270,9 @@ async function buildLockerHintMarkers(structured) {
           id: `ai-locker-hint-${dayIndex}-${anchor.kind}-${lid}`,
           lat,
           lng,
-          label: String(locker.stationName || locker.lockerName || '물품보관함'),
-          placeName: String(locker.stationName || locker.lockerName || '물품보관함'),
-          slotLabel: '물품보관함',
+          label: String(locker.stationName || locker.lockerName || t('itinerary.labels.locker')),
+          placeName: String(locker.stationName || locker.lockerName || t('itinerary.labels.locker')),
+          slotLabel: t('itinerary.labels.locker'),
           order: 999,
           orderShort: 'L',
           type: 'locker',
@@ -288,16 +291,17 @@ async function buildLockerHintMarkers(structured) {
   return out
 }
 
-async function sendChatWithText(t, options = {}) {
+async function sendChatWithText(messageText, options = {}) {
   const { bootstrap = false } = options
-  const trimmed = (t || '').trim()
+  const trimmed = (messageText || '').trim()
   if (!trimmed || isChatLoading.value) return
   chatError.value = ''
   const history = toChatHistoryPayload(thread.value)
   thread.value.push({ id: `u-${Date.now()}`, role: 'user', text: trimmed })
   isChatLoading.value = true
   try {
-    const data = await requestAiChat(trimmed, 'ko', history, props.localRatio)
+    const lang = String(locale.value || 'ko').trim().slice(0, 5) || 'ko'
+    const data = await requestAiChat(trimmed, lang, history, props.localRatio)
     thread.value.push({
       id: `a-${Date.now()}`,
       role: 'assistant',
@@ -318,10 +322,10 @@ async function sendChatWithText(t, options = {}) {
 }
 
 async function sendChat() {
-  const t = chatInput.value.trim()
-  if (!t || isChatLoading.value) return
+  const textMsg = chatInput.value.trim()
+  if (!textMsg || isChatLoading.value) return
   chatInput.value = ''
-  await sendChatWithText(t)
+  await sendChatWithText(textMsg)
 }
 
 function toggleMapExpanded() {
@@ -393,8 +397,8 @@ watch(
     <div v-if="bootstrapping" class="chat-step__bootloading">
       <div class="chat-step__bootloading-card">
         <span class="chat-step__bootloading-spinner" />
-        <p class="chat-step__bootloading-title">AI가 코스를 생성하고 있어요</p>
-        <p class="chat-step__bootloading-sub">여행 조건을 바탕으로 최적 코스를 계산 중입니다.</p>
+        <p class="chat-step__bootloading-title">{{ $t('ai.chat.bootloadingTitle') }}</p>
+        <p class="chat-step__bootloading-sub">{{ $t('ai.chat.bootloadingSub') }}</p>
       </div>
     </div>
     <header class="chat-step__bar">

@@ -233,7 +233,9 @@ function goPrevPage() {
         >
           <div class="sheet__persona-head">
             <strong>{{ $t(item.labelKey) }}</strong>
-            <span class="sheet__persona-badge">로컬 {{ item.localDensity }}%</span>
+            <span class="sheet__persona-badge">{{
+              $t('ai.persona.localBadge', { n: item.localDensity })
+            }}</span>
           </div>
           <p>{{ $t(item.descriptionKey) }}</p>
         </button>

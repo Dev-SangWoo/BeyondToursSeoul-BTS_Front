@@ -21,6 +21,7 @@ export default {
     checking: 'ログイン情報を確認中です...',
     tokenNotFound: 'トークンが見つかりません。ログイン画面に移動します。',
     loginComplete: 'ログイン完了！ホームに移動します。',
+    firstLoginSetup: '初回ログインです。ニックネームと旅行ペルソナを設定してください。',
     error: 'ログイン処理中にエラーが発生しました。',
   },
   nav: {
@@ -168,6 +169,18 @@ export default {
     anotherCourse: '↺ 別のコースを見る',
   },
   ai: {
+    courseRequest: {
+      header: '[旅行コースのリクエスト]',
+      dates: '期間: {start} ～ {end}（{duration}）',
+      flight: 'フライト: 到着 {arrival} · 出発 {departure}',
+      party: '同行: {relationship} · {partySize}名',
+      mobility: '移動: {mobility}',
+      sim: 'SIM: {sim}',
+      style: 'スタイル: ローカル {localPct}% · 観光地 {mainPct}%',
+      themes: 'テーマ: {themes}',
+      extra: '追加リクエスト: {text}',
+      durationNightsDays: '{nights}泊{days}日',
+    },
     sheet: {
       title: 'AIで旅行コースを作成',
       subtitle: '旅行情報と好みを教えていただければ、おすすめコースを作成します',
@@ -222,6 +235,13 @@ export default {
       generateCourseConfirm: 'このコースに決定',
       noResponse: '応答を受信できませんでした。',
       requestError: 'リクエスト中にエラーが発生しました。',
+      bootloadingTitle: 'AIがコースを作成しています',
+      bootloadingSub: 'ご旅行条件に合わせて最適なコースを計算しています。',
+      planStripLoading: '日程を読み込み中…',
+      planStripGenerating: '日程を作成中…',
+      planStripGeneratingDesc: 'AIがコースを準備しています。少々お待ちください。',
+      assistantPreview: '{n}日間の旅行プランを用意しました。',
+      assistantPreviewSuffix: '（{preview} など）',
     },
     loading: {
       text: 'AIがピンスコアを分析して\nルートを作成中です...',
@@ -257,6 +277,7 @@ export default {
       sim: 'USIMおすすめ',
     },
     persona: {
+      localBadge: 'ローカル {n}%',
       main100: '観光地オンリー',
       main100Desc: '有名観光地完全重視',
       main70: '観光地中心＋ローカル少々',
@@ -267,6 +288,42 @@ export default {
       local70Desc: 'ローカル中心、観光地少々',
       local100: 'ローカル完全重視',
       local100Desc: '完全ローカル重視',
+    },
+  },
+  itinerary: {
+    phases: {
+      breakfast: '朝食',
+      morning_course: '午前',
+      lunch: '昼食',
+      afternoon_course: '午後',
+      dinner: '夕食',
+      night_course: '夜',
+      fallback: '予定',
+    },
+    labels: {
+      locker: 'コインロッカー',
+      place: '場所',
+      notice: '案内',
+      course: 'コース',
+      summary: '概要',
+      daySummary: '{n}日目の概要',
+      lockerTagShort: 'ロッカー',
+    },
+    lockerHints: {
+      nearDay1Breakfast: '1日目の朝食付近のコインロッカー',
+      nearMorningAndLast: '朝食・最終地点付近のコインロッカー',
+      nearLastDayFirst: '最終日の最初のコース付近のコインロッカー',
+      nearLastDayLast: '最終日の最後のコース付近のコインロッカー',
+    },
+    tone: {
+      local: 'ローカル',
+      tourist: '観光',
+      blend: '観光·ローカル',
+    },
+    lockerUi: {
+      title: 'コインロッカー',
+      approxDistance: '約{distance}',
+      inlineMeta: '直線距離 約{distance} · 詳細を見る',
     },
   },
   attraction: {

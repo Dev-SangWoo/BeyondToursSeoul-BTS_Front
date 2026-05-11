@@ -1,9 +1,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import ItineraryItem from './ItineraryItem.vue'
 import { fetchNearestLockers } from '@/services/attractionService'
 
+const { t } = useI18n()
 const props = defineProps({
   sourceDays: { type: Array, default: undefined },
   modelValue: { type: Number, default: undefined },
@@ -95,7 +97,7 @@ async function reloadNearestLockers() {
       const locker = list?.[0]
       if (locker) {
         lockerHintStart.value = {
-          label: sameSlot ? '아침·마지막 코스 근처 물품보관함' : '1일차 아침 코스 근처 물품보관함',
+          label: sameSlot ? t('itinerary.lockerHints.nearMorningAndLast') : t('itinerary.lockerHints.nearDay1Breakfast'),
           locker,
         }
       }
@@ -113,7 +115,7 @@ async function reloadNearestLockers() {
       const locker = list?.[0]
       if (locker) {
         lockerHintLastStart.value = {
-          label: '마지막 날 첫 코스 근처 물품보관함',
+          label: t('itinerary.lockerHints.nearLastDayFirst'),
           locker,
         }
       }
@@ -126,7 +128,7 @@ async function reloadNearestLockers() {
       const locker = list?.[0]
       if (locker) {
         lockerHintEnd.value = {
-          label: '마지막 날 마지막 코스 근처 물품보관함',
+          label: t('itinerary.lockerHints.nearLastDayLast'),
           locker,
         }
       }
@@ -328,7 +330,7 @@ const slotTypeIcon = {
                 <span
                   v-if="seg.item.isLocker"
                   class="itinerary-timeline__hnode-locker"
-                >🧳 물품보관함</span>
+                >🧳 {{ t('itinerary.lockerUi.title') }}</span>
                 <span
                   v-if="seg.item.toneLabel"
                   class="itinerary-timeline__hnode-tone"
@@ -348,13 +350,13 @@ const slotTypeIcon = {
               @click="openLockerSuggestion(seg.hint.locker.id)"
             >
               <span class="itinerary-timeline__hnode-dot itinerary-timeline__hnode-dot--locker-suggest">🧳</span>
-              <span class="itinerary-timeline__hnode-time">보관함</span>
+              <span class="itinerary-timeline__hnode-time">{{ t('itinerary.labels.locker') }}</span>
               <div class="itinerary-timeline__hnode-text">
                 <span class="itinerary-timeline__hnode-name itinerary-timeline__hnode-name--locker-suggest">
                   {{ seg.hint.locker.stationName || seg.hint.locker.lockerName }}
                 </span>
                 <span class="itinerary-timeline__hnode-locker-suggest-meta">
-                  약 {{ formatStraightDistance(seg.hint.locker.distanceMeters) }}
+                  {{ t('itinerary.lockerUi.approxDistance', { distance: formatStraightDistance(seg.hint.locker.distanceMeters) }) }}
                 </span>
               </div>
             </button>
@@ -374,7 +376,7 @@ const slotTypeIcon = {
             <span
               v-if="selectedItem.isLocker"
               class="itinerary-timeline__detail-locker-badge"
-            >🧳 물품보관함</span>
+            >🧳 {{ t('itinerary.lockerUi.title') }}</span>
             <span
               v-if="selectedItem.crowdTag"
               class="itinerary-timeline__detail-crowd"
@@ -438,7 +440,7 @@ const slotTypeIcon = {
                   {{ seg.hint.locker.stationName || seg.hint.locker.lockerName }}
                 </span>
                 <span class="itinerary-timeline__locker-inline-meta">
-                  직선 거리 약 {{ formatStraightDistance(seg.hint.locker.distanceMeters) }} · 상세 보기
+                  {{ t('itinerary.lockerUi.inlineMeta', { distance: formatStraightDistance(seg.hint.locker.distanceMeters) }) }}
                 </span>
               </div>
               <span class="itinerary-timeline__locker-inline-chev" aria-hidden="true">›</span>

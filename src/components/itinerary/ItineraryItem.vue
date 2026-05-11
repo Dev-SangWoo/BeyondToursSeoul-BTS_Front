@@ -1,4 +1,6 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
+
 defineProps({
   time: { type: String, required: true },
   name: { type: String, required: true },
@@ -15,6 +17,7 @@ defineProps({
   isLast: { type: Boolean, default: false },
 })
 
+const { t } = useI18n()
 const crowdColors = { low: '#22c55e', medium: '#f97316', high: '#ef4444' }
 </script>
 
@@ -31,7 +34,7 @@ const crowdColors = { low: '#22c55e', medium: '#f97316', high: '#ef4444' }
     <div class="itinerary-item__content">
       <div class="itinerary-item__top">
         <span class="itinerary-item__time">{{ time }}</span>
-        <span v-if="isLocker" class="itinerary-item__locker-tag">🧳 보관함</span>
+        <span v-if="isLocker" class="itinerary-item__locker-tag">🧳 {{ t('itinerary.labels.lockerTagShort') }}</span>
         <span v-if="crowdTag" class="itinerary-item__crowd-tag" :style="{ color: crowdColors[crowdLevel] }">
           {{ crowdTag }}
         </span>

@@ -8,6 +8,7 @@ import MapView from '@/components/map/MapView.vue'
 import ItineraryTimeline from '@/components/itinerary/ItineraryTimeline.vue'
 import { fetchSavedPlanDetail, saveStructuredPlan } from '@/services/savedPlansService'
 import { isAuthExpiredError } from '@/utils/authFlow'
+import { getApiLangCode } from '@/i18n'
 import {
   flattenStructuredSlots,
   buildMapMarkersFromStructured,
@@ -260,6 +261,7 @@ function generateAnother() {
       <ItineraryTimeline
         :source-days="sourceDays"
         :model-value="selectedDay"
+        :locker-lang="getApiLangCode()"
         @update:model-value="selectedDay = $event"
       />
     </div>
