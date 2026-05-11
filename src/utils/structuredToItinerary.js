@@ -1,6 +1,47 @@
 import { sortSlotsForTimeline, getPhaseShortLabel } from '@/utils/slotTimeline'
 import { slotToneFromSlot } from '@/utils/slotPlaceTone'
 
+function firstImageCandidate(value) {
+  if (!value) return ''
+  if (typeof value === 'string') return value.trim()
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i += 1) {
+      const nested = firstImageCandidate(value[i])
+      if (nested) return nested
+    }
+    return ''
+  }
+  if (typeof value === 'object') {
+    return String(
+      value.url
+      || value.imageUrl
+      || value.image_url
+      || value.thumbnail
+      || value.firstImage
+      || value.firstimage
+      || '',
+    ).trim()
+  }
+  return ''
+}
+
+function pickSlotImage(slot) {
+  return String(
+    slot?.thumbnail
+    || slot?.imageUrl
+    || slot?.image_url
+    || slot?.firstImage
+    || slot?.firstimage
+    || slot?.image
+    || slot?.photo
+    || slot?.photoUrl
+    || firstImageCandidate(slot?.images)
+    || firstImageCandidate(slot?.photos)
+    || firstImageCandidate(slot?.media)
+    || '',
+  ).trim()
+}
+
 /**
  * structured → Result 페이지 ItineraryTimeline 과 같은 형태
  * @returns {Array<{ day: number, date?: string, label?: string, items: Array<{ time: string, name: string, crowdTag?: string, crowdLevel?: string, desc?: string, reason?: string }> }>}
@@ -20,6 +61,7 @@ export function structuredToItineraryDays(structured) {
         const isLocker = sourceType.includes('locker') || category === 'locker'
         const lat = Number(slot?.lat)
         const lng = Number(slot?.lng)
+        const imageUrl = pickSlotImage(slot)
         return {
           time: isLocker ? '보관함' : getPhaseShortLabel(slot),
           name: String(slot?.placeName || slot?.address || '장소').trim() || '장소',
@@ -36,6 +78,7 @@ export function structuredToItineraryDays(structured) {
           toneLabel: tone.label,
           toneKind: tone.kind,
           isLocker,
+          imageUrl,
         }
       })
       if (!items.length) {

@@ -235,46 +235,43 @@ function routeForItem(item) {
 async function openSourceDetail(item) {
   const target = routeForItem(item)
   if (!target) return
-  const returnTo = route.fullPath && route.fullPath !== '/ai' ? route.fullPath : '/discover'
-  if (route.path !== '/ai') {
-    await router.replace({
-      name: 'ai',
-      query: { returnTo },
-    })
-  } else if (!(typeof route.query?.returnTo === 'string' && route.query.returnTo.trim())) {
-    await router.replace({
-      name: 'ai',
-      query: {
-        ...route.query,
-        returnTo,
-      },
-    })
-  }
+  const returnTo =
+    route.path === '/ai'
+      ? (
+          typeof route.query?.returnTo === 'string' && route.query.returnTo.trim()
+            ? route.query.returnTo.trim()
+            : '/discover'
+        )
+      : route.fullPath
   emit('before-navigate-detail')
-  await router.push(target)
+  await router.push({
+    ...target,
+    query: {
+      returnTo,
+    },
+  })
 }
 
 async function openLockerSuggestion(lockerId) {
   if (lockerId == null) return
   const sid = String(lockerId).trim()
   if (!sid) return
-  const returnTo = route.fullPath && route.fullPath !== '/ai' ? route.fullPath : '/discover'
-  if (route.path !== '/ai') {
-    await router.replace({
-      name: 'ai',
-      query: { returnTo },
-    })
-  } else if (!(typeof route.query?.returnTo === 'string' && route.query.returnTo.trim())) {
-    await router.replace({
-      name: 'ai',
-      query: {
-        ...route.query,
-        returnTo,
-      },
-    })
-  }
+  const returnTo =
+    route.path === '/ai'
+      ? (
+          typeof route.query?.returnTo === 'string' && route.query.returnTo.trim()
+            ? route.query.returnTo.trim()
+            : '/discover'
+        )
+      : route.fullPath
   emit('before-navigate-detail')
-  await router.push({ name: 'locker-detail', params: { id: sid } })
+  await router.push({
+    name: 'locker-detail',
+    params: { id: sid },
+    query: {
+      returnTo,
+    },
+  })
 }
 
 const slotTypeIcon = {

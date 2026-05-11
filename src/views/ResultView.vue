@@ -31,6 +31,17 @@ const selectedDay = ref(1)
 const allMarkers = ref([])
 const allPolyline = ref([])
 
+function parseDayQuery(raw) {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return null
+  return Math.max(1, Math.trunc(n))
+}
+
+function clampDay(day) {
+  const max = Math.max(1, sourceDays.value?.length || 1)
+  return Math.min(Math.max(1, Math.trunc(Number(day) || 1)), max)
+}
+
 const resultTitle = computed(() => {
   const meta = tripStore.savedPlanMeta
   if (meta?.title) return meta.title
@@ -107,7 +118,8 @@ async function loadPlanFromRoute() {
       planId: detail.id,
       title: detail.title,
     })
-    selectedDay.value = 1
+    const fromQuery = parseDayQuery(route.query.day)
+    selectedDay.value = clampDay(fromQuery ?? 1)
   } catch (e) {
     planLoadError.value = e.message || '일정을 불러오지 못했습니다.'
   } finally {
@@ -117,7 +129,28 @@ async function loadPlanFromRoute() {
 
 watch(selectedDay, (day) => {
   if (allMarkers.value.length) applyDayToMap(day)
+  const normalized = String(clampDay(day))
+  if (String(route.query.day || '') === normalized) return
+  const nextQuery = {
+    ...route.query,
+    day: normalized,
+  }
+  void router.replace({
+    name: 'result',
+    query: nextQuery,
+  })
 })
+
+watch(
+  () => route.query.day,
+  (raw) => {
+    const parsed = parseDayQuery(raw)
+    if (parsed == null) return
+    const next = clampDay(parsed)
+    if (selectedDay.value !== next) selectedDay.value = next
+  },
+  { immediate: true },
+)
 
 watch(
   () => [route.query.planId, authStore.accessToken],
@@ -132,6 +165,16 @@ watch(
   () => tripStore.aiStructured,
   async () => {
     await syncMarkersFromStructured()
+  },
+  { deep: true },
+)
+
+watch(
+  sourceDays,
+  (days) => {
+    if (!days?.length) return
+    const next = clampDay(selectedDay.value)
+    if (selectedDay.value !== next) selectedDay.value = next
   },
   { deep: true },
 )

@@ -2,8 +2,10 @@ import { normalizeStructured } from '@/utils/structuredNormalize'
 
 const AI_CHAT_BASE_URL =
   import.meta.env.VITE_AI_CHAT_BASE_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_BASE_URL_LOCAL ||
   'http://localhost:8080'
+const AI_CHAT_TIMEOUT_MS = 30_000
 
 /**
  * POST /api/v1/ai/chat 성공 본문 형태 (백엔드 Groq 파싱 결과).
@@ -111,18 +113,32 @@ export function toChatHistoryPayload(items) {
  * @param {number} [localRatio] - 로컬 선호도 0(관광지)~100(로컬), 기본값 50
  */
 export async function requestAiChat(message, language = 'ko', history = [], localRatio = 50) {
-  const res = await fetch(`${AI_CHAT_BASE_URL}/api/v1/ai/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message,
-      language,
-      history: Array.isArray(history) ? history : [],
-      localRatio: Math.max(0, Math.min(100, Number(localRatio) || 50)),
-    }),
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), AI_CHAT_TIMEOUT_MS)
+
+  let res
+  try {
+    res = await fetch(`${AI_CHAT_BASE_URL}/api/v1/ai/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        message,
+        language,
+        history: Array.isArray(history) ? history : [],
+        localRatio: Math.max(0, Math.min(100, Number(localRatio) || 50)),
+      }),
+    })
+  } catch (e) {
+    if (e?.name === 'AbortError') {
+      throw new Error('AI 응답 대기 시간이 초과되었습니다. 서버 상태를 확인해 주세요.')
+    }
+    throw e
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   const text = await res.text()
   let data = {}
