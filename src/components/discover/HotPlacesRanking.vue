@@ -140,8 +140,11 @@ const ZONE_IMAGES = {
 const ZONE_IMAGE_DEFAULT =
   'https://images.unsplash.com/photo-1601042879364-f3947d3f9c16?auto=format&fit=crop&w=500&q=80';
 
-const CONGESTION_LABEL = { 1: '여유', 2: '보통', 3: '붐빔', 4: '혼잡' };
 const CONGESTION_COLOR = { 1: '#22c55e', 2: '#eab308', 3: '#f97316', 4: '#ef4444' };
+
+function congestionLabel(level) {
+  return t(`map.congestion.shortLabel.${level}`);
+}
 
 const places = ref([]);
 const loading = ref(false);
@@ -196,7 +199,7 @@ onMounted(async () => {
           <span
             class="hot-rank-item__cong-badge"
             :style="{ background: CONGESTION_COLOR[place.congestionLevel] }"
-          >{{ CONGESTION_LABEL[place.congestionLevel] }}</span>
+          >{{ congestionLabel(place.congestionLevel) }}</span>
         </div>
         <p class="hot-rank-item__name">{{ place.name }}</p>
       </article>

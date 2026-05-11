@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { Bell, Globe, Settings, UserRound } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { personaOptions } from '@/components/ai/input-sheet/aiInputFlowConstants'
@@ -13,6 +14,7 @@ const LABEL_TO_LOCALE = {
   '中文': 'zh',
 }
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const router = useRouter()
 
@@ -28,9 +30,9 @@ const personaSaving = ref(false)
 const personaMessage = ref('')
 
 const menuItems = computed(() => [
-  { id: 'lang', icon: Globe, label: '언어 설정', value: language.value },
-  { id: 'alarm', icon: Bell, label: '알림 설정', value: alarmEnabled.value ? '켜짐' : '꺼짐' },
-  { id: 'pref', icon: Settings, label: '여행 취향 관리', value: '수정 가능' },
+  { id: 'lang', icon: Globe, label: t('profile.menu.lang'), value: language.value },
+  { id: 'alarm', icon: Bell, label: t('profile.menu.alarm'), value: alarmEnabled.value ? t('profile.alarmOn') : t('profile.alarmOff') },
+  { id: 'pref', icon: Settings, label: t('profile.menu.pref'), value: t('profile.prefEditable') },
 ])
 
 const currentPersonaLabel = computed(() => {
@@ -86,9 +88,9 @@ async function savePersona() {
   personaMessage.value = ''
   try {
     await authStore.saveProfile({ localPreference: selectedPersona.value })
-    personaMessage.value = '여행 페르소나를 저장했어요.'
+    personaMessage.value = t('profile.personaSaved')
   } catch (e) {
-    personaMessage.value = e?.message || '페르소나 저장에 실패했습니다.'
+    personaMessage.value = e?.message || t('profile.personaSaveFailed')
   } finally {
     personaSaving.value = false
   }
@@ -107,15 +109,15 @@ function logout() {
         <UserRound :size="30" :stroke-width="2.1" />
       </div>
       <div>
-        <h1>마이페이지</h1>
-        <p>Beyond Tours Seoul 계정</p>
+        <h1>{{ $t('profile.title') }}</h1>
+        <p>{{ $t('profile.account') }}</p>
       </div>
     </header>
 
     <section class="profile__card">
-      <p class="profile__name">{{ authStore.user?.nickname || 'Explorer' }} 님</p>
-      <p class="profile__email">{{ authStore.user?.email || '로그인이 필요합니다.' }}</p>
-      <p class="profile__persona-now">현재 페르소나: {{ currentPersonaLabel }}</p>
+      <p class="profile__name">{{ authStore.user?.nickname || 'Explorer' }}</p>
+      <p class="profile__email">{{ authStore.user?.email || $t('profile.loginRequired') }}</p>
+      <p class="profile__persona-now">{{ $t('profile.currentPersonaPrefix') }} {{ currentPersonaLabel }}</p>
     </section>
 
     <section class="profile__menu">
@@ -135,17 +137,17 @@ function logout() {
     </section>
 
     <button class="profile__logout" type="button" @click="logout">
-      로그아웃
+      {{ $t('profile.logout') }}
     </button>
 
     <div v-if="modalType" class="profile-modal-overlay" @click.self="closeModal">
       <div class="profile-modal">
-        <h2 v-if="modalType === 'lang'">언어 설정</h2>
-        <h2 v-else-if="modalType === 'alarm'">알림 설정</h2>
-        <h2 v-else>여행 취향 관리</h2>
+        <h2 v-if="modalType === 'lang'">{{ $t('profile.modal.langTitle') }}</h2>
+        <h2 v-else-if="modalType === 'alarm'">{{ $t('profile.modal.alarmTitle') }}</h2>
+        <h2 v-else>{{ $t('profile.modal.prefTitle') }}</h2>
 
         <template v-if="modalType === 'lang'">
-          <p>앱 표시 언어를 선택해 주세요.</p>
+          <p>{{ $t('profile.modal.langDesc') }}</p>
           <div class="profile-modal__options">
             <button
               v-for="lang in languageOptions"
@@ -160,15 +162,15 @@ function logout() {
         </template>
 
         <template v-else-if="modalType === 'alarm'">
-          <p>알림 수신 여부를 선택해 주세요.</p>
+          <p>{{ $t('profile.modal.alarmDesc') }}</p>
           <div class="profile-modal__options">
-            <button type="button" :class="{ 'is-active': alarmEnabled }" @click="saveAlarm(true)">켜짐</button>
-            <button type="button" :class="{ 'is-active': !alarmEnabled }" @click="saveAlarm(false)">꺼짐</button>
+            <button type="button" :class="{ 'is-active': alarmEnabled }" @click="saveAlarm(true)">{{ $t('profile.alarmOn') }}</button>
+            <button type="button" :class="{ 'is-active': !alarmEnabled }" @click="saveAlarm(false)">{{ $t('profile.alarmOff') }}</button>
           </div>
         </template>
 
         <template v-else>
-          <p>지금 설정에서 바로 보이는 여행 페르소나입니다. 언제든지 변경할 수 있어요.</p>
+          <p>{{ $t('profile.modal.prefDesc') }}</p>
           <div class="profile__persona-list">
             <button
               v-for="item in personaOptions"
@@ -183,12 +185,12 @@ function logout() {
             </button>
           </div>
           <button class="profile__persona-save" :disabled="personaSaving" type="button" @click="savePersona">
-            {{ personaSaving ? '저장 중…' : '페르소나 저장' }}
+            {{ personaSaving ? $t('profile.savingPersona') : $t('profile.savePersona') }}
           </button>
           <p v-if="personaMessage" class="profile__persona-msg">{{ personaMessage }}</p>
         </template>
 
-        <button class="profile-modal__close" type="button" @click="closeModal">닫기</button>
+        <button class="profile-modal__close" type="button" @click="closeModal">{{ $t('profile.closeModal') }}</button>
       </div>
     </div>
   </div>

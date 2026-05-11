@@ -195,7 +195,7 @@ async function loadTourCourses() {
 
 async function toggleSaveCourse(course) {
   if (!authStore.accessToken) {
-    window.alert?.('로그인 후 찜할 수 있습니다.');
+    window.alert?.(t('discover.alert.loginToFavorite'));
     router.push({ name: 'landing' });
     return;
   }
@@ -207,7 +207,7 @@ async function toggleSaveCourse(course) {
     const row = tourCourses.value.find((c) => c.id === cid);
     if (row) row.isSaved = saved;
   } catch (e) {
-    window.alert?.(e?.message || '저장에 실패했습니다.');
+    window.alert?.(e?.message || t('discover.alert.saveFailed'));
   } finally {
     savingTourCourseId.value = null;
   }
@@ -526,11 +526,11 @@ watch(
           class="discover__saved-plans-heading-icon"
         />
         <h3 class="discover__section-title discover__saved-plans-title">
-          내가 저장한 일정
+          {{ $t('discover.mySavedPlans') }}
         </h3>
       </div>
       <div v-if="savedPlansLoading" class="discover__saved-plans-msg">
-        불러오는 중…
+        {{ $t('discover.loadingCourses') }}
       </div>
       <p
         v-else-if="savedPlansError"
@@ -539,7 +539,7 @@ watch(
         {{ savedPlansError }}
       </p>
       <p v-else-if="!savedPlansRemote.length" class="discover__saved-plans-msg">
-        AI로 만든 코스 결과 화면에서 「코스 저장」으로 저장해 보세요.
+        {{ $t('discover.savedPlansEmptyHint') }}
       </p>
       <div
         v-else
@@ -559,27 +559,27 @@ watch(
             aria-hidden="true"
           />
           <p class="discover-saved-plan-card__title">
-            {{ p.title || '저장 일정' }}
+            {{ p.title || $t('discover.savedPlanFallbackTitle') }}
           </p>
           <p
             v-if="formatSavedPlanDate(p.savedAt)"
             class="discover-saved-plan-card__date"
           >
-            저장 {{ formatSavedPlanDate(p.savedAt) }}
+            {{ $t('discover.savedAtPrefix') }} {{ formatSavedPlanDate(p.savedAt) }}
           </p>
-          <span class="discover-saved-plan-card__cta">일정 보기</span>
+          <span class="discover-saved-plan-card__cta">{{ $t('discover.viewSchedule') }}</span>
         </button>
       </div>
     </section>
 
     <!-- ── 공식 추천 코스 (tour_courses) ─────────────────────────────── -->
     <section class="discover__section">
-      <h3 class="discover__section-title">추천 여행 코스</h3>
+      <h3 class="discover__section-title">{{ $t('discover.recommendedCourse') }}</h3>
       <p class="discover__section-sub">
-        서버에 등록된 공식 추천 코스입니다. 하트는 로그인 시 계정에 저장됩니다.
+        {{ $t('discover.officialCoursesHint') }}
       </p>
       <div v-if="tourCoursesLoading" class="discover__tour-courses-msg">
-        코스 불러오는 중…
+        {{ $t('discover.loadingCourses') }}
       </div>
       <p
         v-else-if="tourCoursesError"
@@ -588,7 +588,7 @@ watch(
         {{ tourCoursesError }}
       </p>
       <p v-else-if="!tourCourses.length" class="discover__tour-courses-msg">
-        등록된 추천 코스가 없습니다.
+        {{ $t('discover.noOfficialCourses') }}
       </p>
       <template v-else>
         <div
@@ -611,7 +611,7 @@ watch(
               }"
               type="button"
               :disabled="savingTourCourseId === course.id"
-              :aria-label="isTourCourseSaved(course) ? '저장 해제' : '저장하기'"
+              :aria-label="isTourCourseSaved(course) ? $t('discover.unsaveCourse') : $t('discover.saveCourse')"
               @click.stop="toggleSaveCourse(course)"
             >
               <Heart :size="14" :stroke-width="2.3" />
@@ -640,7 +640,7 @@ watch(
             :key="i"
             class="discover__course-dot"
             :class="{ 'discover__course-dot--active': activeCourseIndex === i }"
-            :aria-label="`${i + 1}번 코스로 이동`"
+            :aria-label="$t('discover.goToCourseNth', { n: i + 1 })"
             @click="scrollToCourse(i)"
           />
         </div>
