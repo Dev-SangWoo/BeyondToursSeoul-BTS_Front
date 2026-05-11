@@ -253,6 +253,18 @@ export default {
       esim: 'eSIMおすすめ',
       sim: 'USIMおすすめ',
     },
+    persona: {
+      main100: '観光地オンリー',
+      main100Desc: '有名観光地完全重視',
+      main70: '観光地中心＋ローカル少々',
+      main70Desc: '観光地中心、ローカル少々',
+      balanced: 'バランス探索',
+      balancedDesc: '観光地とローカルのバランス',
+      local70: 'ローカル中心＋観光地少々',
+      local70Desc: 'ローカル中心、観光地少々',
+      local100: 'ローカル完全重視',
+      local100Desc: '完全ローカル重視',
+    },
   },
   attraction: {
     loading: '読み込み中...',

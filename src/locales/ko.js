@@ -253,6 +253,18 @@ export default {
       esim: 'eSIM 추천',
       sim: 'USIM 추천',
     },
+    persona: {
+      main100: '명소 올인',
+      main100Desc: '유명 관광지 완전 위주',
+      main70: '명소 중심 + 로컬 한 스푼',
+      main70Desc: '관광지 중심, 로컬 가미',
+      balanced: '밸런스 탐험',
+      balancedDesc: '관광지와 로컬 균형',
+      local70: '로컬 중심 + 명소 한 스푼',
+      local70Desc: '로컬 핀 중심, 관광지 가미',
+      local100: '로컬 딥다이브',
+      local100Desc: '완전 로컬 핀 위주',
+    },
   },
   attraction: {
     loading: '불러오는 중...',

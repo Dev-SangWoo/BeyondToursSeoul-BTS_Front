@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { translateAreaName } from '@/constants/areaNameMap';
 import { IsIcon } from '@ratoufa/iconsax-vue';
 import { useMapStore } from '@/stores/useMapStore';
 import { fetchAttractions, fetchLockers } from '@/services/attractionService';
@@ -9,7 +10,7 @@ import MapView from '@/components/map/MapView.vue';
 import AttractionDetailView from '@/views/AttractionDetailView.vue';
 import LockerDetailView from '@/views/LockerDetailView.vue';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const mapStore = useMapStore();
 
 // ── GPS ──────────────────────────────────────────────────────────────
@@ -456,7 +457,7 @@ function fetchCurrentLocation() {
             <header class="zone-detail__header">
               <div class="zone-detail__title-row">
                 <h2 class="zone-detail__title">
-                  {{ $t('map.congestion.zoneRegion', { name: selectedZone.area_name }) }}
+                  {{ $t('map.congestion.zoneRegion', { name: translateAreaName(selectedZone.area_name, locale) }) }}
                 </h2>
                 <span
                   class="congestion-badge"
@@ -477,7 +478,7 @@ function fetchCurrentLocation() {
                   :key="area"
                   class="zone-area-tag"
                 >
-                  #{{ area }}
+                  #{{ translateAreaName(area, locale) }}
                 </span>
               </div>
               <div class="zone-detail__info-card">

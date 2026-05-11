@@ -37,7 +37,8 @@ const menuItems = computed(() => [
 
 const currentPersonaLabel = computed(() => {
   const id = authStore.user?.localPreference || 'balanced'
-  return personaOptions.find((p) => p.id === id)?.label || '밸런스 탐험'
+  const persona = personaOptions.find((p) => p.id === id)
+  return persona ? t(persona.labelKey) : t('ai.persona.balanced')
 })
 
 onMounted(() => {
@@ -180,8 +181,8 @@ function logout() {
               :class="{ 'profile__persona-card--active': selectedPersona === item.id }"
               @click="selectedPersona = item.id"
             >
-              <strong>{{ item.label }}</strong>
-              <span>{{ item.description }}</span>
+              <strong>{{ $t(item.labelKey) }}</strong>
+              <span>{{ $t(item.descriptionKey) }}</span>
             </button>
           </div>
           <button class="profile__persona-save" :disabled="personaSaving" type="button" @click="savePersona">

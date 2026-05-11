@@ -253,6 +253,18 @@ export default {
       esim: '推荐eSIM',
       sim: '推荐USIM',
     },
+    persona: {
+      main100: '纯景点路线',
+      main100Desc: '完全以著名景点为主',
+      main70: '以景点为主',
+      main70Desc: '以景点为主，加入本地特色',
+      balanced: '均衡探索',
+      balancedDesc: '景点与本地特色均衡',
+      local70: '以本地为主',
+      local70Desc: '以本地特色为主，加入景点',
+      local100: '纯本地路线',
+      local100Desc: '完全以本地特色为主',
+    },
   },
   attraction: {
     loading: '加载中...',

@@ -253,6 +253,18 @@ export default {
       esim: 'eSIM Recommended',
       sim: 'USIM Recommended',
     },
+    persona: {
+      main100: 'Landmarks Only',
+      main100Desc: 'Famous landmarks focus',
+      main70: 'Mostly Landmarks',
+      main70Desc: 'Mostly landmarks, a touch of local',
+      balanced: 'Balanced Explorer',
+      balancedDesc: 'Mix of landmarks & local',
+      local70: 'Mostly Local',
+      local70Desc: 'Mostly local, a touch of landmarks',
+      local100: 'Local Deep Dive',
+      local100Desc: 'Local spots only',
+    },
   },
   attraction: {
     loading: 'Loading...',

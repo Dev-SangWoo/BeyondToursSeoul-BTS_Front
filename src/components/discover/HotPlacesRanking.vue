@@ -2,8 +2,9 @@
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { fetchCongestions } from '@/services/congestionService';
+import { translateAreaName } from '@/constants/areaNameMap';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 // ── 권역별 대표 이미지 (Unsplash) ────────────────────────────────────────
 const ZONE_IMAGES = {
@@ -194,14 +195,14 @@ onMounted(async () => {
         class="hot-rank-item"
       >
         <div class="hot-rank-item__thumb-wrap">
-          <img class="hot-rank-item__thumb" :src="place.image" :alt="place.name" />
+          <img class="hot-rank-item__thumb" :src="place.image" :alt="translateAreaName(place.name, locale)" />
           <span class="hot-rank-item__badge">{{ place.id }}</span>
           <span
             class="hot-rank-item__cong-badge"
             :style="{ background: CONGESTION_COLOR[place.congestionLevel] }"
           >{{ congestionLabel(place.congestionLevel) }}</span>
         </div>
-        <p class="hot-rank-item__name">{{ place.name }}</p>
+        <p class="hot-rank-item__name">{{ translateAreaName(place.name, locale) }}</p>
       </article>
     </div>
   </section>
