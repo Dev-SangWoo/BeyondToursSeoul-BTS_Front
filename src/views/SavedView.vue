@@ -1,13 +1,16 @@
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { CalendarDays, Heart, MapPin, Sparkles } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useServerSavedAttractionsStore } from '@/stores/useServerSavedAttractionsStore'
 import { useServerSavedEventsStore } from '@/stores/useServerSavedEventsStore'
 import { fetchSavedPlans } from '@/services/savedPlansService'
 import { fetchSavedTourCourses } from '@/services/tourCourseService'
+import { getApiLangCode } from '@/i18n'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const serverAttractions = useServerSavedAttractionsStore()
 const serverEvents = useServerSavedEventsStore()
@@ -16,12 +19,12 @@ const router = useRouter()
 /** 서버 저장 AI 일정 */
 const activeTab = ref('plan')
 
-const tabs = [
-  { id: 'plan', label: '내 일정', hint: 'AI·계정' },
-  { id: 'home_course', label: '추천 코스', hint: 'tour_courses' },
-  { id: 'place', label: '관광지', hint: '찜·계정' },
-  { id: 'event', label: '행사', hint: '' },
-]
+const tabs = computed(() => [
+  { id: 'plan', label: t('saved.tabs.plan') },
+  { id: 'home_course', label: t('saved.tabs.homeCourse') },
+  { id: 'place', label: t('saved.tabs.place') },
+  { id: 'event', label: t('saved.tabs.event') },
+])
 
 const savedPlansRemote = ref([])
 const savedPlansLoading = ref(false)
@@ -48,7 +51,7 @@ async function loadSavedTourCourses() {
   }
   savedTourCoursesLoading.value = true
   try {
-    savedTourCourses.value = await fetchSavedTourCourses('KOR', authStore.accessToken)
+    savedTourCourses.value = await fetchSavedTourCourses(getApiLangCode(), authStore.accessToken)
   } catch (e) {
     savedTourCourses.value = []
     savedTourCoursesError.value = e?.message || String(e)
@@ -129,34 +132,34 @@ function openSavedPlan(planId) {
 <template>
   <div class="saved">
     <header class="saved__header">
-      <h1>저장함</h1>
-      <p>내 일정·추천 코스·관광지·행사까지 계정(DB)에 저장됩니다.</p>
+      <h1>{{ $t('saved.title') }}</h1>
+      <p>{{ $t('saved.headerDesc') }}</p>
     </header>
 
     <section class="saved__summary">
       <div class="saved__summary-item saved__summary-item--accent">
         <Sparkles :size="16" :stroke-width="2.2" />
-        <span>내 일정 {{ authStore.isAuthenticated ? savedPlansRemote.length : '—' }}개</span>
-        <span class="saved__summary-badge">서버</span>
+        <span>{{ authStore.isAuthenticated ? $t('saved.summaryMyPlans', { n: savedPlansRemote.length }) : $t('saved.tabs.plan') }}</span>
+        <span class="saved__summary-badge">{{ $t('saved.summaryServer') }}</span>
       </div>
       <div class="saved__summary-item">
         <Heart :size="16" :stroke-width="2.2" />
-        <span>추천 코스 찜 {{ authStore.isAuthenticated ? savedTourCourses.length : '—' }}개</span>
-        <span class="saved__summary-badge">서버</span>
+        <span>{{ authStore.isAuthenticated ? $t('saved.summaryCourseSaved', { n: savedTourCourses.length }) : $t('saved.tabs.homeCourse') }}</span>
+        <span class="saved__summary-badge">{{ $t('saved.summaryServer') }}</span>
       </div>
       <div class="saved__summary-item">
         <MapPin :size="16" :stroke-width="2.2" />
-        <span>찜한 관광지 {{ authStore.isAuthenticated ? serverAttractions.items.length : '—' }}개</span>
-        <span class="saved__summary-badge">서버</span>
+        <span>{{ authStore.isAuthenticated ? $t('saved.summarySavedAttractions', { n: serverAttractions.items.length }) : $t('saved.tabs.place') }}</span>
+        <span class="saved__summary-badge">{{ $t('saved.summaryServer') }}</span>
       </div>
       <div class="saved__summary-item">
         <CalendarDays :size="16" :stroke-width="2.2" />
-        <span>저장한 행사 {{ authStore.isAuthenticated ? serverEvents.items.length : '—' }}개</span>
-        <span class="saved__summary-badge">서버</span>
+        <span>{{ authStore.isAuthenticated ? $t('saved.summarySavedEvents', { n: serverEvents.items.length }) : $t('saved.tabs.event') }}</span>
+        <span class="saved__summary-badge">{{ $t('saved.summaryServer') }}</span>
       </div>
     </section>
 
-    <section class="saved__tabs" role="tablist" aria-label="저장함 구분">
+    <section class="saved__tabs" role="tablist" :aria-label="$t('saved.title')">
       <button
         v-for="tab in tabs"
         :key="tab.id"
@@ -168,7 +171,6 @@ function openSavedPlan(planId) {
         @click="activeTab = tab.id"
       >
         <span class="saved__tab-label">{{ tab.label }}</span>
-        <span v-if="tab.hint" class="saved__tab-hint">{{ tab.hint }}</span>
       </button>
     </section>
 
@@ -176,11 +178,11 @@ function openSavedPlan(planId) {
       <!-- 내 일정: 서버 user_saved_plans -->
       <template v-if="activeTab === 'plan'">
         <div v-if="!authStore.isAuthenticated" class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">로그인이 필요해요</h2>
-          <p class="saved-card__route">AI로 만든 일정은 계정에 저장되며, 여기서 모아볼 수 있어요.</p>
+          <h2 class="saved-card__title">{{ $t('saved.needLogin') }}</h2>
+          <p class="saved-card__route">{{ $t('saved.planNeedLoginDesc') }}</p>
         </div>
         <div v-else-if="savedPlansLoading" class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">불러오는 중…</h2>
+          <h2 class="saved-card__title">{{ $t('saved.loading') }}</h2>
         </div>
         <p v-else-if="savedPlansError" class="saved-card saved-card--error">
           {{ savedPlansError }}
@@ -193,31 +195,31 @@ function openSavedPlan(planId) {
           >
             <div class="saved-card__plan-head">
               <Sparkles :size="18" :stroke-width="2.2" class="saved-card__plan-icon" aria-hidden="true" />
-              <h2 class="saved-card__title">{{ p.title || '저장 일정' }}</h2>
+              <h2 class="saved-card__title">{{ p.title || $t('saved.planFallbackTitle') }}</h2>
             </div>
             <p v-if="formatSavedPlanDate(p.savedAt)" class="saved-card__route">
               <CalendarDays :size="14" :stroke-width="2.2" />
-              <span>저장 {{ formatSavedPlanDate(p.savedAt) }}</span>
+              <span>{{ $t('saved.savedAtPrefix') }} {{ formatSavedPlanDate(p.savedAt) }}</span>
             </p>
             <button type="button" class="saved-card__cta" @click="openSavedPlan(p.id)">
-              일정 보기
+              {{ $t('saved.viewPlan') }}
             </button>
           </article>
         </template>
         <article v-else class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">아직 내 일정이 없어요</h2>
-          <p class="saved-card__route">AI 일정 결과 화면에서 「코스 저장」으로 추가해 보세요.</p>
+          <h2 class="saved-card__title">{{ $t('saved.emptyPlan') }}</h2>
+          <p class="saved-card__route">{{ $t('saved.emptyPlanHint') }}</p>
         </article>
       </template>
 
       <!-- 공식 추천 코스 찜: user_saved_courses → tour_courses -->
       <template v-else-if="activeTab === 'home_course'">
         <div v-if="!authStore.isAuthenticated" class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">로그인이 필요해요</h2>
-          <p class="saved-card__route">디스커버의 「추천 여행 코스」 찜은 user_saved_courses에 저장됩니다.</p>
+          <h2 class="saved-card__title">{{ $t('saved.needLogin') }}</h2>
+          <p class="saved-card__route">{{ $t('saved.courseNeedLoginDesc') }}</p>
         </div>
         <div v-else-if="savedTourCoursesLoading" class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">불러오는 중…</h2>
+          <h2 class="saved-card__title">{{ $t('saved.loading') }}</h2>
         </div>
         <p v-else-if="savedTourCoursesError" class="saved-card saved-card--error">
           {{ savedTourCoursesError }}
@@ -228,7 +230,7 @@ function openSavedPlan(planId) {
             :key="item.id"
             class="saved-card"
           >
-            <h2 class="saved-card__title">{{ item.title || '추천 코스' }}</h2>
+            <h2 class="saved-card__title">{{ item.title || $t('saved.tabs.homeCourse') }}</h2>
             <p v-if="item.hashtags" class="saved-card__route">
               <Heart :size="14" :stroke-width="2.2" />
               <span>{{ item.hashtags }}</span>
@@ -243,19 +245,19 @@ function openSavedPlan(planId) {
           </article>
         </template>
         <article v-else class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">찜한 추천 코스가 없어요</h2>
-          <p class="saved-card__route">디스커버에서 「추천 여행 코스」 카드의 하트를 눌러 보세요.</p>
+          <h2 class="saved-card__title">{{ $t('saved.emptyCourse') }}</h2>
+          <p class="saved-card__route">{{ $t('saved.emptyCourseHint') }}</p>
         </article>
       </template>
 
       <!-- 관광지: 서버 user_saved_attractions -->
       <template v-else-if="activeTab === 'place'">
         <div v-if="!authStore.isAuthenticated" class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">로그인이 필요해요</h2>
-          <p class="saved-card__route">관광지 상세에서 하트(찜)를 누르면 계정에 저장됩니다.</p>
+          <h2 class="saved-card__title">{{ $t('saved.needLogin') }}</h2>
+          <p class="saved-card__route">{{ $t('saved.attractionNeedLoginDesc') }}</p>
         </div>
         <div v-else-if="serverAttractions.loading" class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">불러오는 중…</h2>
+          <h2 class="saved-card__title">{{ $t('saved.loading') }}</h2>
         </div>
         <template v-else-if="serverAttractions.items.length">
           <article
@@ -274,7 +276,7 @@ function openSavedPlan(planId) {
                   <span>{{ a.address }}</span>
                 </p>
                 <p v-if="formatSavedPlanDate(a.savedAt)" class="saved-card__muted">
-                  저장 {{ formatSavedPlanDate(a.savedAt) }}
+                  {{ $t('saved.savedAtPrefix') }} {{ formatSavedPlanDate(a.savedAt) }}
                 </p>
               </div>
             </div>
@@ -283,32 +285,32 @@ function openSavedPlan(planId) {
               class="saved-card__cta saved-card__cta--secondary"
               @click="router.push({ name: 'attraction-detail', params: { id: String(a.id) } })"
             >
-              상세 보기
+              {{ $t('saved.viewDetail') }}
             </button>
           </article>
         </template>
         <article v-else class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">찜한 관광지가 없어요</h2>
-          <p class="saved-card__route">관광지 상세 화면에서 하트를 눌러 저장해 보세요.</p>
+          <h2 class="saved-card__title">{{ $t('saved.emptyAttraction') }}</h2>
+          <p class="saved-card__route">{{ $t('saved.emptyAttractionHint') }}</p>
         </article>
       </template>
 
       <!-- 행사: 서버 user_saved_events -->
       <template v-else-if="activeTab === 'event'">
         <div v-if="!authStore.isAuthenticated" class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">로그인이 필요해요</h2>
-          <p class="saved-card__route">행사 상세에서 하트(저장)를 누르면 계정에 저장됩니다.</p>
+          <h2 class="saved-card__title">{{ $t('saved.needLogin') }}</h2>
+          <p class="saved-card__route">{{ $t('saved.eventNeedLoginDesc') }}</p>
         </div>
         <div v-else-if="serverEvents.loading" class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">불러오는 중…</h2>
+          <h2 class="saved-card__title">{{ $t('saved.loading') }}</h2>
         </div>
         <article v-else v-for="item in activeItems" :key="item.contentId" class="saved-card">
           <h2 class="saved-card__title">
-            {{ item.title || '행사' }}
+            {{ item.title || $t('saved.eventFallbackTitle') }}
           </h2>
           <p class="saved-card__route">
             <CalendarDays :size="14" :stroke-width="2.2" />
-            <span>{{ item.eventStartDate && item.eventEndDate ? `${item.eventStartDate} ~ ${item.eventEndDate}` : '기간 정보 없음' }}</span>
+            <span>{{ item.eventStartDate && item.eventEndDate ? `${item.eventStartDate} ~ ${item.eventEndDate}` : $t('saved.noPeriod') }}</span>
           </p>
           <p v-if="item.address" class="saved-card__route">
             <MapPin :size="14" :stroke-width="2.2" />
@@ -319,13 +321,13 @@ function openSavedPlan(planId) {
             class="saved-card__cta saved-card__cta--secondary"
             @click="router.push({ name: 'event-detail', params: { id: String(item.contentId) } })"
           >
-            상세 보기
+            {{ $t('saved.viewDetail') }}
           </button>
         </article>
 
         <article v-if="authStore.isAuthenticated && !serverEvents.loading && !activeItems.length" class="saved-card saved-card--empty">
-          <h2 class="saved-card__title">아직 저장된 행사가 없어요</h2>
-          <p class="saved-card__route">행사 상세에서 하트를 눌러 저장해 보세요.</p>
+          <h2 class="saved-card__title">{{ $t('saved.emptyEvent') }}</h2>
+          <p class="saved-card__route">{{ $t('saved.emptyEventHint') }}</p>
         </article>
       </template>
     </section>

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { translateAreaName } from '@/constants/areaNameMap';
 import { IsIcon } from '@ratoufa/iconsax-vue';
 import { useMapStore } from '@/stores/useMapStore';
 import { fetchAttractions, fetchLockers } from '@/services/attractionService';
@@ -9,7 +10,7 @@ import MapView from '@/components/map/MapView.vue';
 import AttractionDetailView from '@/views/AttractionDetailView.vue';
 import LockerDetailView from '@/views/LockerDetailView.vue';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const mapStore = useMapStore();
 
 // ── GPS ──────────────────────────────────────────────────────────────
@@ -189,10 +190,7 @@ const lockerSheetId = computed(() => {
 });
 
 function getCongestionText(level) {
-  if (level === 4) return '매우 붐빔';
-  if (level === 3) return '약간 붐빔';
-  if (level === 2) return '보통';
-  return '여유';
+  return t(`map.congestion.shortLabel.${level}`) || t('map.congestion.shortLabel.1');
 }
 
 function getCongestionClass(level) {
@@ -318,19 +316,19 @@ function fetchCurrentLocation() {
       >
         <div class="congestion-legend-item">
           <span class="congestion-dot congestion-dot--1"></span>
-          <span class="congestion-label">여유</span>
+          <span class="congestion-label">{{ $t('map.congestion.shortLabel.1') }}</span>
         </div>
         <div class="congestion-legend-item">
           <span class="congestion-dot congestion-dot--2"></span>
-          <span class="congestion-label">보통</span>
+          <span class="congestion-label">{{ $t('map.congestion.shortLabel.2') }}</span>
         </div>
         <div class="congestion-legend-item">
           <span class="congestion-dot congestion-dot--3"></span>
-          <span class="congestion-label">붐빔</span>
+          <span class="congestion-label">{{ $t('map.congestion.shortLabel.3') }}</span>
         </div>
         <div class="congestion-legend-item">
           <span class="congestion-dot congestion-dot--4"></span>
-          <span class="congestion-label">매우붐빔</span>
+          <span class="congestion-label">{{ $t('map.congestion.shortLabel.4') }}</span>
         </div>
         <div class="congestion-legend-right">
           <div class="congestion-legend-info">
@@ -418,7 +416,7 @@ function fetchCurrentLocation() {
         >
           <div class="congestion-modal">
             <header class="congestion-modal__header">
-              <h3 class="congestion-modal__title">실시간 혼잡도 안내</h3>
+              <h3 class="congestion-modal__title">{{ $t('map.congestion.modalTitle') }}</h3>
               <button
                 class="congestion-modal__close"
                 @click="showCongestionInfo = false"
@@ -427,45 +425,16 @@ function fetchCurrentLocation() {
               </button>
             </header>
             <div class="congestion-modal__body">
-              <div class="congestion-info-row">
-                <span class="congestion-dot congestion-dot--1"></span>
+              <div v-for="level in [1, 2, 3, 4]" :key="level" class="congestion-info-row">
+                <span class="congestion-dot" :class="`congestion-dot--${level}`"></span>
                 <div class="congestion-info-text">
-                  <p class="congestion-info-name">여유</p>
-                  <p class="congestion-info-desc">
-                    사람이 적어 쾌적하게 이동하고 구경할 수 있어요.
-                  </p>
-                </div>
-              </div>
-              <div class="congestion-info-row">
-                <span class="congestion-dot congestion-dot--2"></span>
-                <div class="congestion-info-text">
-                  <p class="congestion-info-name">보통</p>
-                  <p class="congestion-info-desc">
-                    적당한 인파가 있어요. 일상적인 활동이 가능해요.
-                  </p>
-                </div>
-              </div>
-              <div class="congestion-info-row">
-                <span class="congestion-dot congestion-dot--3"></span>
-                <div class="congestion-info-text">
-                  <p class="congestion-info-name">약간 붐빔</p>
-                  <p class="congestion-info-desc">
-                    사람이 다소 많아 활기차지만, 조금 복잡할 수 있어요.
-                  </p>
-                </div>
-              </div>
-              <div class="congestion-info-row">
-                <span class="congestion-dot congestion-dot--4"></span>
-                <div class="congestion-info-text">
-                  <p class="congestion-info-name">매우 붐빔</p>
-                  <p class="congestion-info-desc">
-                    인파가 매우 많아 혼잡해요. 안전에 유의하세요!
-                  </p>
+                  <p class="congestion-info-name">{{ $t(`map.congestion.shortLabel.${level}`) }}</p>
+                  <p class="congestion-info-desc">{{ $t(`map.congestion.levelDesc.${level}`) }}</p>
                 </div>
               </div>
             </div>
             <p class="congestion-modal__footer">
-              ※ 데이터 제공: 서울시 실시간 인구 데이터
+              {{ $t('map.congestion.dataSource') }}
             </p>
           </div>
         </div>
@@ -488,7 +457,7 @@ function fetchCurrentLocation() {
             <header class="zone-detail__header">
               <div class="zone-detail__title-row">
                 <h2 class="zone-detail__title">
-                  {{ selectedZone.area_name }} 권역
+                  {{ $t('map.congestion.zoneRegion', { name: translateAreaName(selectedZone.area_name, locale) }) }}
                 </h2>
                 <span
                   class="congestion-badge"
@@ -498,26 +467,23 @@ function fetchCurrentLocation() {
                 </span>
               </div>
               <p class="zone-detail__time">
-                {{ selectedZone.population_time }} 기준
+                {{ $t('map.congestion.zoneTimeLabel', { time: selectedZone.population_time }) }}
               </p>
             </header>
             <div class="zone-detail__body">
-              <h3 class="zone-detail__section-title">포함된 주요 지역</h3>
+              <h3 class="zone-detail__section-title">{{ $t('map.congestion.zoneAreaTitle') }}</h3>
               <div class="zone-detail__tags">
                 <span
                   v-for="area in selectedZone.sub_areas"
                   :key="area"
                   class="zone-area-tag"
                 >
-                  #{{ area }}
+                  #{{ translateAreaName(area, locale) }}
                 </span>
               </div>
               <div class="zone-detail__info-card">
                 <IsIcon name="info-circle" :size="16" />
-                <p>
-                  해당 권역 내 여러 장소의 실시간 인구 데이터를 종합하여 산출한
-                  평균 혼잡도입니다.
-                </p>
+                <p>{{ $t('map.congestion.zoneInfoDesc') }}</p>
               </div>
             </div>
           </div>

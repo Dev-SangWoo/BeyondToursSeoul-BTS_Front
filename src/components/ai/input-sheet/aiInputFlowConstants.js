@@ -59,32 +59,32 @@ export const simOptions = [
 export const personaOptions = [
   {
     id: 'main100',
-    label: '명소 올인',
-    description: '유명 관광지 완전 위주',
+    labelKey: 'ai.persona.main100',
+    descriptionKey: 'ai.persona.main100Desc',
     localDensity: 0,
   },
   {
     id: 'main70',
-    label: '명소 중심 + 로컬 한 스푼',
-    description: '관광지 중심, 로컬 가미',
+    labelKey: 'ai.persona.main70',
+    descriptionKey: 'ai.persona.main70Desc',
     localDensity: 25,
   },
   {
     id: 'balanced',
-    label: '밸런스 탐험',
-    description: '관광지와 로컬 균형',
+    labelKey: 'ai.persona.balanced',
+    descriptionKey: 'ai.persona.balancedDesc',
     localDensity: 50,
   },
   {
     id: 'local70',
-    label: '로컬 중심 + 명소 한 스푼',
-    description: '로컬 핀 중심, 관광지 가미',
+    labelKey: 'ai.persona.local70',
+    descriptionKey: 'ai.persona.local70Desc',
     localDensity: 75,
   },
   {
     id: 'local100',
-    label: '로컬 딥다이브',
-    description: '완전 로컬 핀 위주',
+    labelKey: 'ai.persona.local100',
+    descriptionKey: 'ai.persona.local100Desc',
     localDensity: 100,
   },
 ]

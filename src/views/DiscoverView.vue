@@ -23,10 +23,11 @@ import {
   fetchTourCourses,
   toggleTourCourseSave,
 } from '@/services/tourCourseService';
+import { getApiLangCode } from '@/i18n';
 import earthImage from '../../asset/earth.png';
 import airplaneImage from '../../asset/airplane.png';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
@@ -136,109 +137,6 @@ function applyInitialDensityFromPersona() {
   courseDensityIndex.value = personaDensityIndexMap[pref];
 }
 
-const densityCourseMap = {
-  local0: [
-    {
-      id: 'm1',
-      title: '서울 핵심 랜드마크 1일',
-      route: '경복궁 → 북촌 → 명동 → 남산타워',
-      tags: ['랜드마크', '사진', '첫 서울'],
-    },
-    {
-      id: 'm2',
-      title: '궁궐·한강 클래식 코스',
-      route: '창덕궁 → 인사동 → 광화문 → 여의도 한강',
-      tags: ['전통', '도심', '야경'],
-    },
-    {
-      id: 'm3',
-      title: '서울 하이라이트 2일',
-      route: 'DDP → 청계천 → 홍대 → 잠실 롯데월드타워',
-      tags: ['핫플', '쇼핑', '전망'],
-    },
-  ],
-  'local1-30': [
-    {
-      id: 'g1',
-      title: '관광지+로컬 골목 혼합 1일',
-      route: '경복궁 → 통인시장 → 서촌 카페거리',
-      tags: ['관광', '로컬', '미식'],
-    },
-    {
-      id: 'g2',
-      title: '한강 감성 데이',
-      route: '남산 → 망원한강공원 → 망원시장',
-      tags: ['산책', '시장', '감성'],
-    },
-    {
-      id: 'g3',
-      title: '도심+동네 탐방',
-      route: '명동 → 을지로 골목 → 충무로',
-      tags: ['도심', '카페', '로컬바'],
-    },
-  ],
-  'local31-50': [
-    {
-      id: 'b1',
-      title: '서울 밸런스 베스트',
-      route: '북촌 → 익선동 → 성수 팝업',
-      tags: ['균형', '핫플', '로컬'],
-    },
-    {
-      id: 'b2',
-      title: '문화·로컬 믹스 코스',
-      route: '국립중앙박물관 → 용산 → 한남',
-      tags: ['문화', '트렌디', '미식'],
-    },
-    {
-      id: 'b3',
-      title: '낮밤 완성 코스',
-      route: '인사동 → 을지로 → 한강 야경',
-      tags: ['전통', '힙지로', '야경'],
-    },
-  ],
-  'local51-70': [
-    {
-      id: 'l1',
-      title: '동네 바이브 투어',
-      route: '망원 → 연남 → 연희동',
-      tags: ['동네', '카페', '산책'],
-    },
-    {
-      id: 'l2',
-      title: '로컬 마켓 데이',
-      route: '경동시장 → 청량리 → 회기',
-      tags: ['시장', '현지식', '가성비'],
-    },
-    {
-      id: 'l3',
-      title: '서울 골목 깊게보기',
-      route: '서촌 골목 → 부암동 → 평창동',
-      tags: ['골목', '조용함', '뷰'],
-    },
-  ],
-  'local71-100': [
-    {
-      id: 'p1',
-      title: '찐로컬 하루 코스',
-      route: '응암 → 불광천 → 연신내',
-      tags: ['찐로컬', '산책', '먹거리'],
-    },
-    {
-      id: 'p2',
-      title: '서울 외곽 감성 루트',
-      route: '우이동 → 수유 → 미아',
-      tags: ['로컬', '힐링', '저밀도'],
-    },
-    {
-      id: 'p3',
-      title: '로컬 라이프 체험',
-      route: '장위동 → 석계 → 월계',
-      tags: ['생활권', '숨은맛집', '느긋함'],
-    },
-  ],
-};
-
 const coursePhotoGradients = [
   'linear-gradient(160deg, #2c1810 0%, #4a2c1a 40%, #1a0f08 100%)',
   'linear-gradient(160deg, #0d1f3a 0%, #1a3a5c 40%, #0a1525 100%)',
@@ -284,7 +182,7 @@ async function loadTourCourses() {
   tourCoursesLoading.value = true;
   try {
     tourCourses.value = await fetchTourCourses(
-      'KOR',
+      getApiLangCode(),
       authStore.accessToken || null,
     );
   } catch (e) {
@@ -297,7 +195,7 @@ async function loadTourCourses() {
 
 async function toggleSaveCourse(course) {
   if (!authStore.accessToken) {
-    window.alert?.('로그인 후 찜할 수 있습니다.');
+    window.alert?.(t('discover.alert.loginToFavorite'));
     router.push({ name: 'landing' });
     return;
   }
@@ -309,7 +207,7 @@ async function toggleSaveCourse(course) {
     const row = tourCourses.value.find((c) => c.id === cid);
     if (row) row.isSaved = saved;
   } catch (e) {
-    window.alert?.(e?.message || '저장에 실패했습니다.');
+    window.alert?.(e?.message || t('discover.alert.saveFailed'));
   } finally {
     savingTourCourseId.value = null;
   }
@@ -358,6 +256,10 @@ watch(
     loadTourCourses();
   },
 );
+
+watch(locale, () => {
+  void loadTourCourses();
+});
 
 function openSavedPlan(planId) {
   const sid = planId != null ? String(planId).trim() : '';
@@ -624,11 +526,11 @@ watch(
           class="discover__saved-plans-heading-icon"
         />
         <h3 class="discover__section-title discover__saved-plans-title">
-          내가 저장한 일정
+          {{ $t('discover.mySavedPlans') }}
         </h3>
       </div>
       <div v-if="savedPlansLoading" class="discover__saved-plans-msg">
-        불러오는 중…
+        {{ $t('discover.loadingCourses') }}
       </div>
       <p
         v-else-if="savedPlansError"
@@ -637,7 +539,7 @@ watch(
         {{ savedPlansError }}
       </p>
       <p v-else-if="!savedPlansRemote.length" class="discover__saved-plans-msg">
-        AI로 만든 코스 결과 화면에서 「코스 저장」으로 저장해 보세요.
+        {{ $t('discover.savedPlansEmptyHint') }}
       </p>
       <div
         v-else
@@ -657,27 +559,27 @@ watch(
             aria-hidden="true"
           />
           <p class="discover-saved-plan-card__title">
-            {{ p.title || '저장 일정' }}
+            {{ p.title || $t('discover.savedPlanFallbackTitle') }}
           </p>
           <p
             v-if="formatSavedPlanDate(p.savedAt)"
             class="discover-saved-plan-card__date"
           >
-            저장 {{ formatSavedPlanDate(p.savedAt) }}
+            {{ $t('discover.savedAtPrefix') }} {{ formatSavedPlanDate(p.savedAt) }}
           </p>
-          <span class="discover-saved-plan-card__cta">일정 보기</span>
+          <span class="discover-saved-plan-card__cta">{{ $t('discover.viewSchedule') }}</span>
         </button>
       </div>
     </section>
 
     <!-- ── 공식 추천 코스 (tour_courses) ─────────────────────────────── -->
     <section class="discover__section">
-      <h3 class="discover__section-title">추천 여행 코스</h3>
+      <h3 class="discover__section-title">{{ $t('discover.recommendedCourse') }}</h3>
       <p class="discover__section-sub">
-        서버에 등록된 공식 추천 코스입니다. 하트는 로그인 시 계정에 저장됩니다.
+        {{ $t('discover.officialCoursesHint') }}
       </p>
       <div v-if="tourCoursesLoading" class="discover__tour-courses-msg">
-        코스 불러오는 중…
+        {{ $t('discover.loadingCourses') }}
       </div>
       <p
         v-else-if="tourCoursesError"
@@ -686,7 +588,7 @@ watch(
         {{ tourCoursesError }}
       </p>
       <p v-else-if="!tourCourses.length" class="discover__tour-courses-msg">
-        등록된 추천 코스가 없습니다.
+        {{ $t('discover.noOfficialCourses') }}
       </p>
       <template v-else>
         <div
@@ -709,7 +611,7 @@ watch(
               }"
               type="button"
               :disabled="savingTourCourseId === course.id"
-              :aria-label="isTourCourseSaved(course) ? '저장 해제' : '저장하기'"
+              :aria-label="isTourCourseSaved(course) ? $t('discover.unsaveCourse') : $t('discover.saveCourse')"
               @click.stop="toggleSaveCourse(course)"
             >
               <Heart :size="14" :stroke-width="2.3" />
@@ -738,7 +640,7 @@ watch(
             :key="i"
             class="discover__course-dot"
             :class="{ 'discover__course-dot--active': activeCourseIndex === i }"
-            :aria-label="`${i + 1}번 코스로 이동`"
+            :aria-label="$t('discover.goToCourseNth', { n: i + 1 })"
             @click="scrollToCourse(i)"
           />
         </div>

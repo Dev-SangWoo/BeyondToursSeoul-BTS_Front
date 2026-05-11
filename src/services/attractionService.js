@@ -67,10 +67,10 @@ export async function fetchAttractionsPage(opts = {}) {
  * @returns {Promise<Object>}
  */
 export async function fetchAttractionById(id) {
-  const lang = toTourLang(getCurrentLocale());
-  const res = await fetch(
-    `${BASE_URL}/api/v1/attractions/${id}?lang=${encodeURIComponent(lang)}`,
-  );
+  const locale = getCurrentLocale() || 'ko';
+  const res = await fetch(`${BASE_URL}/api/v1/attractions/${id}`, {
+    headers: { 'Accept-Language': locale },
+  });
   if (!res.ok) throw new Error(`관광지 상세 조회 실패: ${res.status}`);
   return res.json();
 }
