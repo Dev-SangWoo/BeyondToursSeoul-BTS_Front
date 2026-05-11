@@ -53,7 +53,9 @@ watch(
     try {
       attraction.value = await fetchAttractionById(id)
       if (authStore.accessToken) {
-        await serverAttractions.refresh(authStore.accessToken)
+        if (serverAttractions.items.length === 0) {
+          await serverAttractions.refresh(authStore.accessToken)
+        }
         isLiked.value = serverAttractions.isSaved(id)
       }
     } catch (e) {
