@@ -42,51 +42,36 @@ const ZONE_IMAGES = {
   '혜화/대학로': '/placeImages/Daehakro.jpg',
 
   // 마포/용산권
-  '홍대/합정':
-    'https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1200&q=80', 
+  '홍대/합정': '/placeImages/Hongdae.jpg',
 
-  '연남':
-    'https://images.unsplash.com/photo-1498654896293-37aacf113fd9?auto=format&fit=crop&w=1200&q=80', 
+  '연남': '/placeImages/Yeonnam.jpg',
 
-  '신촌/이대':
-    'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80',
+  '신촌/이대': '/placeImages/Sinchon.jpg',
 
-  '상암/DMC':
-    'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80', 
+  '상암/DMC': '/placeImages/Sangam.jpg',
 
-  '이태원/한남':
-    'https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=1200&q=80',
+  '이태원/한남': '/placeImages/Itaewon.jpg',
 
-  '용산':
-    'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=1200&q=80',
+  '용산': '/placeImages/Yongsan.jpg',
 
-  '여의도':
-    'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?auto=format&fit=crop&w=1200&q=80', 
+  '여의도': '/placeImages/Yeouido.jpg',
 
-  '노량진/동작':
-    'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80',
+  '노량진/동작': '/placeImages/Noryangjin.jpg',
 
   // 동남권
-  '잠실':
-    'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=1200&q=80', 
+  '잠실': '/placeImages/Jamsil.jpg',
 
-  '가락/장지':
-    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
+  '가락/장지': '/placeImages/Garak.jpg',
 
-  '강동/천호':
-    'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1200&q=80',
+  '강동/천호': '/placeImages/Gangdong.jpg',
 
-  '성수/서울숲':
-    'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1200&q=80',
+  '성수/서울숲': '/placeImages/Seongsu.jpg',
 
-  '건대입구':
-    'https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80',
+  '건대입구': '/placeImages/Konkuk.jpg',
 
-  '광진/군자':
-    'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80',
+  '광진/군자': '/placeImages/Gwangjin.jpg',
 
-  '왕십리':
-    'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80',
+  '왕십리': '/placeImages/Wangsimni.jpg',
 
   // 서남권
   '영등포/신도림':
