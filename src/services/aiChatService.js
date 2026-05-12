@@ -7,6 +7,19 @@ const AI_CHAT_BASE_URL =
   'http://localhost:8080'
 const AI_CHAT_TIMEOUT_MS = 30_000
 
+/** 백엔드 application.yml 기본(prompt-max-history-*)과 맞춤 → HTTP 본문·Groq TPM 절약 */
+const MAX_AI_CHAT_HISTORY_MESSAGES = 6
+const MAX_AI_CHAT_HISTORY_CONTENT_CHARS = 380
+/** 현재 턴 메시지 상한(백엔드 prompt-max-user-chars 기본 2600 근처로 정렬) */
+const MAX_AI_CHAT_MESSAGE_CHARS = 2800
+
+function clipUtf16Chars(s, maxLen) {
+  const t = String(s ?? '')
+  if (t.length <= maxLen) return t
+  if (maxLen <= 1) return '…'
+  return `${t.slice(0, maxLen - 1)}…`
+}
+
 /**
  * POST /api/v1/ai/chat 성공 본문 형태 (백엔드 Groq 파싱 결과).
  * @typedef {object} AiChatResponse
@@ -106,30 +119,86 @@ export function toChatHistoryPayload(items) {
     .filter((m) => m.content.length > 0)
 }
 
+/** API history — 문자열 role/content만 보낸다. */
+function sanitizeAiChatHistory(history) {
+  if (!Array.isArray(history)) return []
+  const out = []
+  for (const h of history) {
+    if (!h || typeof h !== 'object') continue
+    const role = String(h.role ?? '').trim().toLowerCase()
+    const content = clipUtf16Chars(String(h.content ?? '').trim(), MAX_AI_CHAT_HISTORY_CONTENT_CHARS)
+    if (!content || (role !== 'user' && role !== 'assistant')) continue
+    out.push({ role, content })
+  }
+  if (out.length <= MAX_AI_CHAT_HISTORY_MESSAGES) return out
+  return out.slice(-MAX_AI_CHAT_HISTORY_MESSAGES)
+}
+
+/** Long 배열용: 소수 JSON은 Jackson 역직렬화 400 → 양의 정수만 */
+function sanitizePositiveLongIds(ids) {
+  if (!Array.isArray(ids)) return []
+  return ids
+    .map((x) => Number(x))
+    .filter((n) => Number.isFinite(n) && Number.isInteger(n) && n > 0)
+}
+
 /**
  * @param {string} message - 이번 턴 사용자 메시지
  * @param {string} [language]
  * @param {Array<{ role: 'user' | 'assistant', content: string }>} [history] - message 이전 대화
  * @param {number} [localRatio] - 로컬 선호도 0(관광지)~100(로컬), 기본값 50
+ * @param {object} [options]
+ * @param {string|null} [options.accessToken] - 있으면 Bearer로 전달(저장 항목 검증·반영)
+ * @param {number[]} [options.savedAttractionIds]
+ * @param {number[]} [options.savedCourseIds]
  */
-export async function requestAiChat(message, language = 'ko', history = [], localRatio = 50) {
+export async function requestAiChat(message, language = 'ko', history = [], localRatio = 50, options = {}) {
+  const {
+    accessToken = null,
+    savedAttractionIds = [],
+    savedCourseIds = [],
+  } = options || {}
+
+  const msg = clipUtf16Chars(String(message ?? '').trim(), MAX_AI_CHAT_MESSAGE_CHARS)
+  if (!msg) {
+    throw new Error('AI 챗 메시지가 비어 있습니다.')
+  }
+
+  const body = {
+    message: msg,
+    language: String(language ?? 'ko').trim().slice(0, 12) || 'ko',
+    history: sanitizeAiChatHistory(history),
+    localRatio: Math.max(0, Math.min(100, Math.round(Number(localRatio)) || 50)),
+  }
+  const idsA = sanitizePositiveLongIds(savedAttractionIds)
+  const idsC = sanitizePositiveLongIds(savedCourseIds)
+  if (idsA.length) body.savedAttractionIds = idsA
+  if (idsC.length) body.savedCourseIds = idsC
+
+  const headers = {
+    'Content-Type': 'application/json',
+  }
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`
+  }
+
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), AI_CHAT_TIMEOUT_MS)
+
+  let bodyJson
+  try {
+    bodyJson = JSON.stringify(body)
+  } catch {
+    throw new Error('AI 요청 본문을 직렬화할 수 없습니다.')
+  }
 
   let res
   try {
     res = await fetch(`${AI_CHAT_BASE_URL}/api/v1/ai/chat`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       signal: controller.signal,
-      body: JSON.stringify({
-        message,
-        language,
-        history: Array.isArray(history) ? history : [],
-        localRatio: Math.max(0, Math.min(100, Number(localRatio) || 50)),
-      }),
+      body: bodyJson,
     })
   } catch (e) {
     if (e?.name === 'AbortError') {
@@ -149,7 +218,15 @@ export async function requestAiChat(message, language = 'ko', history = [], loca
   }
 
   if (!res.ok) {
-    throw new Error(data?.message || 'AI 챗 응답을 가져오지 못했습니다.')
+    const fromJson =
+      typeof data?.message === 'string' && data.message.trim()
+        ? data.message.trim()
+        : ''
+    const fallback =
+      text && text.length < 1200 && !text.trimStart().startsWith('<')
+        ? text.trim()
+        : ''
+    throw new Error(fromJson || fallback || `AI 챗 요청 실패 (${res.status})`)
   }
 
   const normalized = normalizeAiChatResponse(data)
