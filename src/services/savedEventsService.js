@@ -1,9 +1,23 @@
 import { createAuthExpiredError } from "@/utils/authFlow"
+import { getCurrentLocale } from '@/i18n'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL
 
+/** 관광지 저장 목록과 동일한 Accept-Language (ko/en/ja/zh) */
+function acceptLanguageForSavedEventsApi() {
+  const raw = String(getCurrentLocale() ?? 'ko').trim().toLowerCase()
+  if (raw.startsWith('ko')) return 'ko'
+  if (raw.startsWith('en')) return 'en'
+  if (raw.startsWith('ja')) return 'ja'
+  if (raw.startsWith('zh')) return 'zh'
+  return 'ko'
+}
+
 function authHeaders(accessToken) {
-  const h = { Accept: 'application/json' }
+  const h = {
+    Accept: 'application/json',
+    'Accept-Language': acceptLanguageForSavedEventsApi(),
+  }
   if (accessToken) {
     h.Authorization = `Bearer ${accessToken}`
   }

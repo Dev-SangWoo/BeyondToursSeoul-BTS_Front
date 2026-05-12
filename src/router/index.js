@@ -11,6 +11,7 @@ import AuthCallbackView from '@/views/AuthCallbackView.vue'
 import AttractionDetailView from '@/views/AttractionDetailView.vue'
 import LockerDetailView from '@/views/LockerDetailView.vue'
 import EventDetailView from '@/views/EventDetailView.vue'
+import TourCourseDetailView from '@/views/TourCourseDetailView.vue'
 import { clearAiSheetSession, isAiDetailPath } from '@/utils/aiSheetSession'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { buildLoginLocation } from '@/utils/authFlow'
@@ -30,12 +31,13 @@ const router = createRouter({
     { path: '/attractions/:id', name: 'attraction-detail', component: AttractionDetailView },
     { path: '/lockers/:id', name: 'locker-detail', component: LockerDetailView },
     { path: '/events/:id', name: 'event-detail', component: EventDetailView },
+    { path: '/courses/:id', name: 'tour-course-detail', component: TourCourseDetailView },
   ],
 })
 
 router.beforeEach(async (to, from) => {
   const authStore = useAuthStore()
-  const requiresAuth = ['discover', 'ai', 'result', 'map', 'saved', 'profile', 'profile-setup'].includes(String(to.name || ''))
+  const requiresAuth = ['discover', 'ai', 'result', 'map', 'saved', 'profile', 'profile-setup', 'tour-course-detail'].includes(String(to.name || ''))
 
   if (requiresAuth && !authStore.isAuthenticated) {
     return buildLoginLocation(to.fullPath)

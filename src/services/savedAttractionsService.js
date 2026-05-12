@@ -1,9 +1,23 @@
 import { createAuthExpiredError } from "@/utils/authFlow"
+import { getCurrentLocale } from '@/i18n'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL
 
+/** 관광지·저장 목록 API와 동일한 Accept-Language (ko/en/ja/zh) */
+function acceptLanguageForAttractionApi() {
+  const raw = String(getCurrentLocale() ?? 'ko').trim().toLowerCase()
+  if (raw.startsWith('ko')) return 'ko'
+  if (raw.startsWith('en')) return 'en'
+  if (raw.startsWith('ja')) return 'ja'
+  if (raw.startsWith('zh')) return 'zh'
+  return 'ko'
+}
+
 function authHeaders(accessToken) {
-  const h = { Accept: 'application/json' }
+  const h = {
+    Accept: 'application/json',
+    'Accept-Language': acceptLanguageForAttractionApi(),
+  }
   if (accessToken) {
     h.Authorization = `Bearer ${accessToken}`
   }
@@ -16,7 +30,8 @@ function authHeaders(accessToken) {
  */
 export async function fetchSavedAttractions(accessToken) {
   if (!accessToken) throw new Error('로그인이 필요합니다.')
-  const res = await fetch(`${BASE_URL}/api/v1/me/saved/attractions`, {
+  const url = `${BASE_URL}/api/v1/me/saved/attractions?_t=${Date.now()}`
+  const res = await fetch(url, {
     headers: authHeaders(accessToken),
   })
   if (res.status === 401) throw createAuthExpiredError()

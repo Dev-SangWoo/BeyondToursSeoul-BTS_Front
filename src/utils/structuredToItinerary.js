@@ -1,4 +1,5 @@
-import { i18n } from '@/i18n'
+import { i18n, getCurrentLocale } from '@/i18n'
+import { formatItineraryDayDate } from '@/utils/formatItineraryDayDate'
 import { sortSlotsForTimeline, getPhaseShortLabel } from '@/utils/slotTimeline'
 import { slotToneFromSlot } from '@/utils/slotPlaceTone'
 
@@ -100,9 +101,10 @@ export function structuredToItineraryDays(structured) {
           ]
         }
       }
+      const rawDayDate = day.date != null ? String(day.date).trim() : ''
       return {
         day: i + 1,
-        date: day.date != null ? String(day.date) : '',
+        date: rawDayDate ? formatItineraryDayDate(rawDayDate, getCurrentLocale()) : '',
         label: day.label != null ? String(day.label) : '',
         items,
       }

@@ -1,6 +1,8 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchSavedAttractions, toggleSavedAttraction } from '@/services/savedAttractionsService'
+import { i18n } from '@/i18n'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 /** DB `user_saved_attractions` — 상세 좋아요·저장함 관광지 탭과 동기화 */
 export const useServerSavedAttractionsStore = defineStore('serverSavedAttractions', () => {
@@ -43,6 +45,14 @@ export const useServerSavedAttractionsStore = defineStore('serverSavedAttraction
     await refresh(accessToken)
     return saved
   }
+
+  const authStore = useAuthStore()
+  watch(
+    () => i18n.global.locale.value,
+    () => {
+      if (authStore.accessToken) void refresh(authStore.accessToken)
+    },
+  )
 
   return {
     items,

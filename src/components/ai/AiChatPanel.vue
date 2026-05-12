@@ -3,8 +3,10 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { requestAiChat, toChatHistoryPayload } from '@/services/aiChatService'
 import { renderMarkdownHtml } from '@/utils/renderMarkdown'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 const { locale } = useI18n()
+const authStore = useAuthStore()
 const input = ref('')
 const isLoading = ref(false)
 const error = ref('')
@@ -44,7 +46,9 @@ async function sendMessage() {
   isLoading.value = true
   try {
     const lang = String(locale.value || 'ko').trim().slice(0, 5) || 'ko'
-    const data = await requestAiChat(trimmed, lang, history)
+    const data = await requestAiChat(trimmed, lang, history, 50, {
+      accessToken: authStore.accessToken || null,
+    })
     messages.value.push({
       id: `a-${Date.now()}`,
       role: 'assistant',
