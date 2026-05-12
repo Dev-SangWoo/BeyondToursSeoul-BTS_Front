@@ -26,8 +26,11 @@ import { getApiLangCode } from '@/i18n';
 import earthImage from '../../asset/earth.png';
 import airplaneImage from '../../asset/airplane.png';
 import { isAuthExpiredError } from '@/utils/authFlow';
+import { parseHashtagList } from '@/utils/hashtags';
+import { getCourseTitleLines } from '@/utils/courseTitle';
 
 const { t, locale } = useI18n();
+
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
@@ -154,13 +157,19 @@ const tourCoursesLoading = ref(false);
 const tourCoursesError = ref(null);
 const savingTourCourseId = ref(null);
 
-function hashtagTags(hashtags) {
-  if (hashtags == null || String(hashtags).trim() === '') return [];
-  return String(hashtags)
-    .split(/[#\s]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .slice(0, 12);
+/** 디스커버 관광지 밀도 슬라이더와 동일한 5단계 키 (i18n discover.densityMode.*) */
+const TOUR_COURSE_LOCAL_BAND_KEYS = [
+  'local0',
+  'local1-30',
+  'local31-50',
+  'local51-70',
+  'local71-100',
+];
+
+function tourCourseLocalBandLabel(band) {
+  const b = Number(band);
+  if (!Number.isInteger(b) || b < 0 || b > 4) return '';
+  return t(`discover.densityMode.${TOUR_COURSE_LOCAL_BAND_KEYS[b]}`);
 }
 
 function courseCardBackground(course, index) {
@@ -176,14 +185,33 @@ function isTourCourseSaved(course) {
   return course.isSaved === true;
 }
 
+/** 디스커버 추천 코스 카드: 무작위로 이 개수만 노출 */
+const RECOMMENDED_COURSE_DISPLAY_LIMIT = 5;
+
+function pickRandomSubset(list, limit) {
+  const arr = Array.isArray(list) ? [...list] : [];
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = arr[i];
+    arr[i] = arr[j];
+    arr[j] = t;
+  }
+  return arr.slice(0, Math.max(0, Math.min(limit, arr.length)));
+}
+
 async function loadTourCourses() {
   tourCoursesError.value = null;
   tourCoursesLoading.value = true;
   try {
-    tourCourses.value = await fetchTourCourses(
+    const all = await fetchTourCourses(
       getApiLangCode(),
       authStore.accessToken || null,
     );
+    tourCourses.value = pickRandomSubset(
+      all,
+      RECOMMENDED_COURSE_DISPLAY_LIMIT,
+    );
+    activeCourseIndex.value = 0;
   } catch (e) {
     if (isAuthExpiredError(e)) {
       await authStore.handleAuthExpired(router, route)
@@ -267,10 +295,6 @@ watch(
     loadTourCourses();
   },
 );
-
-watch(locale, () => {
-  void loadTourCourses();
-});
 
 function openSavedPlan(planId) {
   const sid = planId != null ? String(planId).trim() : '';
@@ -393,10 +417,16 @@ const eventsFetchAttempted = ref(false);
 const eventPage = ref(1);
 
 watch(homeListTab, (tab) => {
-  if (tab === 'attractions') attractionPage.value = 1;
+  if (tab === 'attractions') {
+    if (attractionPage.value !== 1) {
+      attractionPage.value = 1;
+    } else {
+      void loadAttractions();
+    }
+  }
   if (tab === 'events') {
     eventPage.value = 1;
-    ensureEventsLoaded();
+    void ensureEventsLoaded();
   }
 });
 
@@ -416,6 +446,16 @@ async function ensureEventsLoaded() {
     eventsLoading.value = false;
   }
 }
+
+watch(locale, () => {
+  void loadTourCourses();
+  void loadAttractions();
+  eventsFetchAttempted.value = false;
+  events.value = [];
+  if (homeListTab.value === 'events') {
+    void ensureEventsLoaded();
+  }
+});
 
 function formatTourYmd(ymd) {
   const s = ymd != null ? String(ymd).trim() : '';
@@ -481,6 +521,12 @@ function openAiOverlay() {
       returnTo: route.fullPath,
     },
   });
+}
+
+function goToTourCourse(course) {
+  const id = course?.id;
+  if (id == null) return;
+  router.push({ name: 'tour-course-detail', params: { id: String(id) } });
 }
 </script>
 
@@ -602,9 +648,24 @@ function openAiOverlay() {
             v-for="(course, i) in tourCourses"
             :key="course.id"
             class="discover-course-card"
+            role="button"
+            tabindex="0"
             :style="{ backgroundImage: courseCardBackground(course, i) }"
+            @click="goToTourCourse(course)"
+            @keydown.enter.prevent="goToTourCourse(course)"
+            @keydown.space.prevent="goToTourCourse(course)"
           >
             <div class="discover-course-card__photo-overlay"></div>
+            <div
+              v-if="course.avgLocalScorePercent != null && course.localBand != null"
+              class="discover-course-card__local-badge"
+              :class="`discover-course-card__local-badge--b${course.localBand}`"
+            >
+              <span class="discover-course-card__local-pct">{{ course.avgLocalScorePercent }}%</span>
+              <span class="discover-course-card__local-tier">{{
+                tourCourseLocalBandLabel(course.localBand)
+              }}</span>
+            </div>
             <button
               class="discover-course-card__save-btn"
               :class="{
@@ -618,21 +679,26 @@ function openAiOverlay() {
             >
               <Heart :size="14" :stroke-width="2.3" />
             </button>
-            <p class="discover-course-card__title">{{ course.title }}</p>
-            <p v-if="course.hashtags" class="discover-course-card__route">
-              {{ course.hashtags }}
-            </p>
-            <div
-              v-if="hashtagTags(course.hashtags).length"
-              class="discover-course-card__tags"
-            >
-              <span
-                v-for="tag in hashtagTags(course.hashtags)"
-                :key="tag"
-                class="discover-course-card__tag"
+            <div class="discover-course-card__stack">
+              <p class="discover-course-card__title">
+                <span
+                  v-for="(line, ti) in getCourseTitleLines(course.title)"
+                  :key="ti"
+                  class="discover-course-card__title-line"
+                >{{ line }}</span>
+              </p>
+              <div
+                v-if="parseHashtagList(course.hashtags).length"
+                class="discover-course-card__tags"
               >
-                #{{ tag }}
-              </span>
+                <span
+                  v-for="tag in parseHashtagList(course.hashtags)"
+                  :key="tag"
+                  class="discover-course-card__tag"
+                >
+                  #{{ tag }}
+                </span>
+              </div>
             </div>
           </article>
         </div>
@@ -692,139 +758,140 @@ function openAiOverlay() {
         </div>
       </div>
 
-      <div
-        v-show="homeListTab === 'attractions'"
-        class="discover__category-row"
-      >
-        <button
-          v-for="cat in categories"
-          :key="cat.id ?? '__all__'"
-          class="cat-btn"
-          :class="{ 'cat-btn--active': activeCategory === cat.id }"
-          @click="selectCategory(cat.id)"
-        >
-          <IsIcon
-            :name="cat.icon"
-            class="cat-btn__icon"
-            :variant="activeCategory === cat.id ? 'bulk' : 'twotone'"
-            :size="22"
-            :color="cat.color"
-          />
-          <span class="cat-btn__label">{{ cat.label }}</span>
-        </button>
-      </div>
-
-      <div class="discover__attractions">
-        <template v-if="homeListTab === 'attractions'">
-          <div v-if="attractionsLoading" class="discover__attractions-loading">
-            <div class="discover__attractions-spinner"></div>
-            <span>{{ $t('discover.loadingAttractions') }}</span>
+      <template v-if="homeListTab === 'attractions'">
+        <div class="discover__theme-block">
+          <div class="discover__category-row">
+            <button
+              v-for="cat in categories"
+              :key="cat.id ?? '__all__'"
+              class="cat-btn"
+              :class="{ 'cat-btn--active': activeCategory === cat.id }"
+              @click="selectCategory(cat.id)"
+            >
+              <IsIcon
+                :name="cat.icon"
+                class="cat-btn__icon"
+                :variant="activeCategory === cat.id ? 'bulk' : 'twotone'"
+                :size="22"
+                :color="cat.color"
+              />
+              <span class="cat-btn__label">{{ cat.label }}</span>
+            </button>
           </div>
 
-          <p v-else-if="attractionsError" class="discover__attractions-error">
-            {{ attractionsError }}
-          </p>
-
-          <p
-            v-else-if="attractions.length === 0"
-            class="discover__attractions-empty"
-          >
-            {{ $t('discover.noAttractions') }}
-          </p>
-
-          <template v-else>
-            <button
-              v-for="attraction in attractions"
-              :key="attraction.id"
-              type="button"
-              class="attraction-card"
-              @click="goToAttraction(attraction.id)"
-            >
-              <div class="attraction-card__thumb-wrap">
-                <img
-                  v-if="
-                    attraction.imageUrl ||
-                    attraction.image_url ||
-                    attraction.thumbnail
-                  "
-                  class="attraction-card__thumb"
-                  :src="
-                    attraction.imageUrl ||
-                    attraction.image_url ||
-                    attraction.thumbnail
-                  "
-                  :alt="attraction.name"
-                />
-                <div v-else class="attraction-card__thumb-placeholder"></div>
-              </div>
-              <div class="attraction-card__info">
-                <p class="attraction-card__name">{{ attraction.name }}</p>
-                <p v-if="attraction.address" class="attraction-card__address">
-                  <MapPin
-                    :size="11"
-                    :stroke-width="2"
-                    class="attraction-card__pin"
-                  />
-                  {{ attraction.address }}
-                </p>
-                <div class="attraction-card__meta">
-                  <span v-if="attraction.cat1Name" class="attraction-card__cat">
-                    {{ attraction.cat1Name }}
-                  </span>
-                </div>
-              </div>
-              <ChevronRight
-                :size="16"
-                :stroke-width="2.2"
-                class="attraction-card__arrow"
-              />
-            </button>
-
-            <div v-if="totalAttractionPages > 1" class="discover__pagination">
-              <button
-                type="button"
-                class="discover__pg-arrow"
-                :disabled="attractionPage === 1"
-                :aria-label="$t('discover.prevPage')"
-                @click="attractionPage--"
-              >
-                <ChevronLeft :size="14" :stroke-width="2.5" />
-              </button>
-
-              <template
-                v-for="(item, pi) in pageItems"
-                :key="'a-' + pi + '-' + item"
-              >
-                <span v-if="item === '...'" class="discover__pg-ellipsis"
-                  >…</span
-                >
-                <button
-                  v-else
-                  type="button"
-                  class="discover__pg-num"
-                  :class="{
-                    'discover__pg-num--active': attractionPage === item,
-                  }"
-                  @click="attractionPage = item"
-                >
-                  {{ item }}
-                </button>
-              </template>
-
-              <button
-                type="button"
-                class="discover__pg-arrow"
-                :disabled="attractionPage === totalAttractionPages"
-                :aria-label="$t('discover.nextPage')"
-                @click="attractionPage++"
-              >
-                <ChevronRight :size="14" :stroke-width="2.5" />
-              </button>
+          <div class="discover__attractions">
+            <div v-if="attractionsLoading" class="discover__attractions-loading">
+              <div class="discover__attractions-spinner"></div>
+              <span>{{ $t('discover.loadingAttractions') }}</span>
             </div>
-          </template>
-        </template>
 
-        <template v-else>
+            <p v-else-if="attractionsError" class="discover__attractions-error">
+              {{ attractionsError }}
+            </p>
+
+            <p
+              v-else-if="attractions.length === 0"
+              class="discover__attractions-empty"
+            >
+              {{ $t('discover.noAttractions') }}
+            </p>
+
+            <template v-else>
+              <button
+                v-for="attraction in attractions"
+                :key="attraction.id"
+                type="button"
+                class="attraction-card"
+                @click="goToAttraction(attraction.id)"
+              >
+                <div class="attraction-card__thumb-wrap">
+                  <img
+                    v-if="
+                      attraction.imageUrl ||
+                      attraction.image_url ||
+                      attraction.thumbnail
+                    "
+                    class="attraction-card__thumb"
+                    :src="
+                      attraction.imageUrl ||
+                      attraction.image_url ||
+                      attraction.thumbnail
+                    "
+                    :alt="attraction.name"
+                  />
+                  <div v-else class="attraction-card__thumb-placeholder"></div>
+                </div>
+                <div class="attraction-card__info">
+                  <p class="attraction-card__name">{{ attraction.name }}</p>
+                  <p v-if="attraction.address" class="attraction-card__address">
+                    <MapPin
+                      :size="11"
+                      :stroke-width="2"
+                      class="attraction-card__pin"
+                    />
+                    {{ attraction.address }}
+                  </p>
+                  <div class="attraction-card__meta">
+                    <span v-if="attraction.cat1Name" class="attraction-card__cat">
+                      {{ attraction.cat1Name }}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight
+                  :size="16"
+                  :stroke-width="2.2"
+                  class="attraction-card__arrow"
+                />
+              </button>
+
+              <div v-if="totalAttractionPages > 1" class="discover__pagination">
+                <button
+                  type="button"
+                  class="discover__pg-arrow"
+                  :disabled="attractionPage === 1"
+                  :aria-label="$t('discover.prevPage')"
+                  @click="attractionPage--"
+                >
+                  <ChevronLeft :size="14" :stroke-width="2.5" />
+                </button>
+
+                <template
+                  v-for="(item, pi) in pageItems"
+                  :key="'a-' + pi + '-' + item"
+                >
+                  <span v-if="item === '...'" class="discover__pg-ellipsis"
+                    >…</span
+                  >
+                  <button
+                    v-else
+                    type="button"
+                    class="discover__pg-num"
+                    :class="{
+                      'discover__pg-num--active': attractionPage === item,
+                    }"
+                    @click="attractionPage = item"
+                  >
+                    {{ item }}
+                  </button>
+                </template>
+
+                <button
+                  type="button"
+                  class="discover__pg-arrow"
+                  :disabled="attractionPage === totalAttractionPages"
+                  :aria-label="$t('discover.nextPage')"
+                  @click="attractionPage++"
+                >
+                  <ChevronRight :size="14" :stroke-width="2.5" />
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <template v-else>
+        <div class="discover__attractions discover__attractions--events">
           <div v-if="eventsLoading" class="discover__attractions-loading">
             <div class="discover__attractions-spinner"></div>
             <span>{{ $t('discover.loadingEvents') }}</span>
@@ -923,8 +990,8 @@ function openAiOverlay() {
               </button>
             </div>
           </template>
-        </template>
-      </div>
+        </div>
+      </template>
     </section>
 
     <!-- ── Bottom Nav (4 items) ───────────────────────────────────────── -->
@@ -1555,6 +1622,7 @@ function openAiOverlay() {
   background-size: cover;
   background-repeat: no-repeat;
   background-blend-mode: soft-light;
+  cursor: pointer;
 }
 
 .discover-course-card__photo-overlay {
@@ -1568,6 +1636,57 @@ function openAiOverlay() {
     rgba(0, 0, 0, 0.84) 100%
   );
   pointer-events: none;
+}
+
+.discover-course-card__local-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  max-width: calc(100% - 52px);
+  padding: 6px 9px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.discover-course-card__local-pct {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.discover-course-card__local-tier {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.discover-course-card__local-badge--b0 {
+  border-color: rgba(147, 197, 253, 0.55);
+}
+.discover-course-card__local-badge--b1 {
+  border-color: rgba(186, 230, 253, 0.55);
+}
+.discover-course-card__local-badge--b2 {
+  border-color: rgba(253, 224, 71, 0.5);
+}
+.discover-course-card__local-badge--b3 {
+  border-color: rgba(251, 191, 36, 0.55);
+}
+.discover-course-card__local-badge--b4 {
+  border-color: rgba(254, 156, 0, 0.65);
 }
 
 .discover-course-card__save-btn {
@@ -1600,34 +1719,60 @@ function openAiOverlay() {
   border-color: rgba(255, 233, 194, 0.95);
 }
 
+.discover-course-card__stack {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 0;
+  margin-top: auto;
+  max-height: calc(100% - 52px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .discover-course-card__title {
   margin: 0;
   font-size: 14px;
   font-weight: 800;
   color: #fff;
   text-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
-  position: relative;
-  z-index: 1;
+  line-height: 1.3;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
-.discover-course-card__route {
-  margin: 0;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.86);
-  line-height: 1.45;
-  position: relative;
-  z-index: 1;
+.discover-course-card__title-line {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: keep-all;
+}
+
+.discover-course-card__title-line + .discover-course-card__title-line {
+  font-size: 0.92em;
+  font-weight: 750;
+  opacity: 0.96;
 }
 
 .discover-course-card__tags {
   display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
-  position: relative;
-  z-index: 1;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .discover-course-card__tag {
+  flex: 0 0 auto;
   font-size: 10px;
   font-weight: 700;
   color: #fff;
@@ -1636,6 +1781,14 @@ function openAiOverlay() {
   border-radius: 999px;
   padding: 4px 8px;
   backdrop-filter: blur(2px);
+  white-space: nowrap;
+}
+
+/* ─── Theme block (카테고리 + 목록 한 덩어리) ───────────────────────────── */
+.discover__theme-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 /* ─── Category row ───────────────────────────────────────────────────────── */
