@@ -488,6 +488,8 @@ onMounted(() => {
             <AiInputChatStep
               v-if="flowStage === 'chat'"
               :summary-text="chatSummaryMessage"
+              :trip-start-date="startDate"
+              :trip-end-date="endDate"
               :initial-structured="chatStructured"
               :initial-thread="chatThread"
               :initial-selected-day-index="chatSelectedDayIndex"

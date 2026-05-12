@@ -151,12 +151,16 @@ function sanitizePositiveLongIds(ids) {
  * @param {string|null} [options.accessToken] - 있으면 Bearer로 전달(저장 항목 검증·반영)
  * @param {number[]} [options.savedAttractionIds]
  * @param {number[]} [options.savedCourseIds]
+ * @param {string|null} [options.tripStart] - YYYY-MM-DD (요청 캘린더 시작, 선택)
+ * @param {string|null} [options.tripEnd] - YYYY-MM-DD (요청 캘린더 종료, 선택)
  */
 export async function requestAiChat(message, language = 'ko', history = [], localRatio = 50, options = {}) {
   const {
     accessToken = null,
     savedAttractionIds = [],
     savedCourseIds = [],
+    tripStart = null,
+    tripEnd = null,
   } = options || {}
 
   const msg = clipUtf16Chars(String(message ?? '').trim(), MAX_AI_CHAT_MESSAGE_CHARS)
@@ -174,6 +178,13 @@ export async function requestAiChat(message, language = 'ko', history = [], loca
   const idsC = sanitizePositiveLongIds(savedCourseIds)
   if (idsA.length) body.savedAttractionIds = idsA
   if (idsC.length) body.savedCourseIds = idsC
+
+  const ts = typeof tripStart === 'string' ? tripStart.trim() : ''
+  const te = typeof tripEnd === 'string' ? tripEnd.trim() : ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(ts) && /^\d{4}-\d{2}-\d{2}$/.test(te) && ts <= te) {
+    body.tripStart = ts
+    body.tripEnd = te
+  }
 
   const headers = {
     'Content-Type': 'application/json',

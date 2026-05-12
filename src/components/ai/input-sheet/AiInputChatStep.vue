@@ -33,6 +33,9 @@ const props = defineProps({
   savedAttractionIds: { type: Array, default: () => [] },
   /** 상세 단계에서 고른 저장 공식 코스 ID */
   savedCourseIds: { type: Array, default: () => [] },
+  /** ISO YYYY-MM-DD — AI 일정 일수 고정용(선택) */
+  tripStartDate: { type: String, default: '' },
+  tripEndDate: { type: String, default: '' },
 })
 
 const emit = defineEmits([
@@ -318,6 +321,8 @@ async function sendChatWithText(messageText, options = {}) {
       accessToken: authStore.accessToken || null,
       savedAttractionIds: Array.isArray(props.savedAttractionIds) ? [...props.savedAttractionIds] : [],
       savedCourseIds: Array.isArray(props.savedCourseIds) ? [...props.savedCourseIds] : [],
+      tripStart: props.tripStartDate || null,
+      tripEnd: props.tripEndDate || null,
     })
     thread.value.push({
       id: `a-${Date.now()}`,
