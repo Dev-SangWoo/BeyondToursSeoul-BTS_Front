@@ -33,6 +33,8 @@ export default {
   },
   discover: {
     notification: '알림',
+    greetingHi: 'Hi, {name}! 🔥',
+    greetingFallbackName: 'Explorer',
     greeting: '오늘 서울은 어디가 핫할까요?',
     weather: '날씨',
     crowd: '혼잡도',

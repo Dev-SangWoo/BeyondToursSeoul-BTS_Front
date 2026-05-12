@@ -34,6 +34,15 @@ const { t, locale } = useI18n();
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+
+const discoverGreetingTitle = computed(() => {
+  const raw = authStore.user?.nickname;
+  const name =
+    typeof raw === 'string' && raw.trim()
+      ? raw.trim()
+      : t('discover.greetingFallbackName');
+  return t('discover.greetingHi', { name });
+});
 const selectedAttractionId = ref(null);
 const selectedEventId = ref(null);
 const activeCategory = ref(null);
@@ -556,7 +565,7 @@ function goToTourCourse(course) {
     <div class="discover__greeting">
       <div class="discover__greeting-row">
         <div class="discover__greeting-copy">
-          <h2 class="discover__greeting-title">Hi, Explorer! 🔥</h2>
+          <h2 class="discover__greeting-title">{{ discoverGreetingTitle }}</h2>
           <p class="discover__greeting-sub">{{ $t('discover.greeting') }}</p>
         </div>
       </div>

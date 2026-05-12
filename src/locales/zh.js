@@ -33,6 +33,8 @@ export default {
   },
   discover: {
     notification: '通知',
+    greetingHi: '嗨，{name}！🔥',
+    greetingFallbackName: 'Explorer',
     greeting: '今天首尔哪里最热门？',
     weather: '天气',
     crowd: '人流',

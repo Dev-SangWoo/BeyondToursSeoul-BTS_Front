@@ -33,6 +33,8 @@ export default {
   },
   discover: {
     notification: 'Notifications',
+    greetingHi: 'Hi, {name}! 🔥',
+    greetingFallbackName: 'Explorer',
     greeting: "Where's hot in Seoul today?",
     weather: 'Weather',
     crowd: 'Crowd',
