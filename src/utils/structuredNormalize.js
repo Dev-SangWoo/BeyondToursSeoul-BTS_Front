@@ -1,3 +1,5 @@
+import { tryParseToIsoDate } from '@/utils/formatItineraryDayDate'
+
 /**
  * API structured 객체를 UI에서 안전하게 쓰도록 보정
  * - summary.route: 문자열 한 줄·배열 혼용 → 문자열 배열
@@ -137,7 +139,9 @@ function normalizeDayEntry(raw, _index) {
   const label = String(
     d.label ?? d.dayLabel ?? d.title ?? d.dayTitle ?? d.name ?? d.theme ?? '',
   ).trim()
-  const date = d.date != null ? String(d.date) : ''
+  const rawDate = d.date != null ? String(d.date).trim() : ''
+  const dateIso = tryParseToIsoDate(rawDate)
+  const date = dateIso || rawDate
   const dayNote = String(d.summary ?? d.overview ?? d.description ?? d.notes ?? '').trim()
 
   return { ...d, date, label, slots, dayNote }
