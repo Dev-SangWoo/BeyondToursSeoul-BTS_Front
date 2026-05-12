@@ -23,8 +23,7 @@ const ZONE_IMAGES = {
 
   '양재/도곡': '/placeImages/Yangjae.jpg',
 
-  '사당/이수':
-    'https://images.unsplash.com/photo-1529421306624-54a5e29e4f3d?auto=format&fit=crop&w=1200&q=80',
+  '사당/이수': '/placeImages/Sadang.jpg',
 
   // 종로/중구권
   '명동': '/placeImages/Myeongdong.jpg',
@@ -74,42 +73,31 @@ const ZONE_IMAGES = {
   '왕십리': '/placeImages/Wangsimni.jpg',
 
   // 서남권
-  '영등포/신도림':
-    'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+  '영등포/신도림': '/placeImages/Yeongdeungpo.jpg',
 
-  '목동':
-    'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=1200&q=80',
+  '목동': '/placeImages/Mokdong.jpg',
 
-  '마곡/발산':
-    'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80',
+  '마곡/발산': '/placeImages/Magok.jpg',
 
-  '관악/신림':
-    'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80',
+  '관악/신림': '/placeImages/Gwanak.jpg',
 
-  '구로/가산':
-    'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
+  '구로/가산': '/placeImages/Guro.jpg',
 
   // 북부권
-  '강북/수유':
-    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
+  '강북/수유': '/placeImages/Gangbuk.jpg',
 
-  '노원/창동':
-    'https://images.unsplash.com/photo-1460317442991-0ec209397118?auto=format&fit=crop&w=1200&q=80',
+  '노원/창동': '/placeImages/Nowon.jpg',
 
-  '은평/연신내':
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80',
+  '은평/연신내': '/placeImages/Eunpyeong.jpg',
 
-  '성북':
-    'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
+  '성북': '/placeImages/Seongbuk.jpg',
 
-  '청량리/회기':
-    'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80',
+  '청량리/회기': '/placeImages/Cheongnyangni.jpg',
 
   // 외곽
   '과천/대공원': '/placeImages/Gwacheon.jpg',
 }
-const ZONE_IMAGE_DEFAULT =
-  'https://images.unsplash.com/photo-1601042879364-f3947d3f9c16?auto=format&fit=crop&w=500&q=80';
+const ZONE_IMAGE_DEFAULT = '/placeImages/DEFAULT.jpg';
 
 const CONGESTION_COLOR = { 1: '#22c55e', 2: '#eab308', 3: '#f97316', 4: '#ef4444' };
 
