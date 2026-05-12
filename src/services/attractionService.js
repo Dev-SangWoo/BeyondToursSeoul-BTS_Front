@@ -21,12 +21,27 @@ function toTourLang(lang) {
 }
 
 /**
+ * 관광지 API는 {@code Accept-Language}만 사용한다 (ko/en/ja/zh).
+ * 쿼리 {@code lang}은 무시되므로 여기서 헤더 값으로 정규화한다.
+ */
+function acceptLanguageForAttractionApi(langOrLocale) {
+  const raw = String(langOrLocale ?? getCurrentLocale() ?? 'ko')
+    .trim()
+    .toLowerCase();
+  if (raw.startsWith('ko') || raw === 'kor') return 'ko';
+  if (raw.startsWith('en') || raw === 'eng') return 'en';
+  if (raw.startsWith('ja') || raw === 'jpn') return 'ja';
+  if (raw.startsWith('zh') || raw === 'chs' || raw === 'cht') return 'zh';
+  return 'ko';
+}
+
+/**
  * @param {{ category?: string, lang?: string, minScore?: number, maxScore?: number }} [opts]
  * @returns {Promise<Array>}
  */
 export async function fetchAttractions(opts = {}) {
-  const lang = toTourLang(opts.lang ?? getCurrentLocale());
-  const params = new URLSearchParams({ lang });
+  const acceptLang = acceptLanguageForAttractionApi(opts.lang);
+  const params = new URLSearchParams();
   if (opts.category) params.set('category', opts.category);
   if (typeof opts.minScore === 'number')
     params.set('minScore', String(opts.minScore));
@@ -38,6 +53,9 @@ export async function fetchAttractions(opts = {}) {
 
   const res = await fetch(
     `${BASE_URL}/api/v1/attractions?${params.toString()}`,
+    {
+      headers: { 'Accept-Language': acceptLang },
+    },
   );
   if (!res.ok) throw new Error(`관광지 목록 조회 실패: ${res.status}`);
   return res.json();
@@ -60,12 +78,13 @@ export async function fetchAttractionsPage(opts = {}) {
     params.set('maxScore', String(opts.maxScore));
   if (typeof opts.page === 'number') params.set('page', String(opts.page));
   if (typeof opts.size === 'number') params.set('size', String(opts.size));
+  params.set('_t', String(Date.now()));
 
-  const locale = getCurrentLocale() || 'ko';
+  const acceptLang = acceptLanguageForAttractionApi(opts.lang);
   const res = await fetch(
     `${BASE_URL}/api/v1/attractions/page?${params.toString()}`,
     {
-      headers: { 'Accept-Language': locale },
+      headers: { 'Accept-Language': acceptLang },
     },
   );
   if (!res.ok) throw new Error(`관광지 페이징 목록 조회 실패: ${res.status}`);
@@ -76,10 +95,10 @@ export async function fetchAttractionsPage(opts = {}) {
  * @param {string|number} id
  * @returns {Promise<Object>}
  */
-export async function fetchAttractionById(id) {
-  const locale = getCurrentLocale() || 'ko';
+export async function fetchAttractionById(id, opts = {}) {
+  const acceptLang = acceptLanguageForAttractionApi(opts.lang);
   const res = await fetch(`${BASE_URL}/api/v1/attractions/${id}`, {
-    headers: { 'Accept-Language': locale },
+    headers: { 'Accept-Language': acceptLang },
   });
   if (!res.ok) throw new Error(`관광지 상세 조회 실패: ${res.status}`);
   return res.json();

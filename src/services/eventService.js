@@ -18,7 +18,7 @@ function toTourLang(lang) {
  */
 export async function fetchEvents() {
   const lang = toTourLang(getCurrentLocale())
-  const res = await fetch(`${BASE_URL}/api/v1/tour/events?lang=${lang}`)
+  const res = await fetch(`${BASE_URL}/api/v1/tour/events?lang=${lang}&_t=${Date.now()}`)
   if (!res.ok) throw new Error(`행사 목록 조회 실패: ${res.status}`)
   return res.json()
 }
