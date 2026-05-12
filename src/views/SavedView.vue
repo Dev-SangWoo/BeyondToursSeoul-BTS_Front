@@ -10,6 +10,8 @@ import { deleteSavedPlan, fetchSavedPlans } from '@/services/savedPlansService'
 import { fetchSavedTourCourses } from '@/services/tourCourseService'
 import { getApiLangCode } from '@/i18n'
 import { isAuthExpiredError } from '@/utils/authFlow'
+import { parseHashtagList } from '@/utils/hashtags'
+import { getCourseTitleLines } from '@/utils/courseTitle'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -37,13 +39,24 @@ const savedTourCourses = ref([])
 const savedTourCoursesLoading = ref(false)
 const savedTourCoursesError = ref(null)
 
-function hashtagLineTags(hashtags) {
-  if (hashtags == null || String(hashtags).trim() === '') return []
-  return String(hashtags)
-    .split(/[#\s]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .slice(0, 12)
+const TOUR_COURSE_LOCAL_BAND_KEYS = [
+  'local0',
+  'local1-30',
+  'local31-50',
+  'local51-70',
+  'local71-100',
+]
+
+function tourCourseLocalBandLabel(band) {
+  const b = Number(band)
+  if (!Number.isInteger(b) || b < 0 || b > 4) return ''
+  return t(`discover.densityMode.${TOUR_COURSE_LOCAL_BAND_KEYS[b]}`)
+}
+
+function openSavedTourCourse(item) {
+  const id = item?.id
+  if (id == null) return
+  router.push({ name: 'tour-course-detail', params: { id: String(id) } })
 }
 
 async function loadSavedTourCourses() {
@@ -281,16 +294,38 @@ async function removeSavedPlan(planId) {
           <article
             v-for="item in savedTourCourses"
             :key="item.id"
-            class="saved-card"
+            class="saved-card saved-card--course"
+            role="button"
+            tabindex="0"
+            @click="openSavedTourCourse(item)"
+            @keydown.enter.prevent="openSavedTourCourse(item)"
+            @keydown.space.prevent="openSavedTourCourse(item)"
           >
-            <h2 class="saved-card__title">{{ item.title || $t('saved.tabs.homeCourse') }}</h2>
-            <p v-if="item.hashtags" class="saved-card__route">
-              <Heart :size="14" :stroke-width="2.2" />
-              <span>{{ item.hashtags }}</span>
+            <h2 class="saved-card__title">
+              <template v-if="item.title && String(item.title).trim()">
+                <span
+                  v-for="(line, ti) in getCourseTitleLines(item.title)"
+                  :key="ti"
+                  class="saved-card__title-line"
+                >{{ line }}</span>
+              </template>
+              <template v-else>{{ $t('saved.tabs.homeCourse') }}</template>
+            </h2>
+            <p
+              v-if="item.avgLocalScorePercent != null && item.localBand != null"
+              class="saved-card__local-row"
+            >
+              <span class="saved-card__local-pct">{{ item.avgLocalScorePercent }}%</span>
+              <span class="saved-card__local-tier">{{
+                tourCourseLocalBandLabel(item.localBand)
+              }}</span>
             </p>
-            <div v-if="hashtagLineTags(item.hashtags).length" class="saved-card__tags">
+            <div
+              v-if="parseHashtagList(item.hashtags).length"
+              class="saved-card__tags"
+            >
               <span
-                v-for="tag in hashtagLineTags(item.hashtags)"
+                v-for="tag in parseHashtagList(item.hashtags)"
                 :key="tag"
                 class="saved-card__tag"
               >#{{ tag }}</span>
@@ -500,11 +535,59 @@ async function removeSavedPlan(planId) {
   padding: 14px;
 }
 
+.saved-card--course {
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.saved-card--course:hover {
+  border-color: #ffd79a;
+  box-shadow: 0 4px 14px rgba(254, 156, 0, 0.1);
+}
+
 .saved-card__title {
   margin: 0;
   font-size: 15px;
   font-weight: 800;
   color: #222;
+}
+
+.saved-card__title-line {
+  display: block;
+  word-break: keep-all;
+}
+
+.saved-card__title-line + .saved-card__title-line {
+  margin-top: 0.2em;
+  font-size: 0.94em;
+  font-weight: 750;
+  color: #444;
+}
+
+.saved-card__local-row {
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 10px;
+}
+
+.saved-card__local-pct {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fe9c00;
+  letter-spacing: -0.02em;
+}
+
+.saved-card__local-tier {
+  font-size: 11px;
+  font-weight: 700;
+  color: #555;
+  line-height: 1.35;
+  flex: 1;
+  min-width: 0;
 }
 
 .saved-card__route {
@@ -519,8 +602,12 @@ async function removeSavedPlan(planId) {
 .saved-card__tags {
   margin-top: 10px;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .saved-card--empty {
@@ -541,6 +628,7 @@ async function removeSavedPlan(planId) {
   border-radius: 999px;
   padding: 3px 8px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .saved-card__note {
