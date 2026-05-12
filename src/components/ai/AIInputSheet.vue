@@ -11,7 +11,6 @@ import AiInputChatStep from './input-sheet/AiInputChatStep.vue';
 import {
   interestOptions,
   mobilityOptions,
-  simOptions,
   relationshipOptions,
 } from './input-sheet/aiInputFlowConstants';
 import {
@@ -41,7 +40,8 @@ const step = ref('input');
 const loadingRef = ref(null);
 const flowStage = ref('primary');
 const detailPage = ref(1);
-const specialRequest = ref('');
+const savedAttractionIds = ref([]);
+const savedCourseIds = ref([]);
 const showTopGuide = ref(false);
 const chatStructured = ref(null);
 const chatThread = ref([]);
@@ -51,12 +51,11 @@ const generatingInitialCourse = ref(false);
 
 const startDate = ref(formatLocalIsoDate(_today));
 const endDate = ref(formatLocalIsoDate(_defaultEnd));
-const arrivalTime = ref('14:00');
-const departureTime = ref('10:00');
+const arrivalTime = ref('09:00');
+const departureTime = ref('20:00');
 const partySize = ref(2);
 const relationship = ref('친구');
 const mobilityMode = ref('public');
-const simOption = ref('skip');
 const interests = ref([]);
 const density = ref(50);
 
@@ -76,13 +75,6 @@ const selectedMobilityLabel = computed(
     return found ? t(found.labelKey) : t('ai.mobility.public')
   },
 )
-const selectedSimLabel = computed(
-  () => {
-    const found = simOptions.find((item) => item.id === simOption.value)
-    return found ? t(found.labelKey) : t('ai.sim.skip')
-  },
-)
-
 const stylePresetFromSlider = computed(() => {
   const local = density.value;
   if (local <= 5) return 'main100';
@@ -127,7 +119,6 @@ const canGenerate = computed(() => {
     okParty &&
     relationship.value &&
     mobilityMode.value &&
-    simOption.value &&
     interests.value.length > 0
   );
 });
@@ -163,7 +154,8 @@ const durationLabel = computed(() => {
 });
 
 const chatSummaryMessage = computed(() => {
-  const extra = specialRequest.value.trim();
+  const nAttr = savedAttractionIds.value.length;
+  const nCourse = savedCourseIds.value.length;
   const themes = selectedInterestLabels.value.join(', ') || '-';
   const lines = [
     t('ai.courseRequest.header'),
@@ -181,14 +173,17 @@ const chatSummaryMessage = computed(() => {
       partySize: partySize.value,
     }),
     t('ai.courseRequest.mobility', { mobility: selectedMobilityLabel.value }),
-    t('ai.courseRequest.sim', { sim: selectedSimLabel.value }),
     t('ai.courseRequest.style', {
       localPct: density.value,
       mainPct: 100 - density.value,
     }),
     t('ai.courseRequest.themes', { themes }),
   ];
-  if (extra) lines.push(t('ai.courseRequest.extra', { text: extra }));
+  if (nAttr > 0 || nCourse > 0) {
+    lines.push(
+      t('ai.courseRequest.savedReflection', { nAttr, nCourse }),
+    );
+  }
   return lines.join('\n');
 });
 
@@ -240,10 +235,10 @@ async function generate(structuredFromChat) {
     partySize: partySize.value,
     relationship: relationship.value,
     mobilityMode: mobilityMode.value,
-    simOption: simOption.value,
     stylePreset: stylePresetFromSlider.value,
     styleRatio: styleRatioFromSlider.value,
-    specialRequest: specialRequest.value.trim(),
+    savedAttractionIds: [...savedAttractionIds.value],
+    savedCourseIds: [...savedCourseIds.value],
   });
 
   if (resolvedStructured) {
@@ -319,10 +314,11 @@ function buildDraftState() {
   return {
     flowStage: flowStage.value,
     detailPage: detailPage.value,
-    specialRequest: specialRequest.value,
+    savedAttractionIds: [...savedAttractionIds.value],
+    savedCourseIds: [...savedCourseIds.value],
     chatStructured: chatStructured.value,
     chatThread: chatThread.value,
-  chatSelectedDayIndex: chatSelectedDayIndex.value,
+    chatSelectedDayIndex: chatSelectedDayIndex.value,
     preserveChatMapOnExit: preserveChatMapOnExit.value,
     startDate: startDate.value,
     endDate: endDate.value,
@@ -331,7 +327,6 @@ function buildDraftState() {
     partySize: partySize.value,
     relationship: relationship.value,
     mobilityMode: mobilityMode.value,
-    simOption: simOption.value,
     interests: interests.value,
     density: density.value,
   };
@@ -371,10 +366,16 @@ function restoreDraftState() {
     detailPage.value = Number.isInteger(d.detailPage)
       ? d.detailPage
       : detailPage.value;
-    specialRequest.value =
-      typeof d.specialRequest === 'string'
-        ? d.specialRequest
-        : specialRequest.value;
+    if (Array.isArray(d.savedAttractionIds)) {
+      savedAttractionIds.value = d.savedAttractionIds
+        .map((x) => Number(x))
+        .filter((n) => Number.isFinite(n) && n > 0);
+    }
+    if (Array.isArray(d.savedCourseIds)) {
+      savedCourseIds.value = d.savedCourseIds
+        .map((x) => Number(x))
+        .filter((n) => Number.isFinite(n) && n > 0);
+    }
     chatStructured.value =
       d.chatStructured && typeof d.chatStructured === 'object'
         ? d.chatStructured
@@ -400,8 +401,6 @@ function restoreDraftState() {
       typeof d.relationship === 'string' ? d.relationship : relationship.value;
     mobilityMode.value =
       typeof d.mobilityMode === 'string' ? d.mobilityMode : mobilityMode.value;
-    simOption.value =
-      typeof d.simOption === 'string' ? d.simOption : simOption.value;
     interests.value = Array.isArray(d.interests)
       ? d.interests
       : interests.value;
@@ -475,10 +474,10 @@ onMounted(() => {
               v-model:relationship="relationship"
               v-model:party-size="partySize"
               v-model:mobility-mode="mobilityMode"
-              v-model:sim-option="simOption"
               v-model:density="density"
               v-model:interests="interests"
-              v-model:special-request="specialRequest"
+              v-model:saved-attraction-ids="savedAttractionIds"
+              v-model:saved-course-ids="savedCourseIds"
               v-model:detail-page="detailPage"
               :needs-party-input="needsPartyInput"
               :can-proceed-chat="canProceedChat"
@@ -489,12 +488,16 @@ onMounted(() => {
             <AiInputChatStep
               v-if="flowStage === 'chat'"
               :summary-text="chatSummaryMessage"
+              :trip-start-date="startDate"
+              :trip-end-date="endDate"
               :initial-structured="chatStructured"
               :initial-thread="chatThread"
               :initial-selected-day-index="chatSelectedDayIndex"
               :can-submit-generate="canSubmitGenerate"
               :preserve-map-on-exit="preserveChatMapOnExit"
               :local-ratio="density"
+              :saved-attraction-ids="savedAttractionIds"
+              :saved-course-ids="savedCourseIds"
               @back="backToDetail"
               @generate="generate"
               @structured-change="chatStructured = $event"

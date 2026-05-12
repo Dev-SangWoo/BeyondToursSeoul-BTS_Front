@@ -20,7 +20,7 @@ import {
 import { fetchAttractionById } from '@/services/attractionService'
 import { isAuthExpiredError } from '@/utils/authFlow'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const props = defineProps({
   attractionId: { default: null },
@@ -92,6 +92,30 @@ watch(
     }
   },
 )
+
+watch(locale, async () => {
+  const id = resolvedId.value
+  if (!id) return
+  loading.value = true
+  error.value = null
+  try {
+    attraction.value = await fetchAttractionById(id)
+    if (authStore.accessToken) {
+      if (serverAttractions.items.length === 0) {
+        await serverAttractions.refresh(authStore.accessToken)
+      }
+      isLiked.value = serverAttractions.isSaved(id)
+    }
+  } catch (e) {
+    if (isAuthExpiredError(e)) {
+      await authStore.handleAuthExpired(router, route)
+      return
+    }
+    error.value = e.message
+  } finally {
+    loading.value = false
+  }
+})
 
 // ── 필드 정규화 ────────────────────────────────────────────────────────────
 const d = computed(() => {

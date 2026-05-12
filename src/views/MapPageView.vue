@@ -224,6 +224,20 @@ onMounted(async () => {
   }
 });
 
+watch(locale, async () => {
+  mapBootstrapCache = null;
+  mapBootstrapPending = null;
+  attractionsLoading.value = true;
+  try {
+    const boot = await getMapBootstrapData(loadAttractionsByDensity);
+    attractions.value = boot.attractions;
+    lockers.value = boot.lockers;
+    congestions.value = boot.congestions;
+  } finally {
+    attractionsLoading.value = false;
+  }
+});
+
 const filteredAttractions = computed(() => {
   return attractions.value ?? [];
 });
