@@ -13,13 +13,10 @@ import {
   Palette,
   ShoppingBag,
   Shuffle,
-  SkipForward,
-  Smartphone,
   Soup,
   Train,
   User,
   Users,
-  Wifi,
 } from 'lucide-vue-next'
 
 export const interestOptions = [
@@ -48,12 +45,6 @@ export const mobilityOptions = [
   { id: 'public', icon: Train,   color: '#0284c7', labelKey: 'ai.mobility.public' },
   { id: 'rental', icon: Car,     color: '#f97316', labelKey: 'ai.mobility.rental' },
   { id: 'hybrid', icon: Shuffle, color: '#7c3aed', labelKey: 'ai.mobility.hybrid' },
-]
-
-export const simOptions = [
-  { id: 'skip', icon: SkipForward, color: '#64748b', labelKey: 'ai.sim.skip' },
-  { id: 'esim', icon: Wifi,        color: '#0ea5e9', labelKey: 'ai.sim.esim' },
-  { id: 'sim',  icon: Smartphone,  color: '#f59e0b', labelKey: 'ai.sim.sim' },
 ]
 
 export const personaOptions = [

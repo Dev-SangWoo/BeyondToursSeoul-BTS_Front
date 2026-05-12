@@ -17,6 +17,7 @@ import { normalizeStructured } from '@/utils/structuredNormalize'
 import { structuredToItineraryDays } from '@/utils/structuredToItinerary'
 import { fetchNearestLockers } from '@/services/attractionService'
 import AiChatPlanStrip from './AiChatPlanStrip.vue'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 const { t, locale } = useI18n()
 
@@ -28,6 +29,10 @@ const props = defineProps({
   preserveMapOnExit: { type: Boolean, default: false },
   localRatio: { type: Number, default: 50 },
   initialSelectedDayIndex: { type: Number, default: 0 },
+  /** 상세 단계(7번)에서 고른 저장 관광지 ID — AI 요청에 그대로 실음 */
+  savedAttractionIds: { type: Array, default: () => [] },
+  /** 상세 단계에서 고른 저장 공식 코스 ID */
+  savedCourseIds: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits([
@@ -43,6 +48,7 @@ const emit = defineEmits([
 const mapStore = useMapStore()
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 const thread = ref([])
 const chatInput = ref('')
@@ -119,7 +125,12 @@ onMounted(() => {
   }
   if (!lastStructured.value) {
     bootstrapping.value = true
-    void nextTick().then(() => sendChatWithText(t('ai.detail.generateCourse'), { bootstrap: true }))
+    const summary = String(props.summaryText ?? '').trim()
+    const ask = String(t('ai.detail.generateCourse') ?? '').trim()
+    const bootstrapMsg = [summary, ask].filter(Boolean).join('\n\n')
+    void nextTick().then(() =>
+      sendChatWithText(bootstrapMsg || ask || t('ai.detail.generateCourse'), { bootstrap: true }),
+    )
   } else {
     emit('bootstrap-complete')
   }
@@ -297,11 +308,17 @@ async function sendChatWithText(messageText, options = {}) {
   if (!trimmed || isChatLoading.value) return
   chatError.value = ''
   const history = toChatHistoryPayload(thread.value)
-  thread.value.push({ id: `u-${Date.now()}`, role: 'user', text: trimmed })
+  if (!bootstrap) {
+    thread.value.push({ id: `u-${Date.now()}`, role: 'user', text: trimmed })
+  }
   isChatLoading.value = true
   try {
     const lang = String(locale.value || 'ko').trim().slice(0, 5) || 'ko'
-    const data = await requestAiChat(trimmed, lang, history, props.localRatio)
+    const data = await requestAiChat(trimmed, lang, history, props.localRatio, {
+      accessToken: authStore.accessToken || null,
+      savedAttractionIds: Array.isArray(props.savedAttractionIds) ? [...props.savedAttractionIds] : [],
+      savedCourseIds: Array.isArray(props.savedCourseIds) ? [...props.savedCourseIds] : [],
+    })
     thread.value.push({
       id: `a-${Date.now()}`,
       role: 'assistant',

@@ -1,17 +1,22 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FileText } from 'lucide-vue-next'
-import { interestOptions, mobilityOptions, personaOptions, relationshipOptions, simOptions } from './aiInputFlowConstants'
+import { getApiLangCode } from '@/i18n'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { fetchSavedAttractions } from '@/services/savedAttractionsService'
+import { fetchSavedTourCourses } from '@/services/tourCourseService'
+import { interestOptions, mobilityOptions, personaOptions, relationshipOptions } from './aiInputFlowConstants'
 
-const { t } = useI18n()
+const authStore = useAuthStore()
+const { locale } = useI18n()
 const relationship = defineModel('relationship', { type: String, default: '친구' })
 const partySize = defineModel('partySize', { type: Number, default: 2 })
 const mobilityMode = defineModel('mobilityMode', { type: String, default: 'public' })
-const simOption = defineModel('simOption', { type: String, default: 'skip' })
 const density = defineModel('density', { type: Number, default: 50 })
 const interests = defineModel('interests', { type: Array, default: () => [] })
-const specialRequest = defineModel('specialRequest', { type: String, default: '' })
+const savedAttractionIds = defineModel('savedAttractionIds', { type: Array, default: () => [] })
+const savedCourseIds = defineModel('savedCourseIds', { type: Array, default: () => [] })
 const detailPage = defineModel('detailPage', { type: Number, default: 1 })
 
 const props = defineProps({
@@ -68,6 +73,77 @@ function goNextPage() {
 
 function goPrevPage() {
   detailPage.value = 1
+}
+
+const savedAttractionsList = ref([])
+const savedCoursesList = ref([])
+const savedListsLoading = ref(false)
+
+const hasSavedListOptions = computed(
+  () => savedAttractionsList.value.length > 0 || savedCoursesList.value.length > 0,
+)
+
+async function loadSavedListsForStep() {
+  savedAttractionsList.value = []
+  savedCoursesList.value = []
+  if (!authStore.isAuthenticated || !authStore.accessToken) {
+    return
+  }
+  savedListsLoading.value = true
+  try {
+    const lang = getApiLangCode()
+    const [atts, courses] = await Promise.all([
+      fetchSavedAttractions(authStore.accessToken).catch(() => []),
+      fetchSavedTourCourses(lang, authStore.accessToken).catch(() => []),
+    ])
+    savedAttractionsList.value = Array.isArray(atts) ? atts : []
+    savedCoursesList.value = Array.isArray(courses) ? courses : []
+  } catch {
+    savedAttractionsList.value = []
+    savedCoursesList.value = []
+  } finally {
+    savedListsLoading.value = false
+  }
+}
+
+watch(
+  () => [detailPage.value, authStore.isAuthenticated, authStore.accessToken],
+  () => {
+    if (detailPage.value === 2) void loadSavedListsForStep()
+  },
+  { immediate: true },
+)
+
+watch(locale, () => {
+  if (detailPage.value === 2) void loadSavedListsForStep()
+})
+
+function toggleSavedAttraction(id) {
+  const n = Number(id)
+  if (!Number.isFinite(n) || n <= 0) return
+  const cur = [...savedAttractionIds.value]
+  const i = cur.indexOf(n)
+  if (i >= 0) cur.splice(i, 1)
+  else cur.push(n)
+  savedAttractionIds.value = cur
+}
+
+function toggleSavedCourse(id) {
+  const n = Number(id)
+  if (!Number.isFinite(n) || n <= 0) return
+  const cur = [...savedCourseIds.value]
+  const i = cur.indexOf(n)
+  if (i >= 0) cur.splice(i, 1)
+  else cur.push(n)
+  savedCourseIds.value = cur
+}
+
+function isAttractionChecked(id) {
+  return savedAttractionIds.value.includes(Number(id))
+}
+
+function isCourseChecked(id) {
+  return savedCourseIds.value.includes(Number(id))
 }
 </script>
 
@@ -181,32 +257,6 @@ function goPrevPage() {
       </div>
     </section>
 
-    <section class="sheet__section">
-      <div class="sheet__section-label">
-        <span class="sheet__step-num">4</span>
-        <span class="sheet__step-text">{{ $t('ai.detail.step4') }}</span>
-        <span class="sheet__step-hint">{{ $t('ai.detail.step4hint') }}</span>
-      </div>
-      <div class="sheet__option-grid sheet__option-grid--sim">
-        <button
-          v-for="item in simOptions"
-          :key="item.id"
-          class="sheet__option-btn"
-          :class="{ 'sheet__option-btn--active': simOption === item.id }"
-          @click="simOption = item.id"
-        >
-          <component
-            :is="item.icon"
-            class="sheet__option-icon"
-            :size="20"
-            :stroke-width="simOption === item.id ? 2.5 : 2.2"
-            :color="item.color"
-          />
-          <span class="sheet__option-label">{{ $t(item.labelKey) }}</span>
-        </button>
-      </div>
-    </section>
-
     <button type="button" class="sheet__submit sheet__submit--next" @click="goNextPage">
       <span class="sheet__submit-icon">
         <FileText :size="20" :stroke-width="2.4" color="#fff" />
@@ -218,9 +268,9 @@ function goPrevPage() {
     <div v-show="detailPage === 2" class="detail-steps__page">
     <section class="sheet__section">
       <div class="sheet__section-label">
-        <span class="sheet__step-num">5</span>
-        <span class="sheet__step-text">{{ $t('ai.detail.step5') }}</span>
-        <span class="sheet__step-hint">{{ $t('ai.detail.step5hint') }}</span>
+        <span class="sheet__step-num">4</span>
+        <span class="sheet__step-text">{{ $t('ai.detail.step4') }}</span>
+        <span class="sheet__step-hint">{{ $t('ai.detail.step4hint') }}</span>
       </div>
       <div class="sheet__persona-list">
         <button
@@ -244,8 +294,8 @@ function goPrevPage() {
 
     <section class="sheet__section">
       <div class="sheet__section-label">
-        <span class="sheet__step-num">6</span>
-        <span class="sheet__step-text">{{ $t('ai.detail.step6') }}</span>
+        <span class="sheet__step-num">5</span>
+        <span class="sheet__step-text">{{ $t('ai.detail.step5') }}</span>
         <span
           class="sheet__interest-counter"
           :class="{ 'sheet__interest-counter--max': atMaxInterests }"
@@ -280,20 +330,49 @@ function goPrevPage() {
 
     <section class="sheet__section">
       <div class="sheet__section-label">
-        <span class="sheet__step-num">7</span>
-        <span class="sheet__step-text">{{ $t('ai.detail.step7') }}</span>
-        <span class="sheet__step-hint">{{ $t('ai.detail.step7hint') }}</span>
+        <span class="sheet__step-num">6</span>
+        <span class="sheet__step-text">{{ $t('ai.detail.step6') }}</span>
+        <span class="sheet__step-hint">{{ $t('ai.detail.step6hint') }}</span>
       </div>
-      <label class="sheet__field">
-        <textarea
-          v-model="specialRequest"
-          class="sheet__textarea"
-          maxlength="300"
-          :placeholder="$t('ai.detail.textareaPlaceholder')"
-          rows="3"
-        />
-        <span class="sheet__textarea-count">{{ specialRequest.length }}/300</span>
-      </label>
+      <p class="detail-saved__hint">{{ $t('ai.detail.savedPicksHint') }}</p>
+
+      <p v-if="!authStore.isAuthenticated" class="detail-saved__login">
+        {{ $t('ai.detail.savedPicksLogin') }}
+      </p>
+      <p v-else-if="savedListsLoading" class="detail-saved__muted">{{ $t('ai.detail.savedPicksLoading') }}</p>
+      <template v-else-if="hasSavedListOptions">
+        <div v-if="savedAttractionsList.length" class="detail-saved__group">
+          <span class="detail-saved__label">{{ $t('ai.detail.savedAttractions') }}</span>
+          <ul class="detail-saved__list">
+            <li v-for="a in savedAttractionsList" :key="'det-sav-att-' + a.id" class="detail-saved__item">
+              <label class="detail-saved__row">
+                <input
+                  type="checkbox"
+                  :checked="isAttractionChecked(a.id)"
+                  @change="toggleSavedAttraction(a.id)"
+                />
+                <span class="detail-saved__name">{{ a.name }}</span>
+              </label>
+            </li>
+          </ul>
+        </div>
+        <div v-if="savedCoursesList.length" class="detail-saved__group">
+          <span class="detail-saved__label">{{ $t('ai.detail.savedCourses') }}</span>
+          <ul class="detail-saved__list">
+            <li v-for="c in savedCoursesList" :key="'det-sav-course-' + c.id" class="detail-saved__item">
+              <label class="detail-saved__row">
+                <input
+                  type="checkbox"
+                  :checked="isCourseChecked(c.id)"
+                  @change="toggleSavedCourse(c.id)"
+                />
+                <span class="detail-saved__name">{{ c.title }}</span>
+              </label>
+            </li>
+          </ul>
+        </div>
+      </template>
+      <p v-else class="detail-saved__empty">{{ $t('ai.detail.savedPicksEmpty') }}</p>
     </section>
 
     <div class="detail-steps__actions">
@@ -530,10 +609,6 @@ function goPrevPage() {
   line-height: 1.4;
 }
 
-.sheet__option-grid--sim {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .sheet__option-btn {
   border: 2px solid #ebebeb;
   border-radius: 12px;
@@ -722,6 +797,82 @@ function goPrevPage() {
   font-weight: 500;
 }
 
+.detail-saved__hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #888;
+  line-height: 1.4;
+}
+
+.detail-saved__login,
+.detail-saved__empty,
+.detail-saved__muted {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #eceae4;
+  background: #fdfcf9;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.45;
+}
+
+.detail-saved__muted {
+  color: #999;
+}
+
+.detail-saved__group {
+  margin-top: 10px;
+}
+
+.detail-saved__group:first-of-type {
+  margin-top: 0;
+}
+
+.detail-saved__label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a67c52;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+}
+
+.detail-saved__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid #eceae4;
+  background: #fafaf8;
+  max-height: min(32dvh, 200px);
+  overflow: auto;
+}
+
+.detail-saved__item + .detail-saved__item {
+  border-top: 1px solid #eee;
+}
+
+.detail-saved__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+}
+
+.detail-saved__row input {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.detail-saved__name {
+  line-height: 1.35;
+}
+
 .sheet__submit {
   width: 100%;
   padding: 17px;
@@ -751,38 +902,5 @@ function goPrevPage() {
   font-size: 12px;
   color: #bbb;
   margin: -16px 0 0;
-}
-
-.sheet__field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.sheet__textarea {
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 80px;
-  resize: vertical;
-  border: 2px solid #ebebeb;
-  border-radius: 12px;
-  background: #fafaf8;
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.45;
-  color: #333;
-  outline: none;
-}
-
-.sheet__textarea:focus {
-  border-color: #fe9c00;
-  background: #fff8ec;
-}
-
-.sheet__textarea-count {
-  align-self: flex-end;
-  font-size: 11px;
-  color: #b0b0b0;
-  font-weight: 600;
 }
 </style>
