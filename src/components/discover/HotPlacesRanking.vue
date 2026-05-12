@@ -9,51 +9,37 @@ const { t, locale } = useI18n();
 // ── 권역별 대표 이미지 (Unsplash) ────────────────────────────────────────
 const ZONE_IMAGES = {
   // 강남권
-  '삼성/코엑스':
-    'https://images.unsplash.com/photo-1596610903012-3b8d1cce0ed6?auto=format&fit=crop&w=1200&q=80', 
+  '삼성/코엑스': '/placeImages/Samsung:COEX.jpg',
 
-  '강남역 일대':
-    'https://images.unsplash.com/photo-1549692520-acc6669e2f0c?auto=format&fit=crop&w=1200&q=80', 
+  '강남역 일대': '/placeImages/Gangnam.jpg',
 
-  '신사/압구정':
-    'https://images.unsplash.com/photo-1527580791835-e94f4f1d7f3d?auto=format&fit=crop&w=1200&q=80', 
+  '신사/압구정': '/placeImages/Sinsa.jpg',
 
-  '청담/압구정':
-    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80', 
+  '청담/압구정': '/placeImages/Cheongdam:Apgujeong.jpg',
 
-  '서초/교대':
-    'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&w=1200&q=80',
+  '서초/교대': '/placeImages/Seocho:Gyodae.jpg',
 
-  '고속터미널/반포':
-    'https://images.unsplash.com/photo-1507608616759-54f48f0af0ee?auto=format&fit=crop&w=1200&q=80',
+  '고속터미널/반포': '/placeImages/Banpo.jpg',
 
-  '양재/도곡':
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80', 
+  '양재/도곡': '/placeImages/Yangjae.jpg',
 
   '사당/이수':
     'https://images.unsplash.com/photo-1529421306624-54a5e29e4f3d?auto=format&fit=crop&w=1200&q=80',
 
   // 종로/중구권
-  '명동':
-    'https://images.unsplash.com/photo-1538485399081-7191377e8241?auto=format&fit=crop&w=1200&q=80', 
+  '명동': '/placeImages/Myeongdong.jpg',
 
-  '서울역/시청':
-    'https://images.unsplash.com/photo-1517154421773-0529f29ea451?auto=format&fit=crop&w=1200&q=80', 
+  '서울역/시청': '/placeImages/Seoul Station.jpg',
 
-  '광화문/경복궁':
-    'https://images.unsplash.com/photo-1546872006-532eef0a0c83?auto=format&fit=crop&w=1200&q=80',
+  '광화문/경복궁': '/placeImages/Gyeongbokgung.jpg',
 
-  '종로/청계':
-    'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80', 
+  '종로/청계': '/placeImages/Cheonggye.jpg',
 
-  '인사동/북촌':
-    'https://images.unsplash.com/photo-1535189043414-47a3c49a0bed?auto=format&fit=crop&w=1200&q=80', 
+  '인사동/북촌': '/placeImages/Bukchon.jpg',
 
-  '동대문':
-  'https://images.unsplash.com/photo-1506152983158-b4a74a01c721?auto=format&fit=crop&w=1200&q=80', 
+  '동대문': '/placeImages/Dongdaemun.jpg',
 
-  '혜화/대학로':
-    'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&q=80',
+  '혜화/대학로': '/placeImages/Daehakro.jpg',
 
   // 마포/용산권
   '홍대/합정':
@@ -135,8 +121,7 @@ const ZONE_IMAGES = {
     'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80',
 
   // 외곽
-  '과천/대공원':
-    'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=80',
+  '과천/대공원': '/placeImages/Gwacheon.jpg',
 }
 const ZONE_IMAGE_DEFAULT =
   'https://images.unsplash.com/photo-1601042879364-f3947d3f9c16?auto=format&fit=crop&w=500&q=80';
